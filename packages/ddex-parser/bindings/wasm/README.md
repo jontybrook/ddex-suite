@@ -4,7 +4,7 @@ Ultra-lightweight DDEX parser for browsers (37KB).
 
 ## Installation
 ```bash
-npm install @ddex/parser-wasm@0.3.5
+npm install @ddex/parser-wasm@0.4.0
 ```
 
 ## Usage

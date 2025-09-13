@@ -14,7 +14,7 @@ pip install ddex-builder
 ```
 
 ## Security Notice
-**v0.3.5 includes PyO3 0.24 upgrade for enhanced security and compatibility.**
+**v0.4.0 includes PyO3 0.24 upgrade for enhanced security and compatibility.**
 
 ## Quick Start
 

@@ -740,6 +740,6 @@ fn _internal(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {  // Changed
     m.add_class::<PyDDEXParser>()?;
     m.add_class::<PyParsedERNMessage>()?;
     m.add_class::<StreamIterator>()?;
-    m.add("__version__", "0.1.0")?;
+    m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     Ok(())
 }

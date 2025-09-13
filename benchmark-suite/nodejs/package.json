@@ -8,8 +8,8 @@
     "test": "npm run benchmark"
   },
   "dependencies": {
-    "ddex-parser": "latest",
-    "ddex-builder": "latest"
+    "ddex-parser": "0.4.0",
+    "ddex-builder": "0.4.0"
   },
   "devDependencies": {},
   "engines": {

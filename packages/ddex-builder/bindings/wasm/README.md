@@ -7,7 +7,7 @@ High-performance DDEX builder for browsers (420KB).
 
 ## Installation
 ```bash
-npm install @ddex/builder-wasm@0.3.5
+npm install @ddex/builder-wasm@0.4.0
 ```
 
 ## Features

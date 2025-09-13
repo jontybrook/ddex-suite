@@ -193,7 +193,7 @@ Performance comparison across environments and languages:
 
 ## Security
 
-v0.3.5 includes comprehensive security enhancements:
+v0.4.0 includes comprehensive security enhancements:
 - Zero vulnerabilities, forbids unsafe code
 - Supply chain security with cargo-deny and SBOM
 - Memory-bounded processing with configurable limits

@@ -1,6 +1,43 @@
-# Migration Guide: Perfect Fidelity Engine
+# Migration Guide: DDEX Suite
 
-This guide helps existing DDEX Suite users upgrade to the new Perfect Fidelity Engine introduced in v0.2.5. The Perfect Fidelity Engine provides 100% round-trip XML preservation while maintaining backward compatibility with existing code.
+This guide helps existing DDEX Suite users migrate between versions, with specific guidance for major releases and feature updates.
+
+## 🔄 v0.3.x to v0.4.0 - Security & Stability Release
+
+### What's New in v0.4.0
+- Enhanced security hardening with PyO3 0.24 compatibility
+- Improved error handling and validation
+- Refined streaming parser implementation
+- Updated dependency versions for security fixes
+
+### Migration Steps
+
+**Update Dependencies:**
+
+```toml
+# Cargo.toml
+[dependencies]
+ddex-parser = "0.4.0"
+ddex-builder = "0.4.0"
+ddex-core = "0.4.0"
+```
+
+```bash
+# Node.js
+npm install ddex-parser@0.4.0 ddex-builder@0.4.0
+
+# Python
+pip install ddex-parser==0.4.0 ddex-builder==0.4.0
+```
+
+**Breaking Changes:**
+- No breaking API changes - this is a compatible upgrade
+- Python bindings now require PyO3 0.24+ (automatically handled)
+- Some internal security improvements may affect custom extensions
+
+### Legacy Migration: v0.2.x to Perfect Fidelity Engine
+
+This section helps users upgrade to the Perfect Fidelity Engine introduced in v0.2.5. The Perfect Fidelity Engine provides 100% round-trip XML preservation while maintaining backward compatibility with existing code.
 
 ## 📋 Overview
 

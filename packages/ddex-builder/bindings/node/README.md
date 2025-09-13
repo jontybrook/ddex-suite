@@ -131,7 +131,7 @@ console.assert(reparsed.releases[0].title === 'Remastered Edition');
 
 ## Security
 
-v0.3.5 includes comprehensive security enhancements:
+v0.4.0 includes comprehensive security enhancements:
 - Zero unsafe code, comprehensive input validation
 - Supply chain security with cargo-deny and SBOM
 - Memory-bounded processing with configurable limits

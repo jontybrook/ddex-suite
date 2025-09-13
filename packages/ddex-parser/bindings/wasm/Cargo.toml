@@ -1,7 +1,7 @@
 # packages/ddex-parser/bindings/wasm/Cargo.toml
 [package]
 name = "ddex-parser-wasm"
-version = "0.3.5"
+version = "0.4.0"
 edition = "2021"
 authors = ["DDEX Parser Contributors"]
 license = "MIT"
