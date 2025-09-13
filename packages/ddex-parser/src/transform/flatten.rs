@@ -170,10 +170,12 @@ impl Flattener {
             .unwrap_or_else(|| "NO_ID".to_string())
     }
     
+    #[allow(dead_code)]
     fn count_tracks(releases: &[ParsedRelease]) -> usize {
         releases.iter().map(|r| r.track_count).sum()
     }
-    
+
+    #[allow(dead_code)]
     fn calculate_total_duration(resources: &HashMap<String, ParsedResource>) -> u64 {
         resources.values()
             .filter_map(|r| r.duration)
@@ -254,7 +256,7 @@ impl Flattener {
                 duration: resource.and_then(|r| r.duration)
                     .unwrap_or_else(|| std::time::Duration::from_secs(0)),
                 duration_formatted: resource.and_then(|r| r.duration)
-                    .map(|d| ParsedTrack::format_duration(d))
+                    .map(ParsedTrack::format_duration)
                     .unwrap_or_else(|| "0:00".to_string()),
                 file_format: None,
                 bitrate: None,

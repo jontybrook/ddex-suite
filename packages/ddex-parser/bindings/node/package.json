@@ -1,26 +1,45 @@
 {
   "name": "ddex-parser",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "description": "High-performance DDEX XML parser with native and WASM bindings",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "index.js",
+  "types": "index.d.ts",
   "exports": {
     ".": {
-      "require": "./dist/index.js",
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "require": "./index.js",
+      "import": "./index.js",
+      "types": "./index.d.ts"
     }
   },
   "files": [
-    "dist",
+    "index.js",
+    "index.d.ts",
+    "*.node",
     "README.md",
     "LICENSE"
   ],
+  "napi": {
+    "name": "ddex-parser-node",
+    "triples": {
+      "defaults": true,
+      "additional": [
+        "x86_64-unknown-linux-musl",
+        "aarch64-unknown-linux-gnu",
+        "aarch64-apple-darwin",
+        "aarch64-linux-android",
+        "arm-linux-androideabi",
+        "armv7-unknown-linux-gnueabihf"
+      ]
+    }
+  },
   "scripts": {
-    "build": "npm run build:ts",
+    "build": "napi build --platform --release",
+    "build:debug": "napi build --platform",
     "build:ts": "tsc",
-    "test": "node test-manual.js",
-    "prepublishOnly": "npm run build:ts"
+    "prepublishOnly": "napi prepublish -t npm",
+    "artifacts": "napi artifacts",
+    "version": "napi version",
+    "test": "node test-manual.js"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -51,5 +70,16 @@
     "@napi-rs/cli": "^2.18.4",
     "@types/node": "^20.19.13",
     "typescript": "^5.9.2"
+  },
+  "optionalDependencies": {
+    "ddex-parser-win32-x64-msvc": "0.3.6",
+    "ddex-parser-darwin-x64": "0.3.6",
+    "ddex-parser-linux-x64-gnu": "0.3.6",
+    "ddex-parser-linux-x64-musl": "0.3.6",
+    "ddex-parser-linux-arm64-gnu": "0.3.6",
+    "ddex-parser-darwin-arm64": "0.3.6",
+    "ddex-parser-android-arm64": "0.3.6",
+    "ddex-parser-android-arm-eabi": "0.3.6",
+    "ddex-parser-linux-arm-gnueabihf": "0.3.6"
   }
 }

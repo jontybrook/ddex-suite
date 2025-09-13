@@ -1,81 +1,82 @@
 # DDEX Parser
 
-[![Crates.io](https://img.shields.io/crates/v/ddex-parser)](https://crates.io/crates/ddex-parser)
-[![npm version](https://img.shields.io/npm/v/ddex-parser.svg)](https://www.npmjs.com/package/ddex-parser)
-[![PyPI version](https://img.shields.io/pypi/v/ddex-parser.svg)](https://pypi.org/project/ddex-parser/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub](https://img.shields.io/badge/GitHub-ddex--suite-blue)](https://github.com/daddykev/ddex-suite)
 
-High-performance DDEX XML parser with native bindings for JavaScript, Python, and browser support via WASM. Parse DDEX files up to 15x faster than traditional parsers with built-in security features, comprehensive metadata extraction, and perfect round-trip compatibility with ddex-builder.
+High-performance DDEX XML parser built in Rust with comprehensive security protections and command-line interface. Parse ERN 3.8.2, 4.2, and 4.3 files with built-in validation, security hardening against XML attacks, and deterministic JSON output.
 
 Part of the [DDEX Suite](https://github.com/daddykev/ddex-suite) - a comprehensive toolkit for working with DDEX metadata in the music industry.
 
-> **Version 0.3.5** - Security & Stability Release with PyO3 0.24 compatibility and enhanced performance optimizations.
+> **Version 0.3.5** - Security & Stability Release with critical vulnerability fixes and enhanced error handling.
 
-## 🚀 Language Support
+## 🛡️ Security-First Design
 
-Choose your preferred language and get started immediately:
+**Fixed Critical Vulnerabilities:**
+- ✅ **XML Bomb Protection** - Guards against billion laughs and entity expansion attacks
+- ✅ **Deep Nesting Protection** - Prevents stack overflow from malicious XML
+- ✅ **Input Validation** - Rejects malformed XML with clear error messages
+- ✅ **Memory Bounds** - Configurable limits for large file processing
 
-| Language | Package | Installation |
-|----------|---------|-------------|
-| **JavaScript/TypeScript** | [ddex-parser (npm)](https://www.npmjs.com/package/ddex-parser) | `npm install ddex-parser` |
-| **Python** | [ddex-parser (PyPI)](https://pypi.org/project/ddex-parser/) | `pip install ddex-parser` |
-| **Rust** | [ddex-parser (crates.io)](https://crates.io/crates/ddex-parser) | `cargo add ddex-parser` |
+## 🚀 Current Implementation Status
+
+### ✅ **Fully Working**
+- **Command Line Interface** - Complete CLI with parse, validate, batch operations
+- **Rust API** - Full programmatic access via `DDEXParser` struct
+- **ERN Support** - ERN 3.8.2, 4.2, and 4.3 parsing and validation
+- **Security Hardened** - Protection against XML bombs, deep nesting, malformed input
+- **JSON Output** - Clean, deterministic JSON serialization
+
+### 🔧 **Planned (Not Yet Implemented)**
+- **JavaScript/TypeScript Bindings** - Native Node.js bindings (planned)
+- **Python Bindings** - PyO3-based Python integration (planned)
+- **WebAssembly** - Browser-compatible WASM module (planned)
 
 ## Quick Start
 
-### JavaScript/TypeScript
+### Command Line Interface (Ready Now)
 
-```typescript
-import { DDEXParser } from 'ddex-parser';
+```bash
+# Install from source
+git clone https://github.com/daddykev/ddex-suite
+cd ddex-suite/packages/ddex-parser
+cargo build --release
 
-const parser = new DDEXParser();
-const result = await parser.parseFile('release.xml');
+# Parse DDEX file to JSON
+./target/release/ddex-parser parse release.xml --output release.json
 
-console.log(`Release: ${result.flattened.releaseTitle}`);
-console.log(`Artist: ${result.flattened.mainArtist}`);
-console.log(`Tracks: ${result.flattened.tracks.length}`);
+# Validate DDEX file
+./target/release/ddex-parser validate release.xml
+
+# Batch process multiple files
+./target/release/ddex-parser batch "*.xml" --output-dir results/
 ```
 
-### Python
-
-```python
-from ddex_parser import DDEXParser
-import pandas as pd
-
-parser = DDEXParser()
-result = parser.parse_file("release.xml")
-
-print(f"Release: {result.release_title}")
-print(f"Artist: {result.main_artist}")
-
-# Convert to DataFrame for analysis
-tracks_df = result.to_dataframe()
-print(tracks_df.head())
-```
-
-### Rust
+### Rust Library (Ready Now)
 
 ```rust
 use ddex_parser::DDEXParser;
+use std::fs::File;
+use std::io::BufReader;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let parser = DDEXParser::new();
-    let result = parser.parse_file("release.xml")?;
-    
-    println!("Release: {}", result.flattened.release_title);
-    println!("Artist: {}", result.flattened.main_artist);
-    println!("Tracks: {}", result.flattened.tracks.len());
-    
-    Ok(())
-}
+// Create parser with secure defaults
+let parser = DDEXParser::new();
+
+// Parse DDEX file
+let file = File::open("release.xml")?;
+let reader = BufReader::new(file);
+let parsed = parser.parse(reader)?;
+
+// Access flattened data
+println!("Release: {}", parsed.releases[0].release_title[0].text);
+println!("Tracks: {}", parsed.releases[0].track_count);
 ```
 
 ## Core Features
 
-### 🚀 Blazing Performance
-- **Up to 15x faster** than traditional XML parsers
-- Native Rust core with optimized language bindings
+### 🚀 Performance (Benchmarked)
+- **DOM Parsing**: ~65 MiB/s on typical DDEX files
+- **Low Latency**: ~21µs for 1.5KB files, ~2.4µs for streaming mode
+- **Memory Efficient**: Configurable memory bounds and streaming support
 - Streaming support for large files (>100MB)
 - Memory-efficient processing with configurable limits
 

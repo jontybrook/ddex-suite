@@ -11,7 +11,7 @@ pub use ddex_core::error::ErrorLocation;
 pub type Result<T> = std::result::Result<T, ParseError>;
 
 /// Parser-specific errors
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Clone)]
 pub enum ParseError {
     #[error("XML parsing error: {message}")]
     XmlError {
@@ -33,12 +33,20 @@ pub enum ParseError {
     Timeout {
         seconds: u64,
     },
-    
+
+    #[error("Type conversion error: {message}")]
+    ConversionError {
+        message: String,
+        location: ErrorLocation,
+    },
+
     #[error("Core error: {0}")]
     Core(#[from] DDEXError),
     
-    #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
+    #[error("IO error: {message}")]
+    Io {
+        message: String,
+    },
 }
 
 impl From<ParseError> for FFIError {
@@ -81,13 +89,61 @@ impl From<ParseError> for FFIError {
                 hint: Some("File may be too large or complex".to_string()),
                 category: FFIErrorCategory::Io,
             },
-            ParseError::Io(io_err) => FFIError {
+            ParseError::ConversionError { message, location } => FFIError {
+                code: "TYPE_CONVERSION_ERROR".to_string(),
+                message,
+                location: Some(ddex_core::ffi::FFIErrorLocation {
+                    line: location.line,
+                    column: location.column,
+                    path: location.path,
+                }),
+                severity: FFIErrorSeverity::Error,
+                hint: Some("Check builder state and validation".to_string()),
+                category: FFIErrorCategory::Validation,
+            },
+            ParseError::Io { message } => FFIError {
                 code: "IO_ERROR".to_string(),
-                message: io_err.to_string(),
+                message,
                 location: None,
                 severity: FFIErrorSeverity::Error,
                 hint: None,
                 category: FFIErrorCategory::Io,
+            },
+        }
+    }
+}
+
+impl From<std::io::Error> for ParseError {
+    fn from(err: std::io::Error) -> Self {
+        ParseError::Io {
+            message: err.to_string(),
+        }
+    }
+}
+
+impl From<std::str::Utf8Error> for ParseError {
+    fn from(err: std::str::Utf8Error) -> Self {
+        ParseError::XmlError {
+            message: format!("UTF-8 encoding error: {}", err),
+            location: ErrorLocation {
+                line: 0,
+                column: 0,
+                byte_offset: None,
+                path: "parser".to_string(),
+            },
+        }
+    }
+}
+
+impl From<quick_xml::events::attributes::AttrError> for ParseError {
+    fn from(err: quick_xml::events::attributes::AttrError) -> Self {
+        ParseError::XmlError {
+            message: format!("XML attribute error: {}", err),
+            location: ErrorLocation {
+                line: 0,
+                column: 0,
+                byte_offset: None,
+                path: "parser".to_string(),
             },
         }
     }

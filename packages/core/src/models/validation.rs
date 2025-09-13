@@ -17,6 +17,9 @@ use chrono::{DateTime, Utc, NaiveDate};
 use url::Url;
 use regex::Regex;
 
+/// Type alias for custom validation functions
+type ValidationFunction = fn(&AttributeValue) -> Result<(), String>;
+
 /// Comprehensive validation errors for attributes
 #[derive(Debug, Error, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AttributeValidationError {
@@ -216,7 +219,7 @@ pub struct AttributeValidator {
     /// Validation policy
     policy: ValidationPolicy,
     /// Custom validation functions
-    custom_validators: HashMap<String, fn(&AttributeValue) -> Result<(), String>>,
+    custom_validators: HashMap<String, ValidationFunction>,
     /// Compiled regex cache
     regex_cache: HashMap<String, Regex>,
 }
@@ -248,17 +251,17 @@ impl AttributeValidator {
     pub fn add_global_rule(&mut self, attribute: QName, rule: ValidationRule) {
         self.global_rules
             .entry(attribute)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(rule);
     }
-    
+
     /// Add element-specific validation rule
     pub fn add_element_rule(&mut self, element: QName, attribute: QName, rule: ValidationRule) {
         self.element_rules
             .entry(element)
-            .or_insert_with(IndexMap::new)
+            .or_default()
             .entry(attribute)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(rule);
     }
     

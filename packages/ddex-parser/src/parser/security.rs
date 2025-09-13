@@ -36,9 +36,9 @@ impl SecurityConfig {
         Self {
             disable_dtd: true,
             disable_external_entities: true,
-            max_entity_expansions: 1000,
-            max_entity_depth: 20,
-            max_element_depth: 100,
+            max_entity_expansions: 100,  // Reduced from 1000 to protect against XML bombs
+            max_entity_depth: 10,        // Reduced from 20 for better protection
+            max_element_depth: 100,      // Keep at 100, this will block deep nesting attacks
             max_attribute_size: 100 * 1024,  // 100KB
             max_text_size: 1024 * 1024,      // 1MB
             max_file_size: 1024 * 1024 * 1024, // 1GB

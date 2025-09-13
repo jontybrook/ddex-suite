@@ -284,11 +284,11 @@ ddd   ddd   ddd   ddd   eeeeeeeee     xxxxx
 ddd   ddd   ddd   ddd   eee          xxx xxx
 ddddddddd   ddddddddd   eeeeeeeee   xxx   xxx
 
-sssssssss  uuu   uuu  iii  ttttttttt  eeeeeeeee
-sss        uuu   uuu  iii     ttt     eee
-sssssssss  uuu   uuu  iii     ttt     eeeeeeeee
-      sss  uuu   uuu  iii     ttt     eee
-sssssssss  uuuuuuuuu  iii     ttt     eeeeeeeee`}
+sssssssss  uuu   uuu  iii ttttttttt eeeeeeeee
+sss        uuu   uuu  iii    ttt    eee
+sssssssss  uuu   uuu  iii    ttt    eeeeeeeee
+      sss  uuu   uuu  iii    ttt    eee
+sssssssss  uuuuuuuuu  iii    ttt    eeeeeeeee`}
             </pre>
             <pre className={`${styles.logo} ${styles.logoMobile}`}>
 {`DDEX
@@ -297,11 +297,11 @@ SUITE`}
           </div>
           
           <p className={styles.tagline}>
-            High-Performance DDEX Processing
+            High-Performance DDEX XML Processing
           </p>
           
           <div className={styles.featureBadges}>
-            <span className={styles.featureBadge} style={{ color: '#8be9fd' }}>10MB in &lt;100ms</span>
+            <span className={styles.featureBadge} style={{ color: '#8be9fd' }}>Parser + Builder</span>
             <span className={styles.featureBadge} style={{ color: '#8be9fd' }}> • </span>
             <span className={styles.featureBadge} style={{ color: '#50fa7b' }}>Deterministic</span>
             <span className={styles.featureBadge} style={{ color: '#50fa7b' }}> • </span>

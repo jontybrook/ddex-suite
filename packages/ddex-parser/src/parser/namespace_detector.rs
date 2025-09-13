@@ -62,24 +62,71 @@ impl NamespaceDetector {
         }
     }
 
-    /// Detect namespaces from XML content
+    /// Detect namespaces from XML content with security limits
     pub fn detect_from_xml<R: BufRead>(&mut self, reader: R) -> Result<NamespaceDetectionResult, ParseError> {
+        self.detect_from_xml_with_security(reader, &crate::parser::security::SecurityConfig::default())
+    }
+
+    /// Detect namespaces from XML content with custom security config
+    pub fn detect_from_xml_with_security<R: BufRead>(&mut self, reader: R, security_config: &crate::parser::security::SecurityConfig) -> Result<NamespaceDetectionResult, ParseError> {
         let mut xml_reader = Reader::from_reader(reader);
         xml_reader.config_mut().trim_text(true);
-        
+
+        // Configure security settings
+        xml_reader.config_mut().expand_empty_elements = false;
+        if security_config.disable_dtd {
+            // Note: quick_xml doesn't have a direct DTD disable, but we check for DTDs manually
+        }
+
         let mut buf = Vec::new();
-        
+        let mut depth = 0;
+        let mut entity_expansions = 0;
+
         loop {
             match xml_reader.read_event_into(&mut buf) {
                 Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => {
+                    depth += 1;
+
+                    // Check maximum nesting depth
+                    if depth > security_config.max_element_depth {
+                        return Err(ParseError::SecurityViolation {
+                            message: format!("XML nesting depth {} exceeds maximum allowed depth of {}",
+                                           depth, security_config.max_element_depth),
+                        });
+                    }
+
                     self.process_start_element(e)?;
+
+                    // For empty elements, immediately decrement depth
+                    if matches!(xml_reader.read_event_into(&mut buf), Ok(Event::Empty(_))) {
+                        depth -= 1;
+                    }
                 }
                 Ok(Event::End(_)) => {
                     self.pop_namespace_scope();
+                    depth = depth.saturating_sub(1);
+                }
+                Ok(Event::Text(ref e)) => {
+                    // Check for potential entity expansions (simple heuristic)
+                    let text = std::str::from_utf8(e).unwrap_or("");
+                    if text.contains("&") {
+                        entity_expansions += text.matches("&").count();
+                        if entity_expansions > security_config.max_entity_expansions {
+                            return Err(ParseError::SecurityViolation {
+                                message: format!("Entity expansions {} exceed maximum allowed {}",
+                                               entity_expansions, security_config.max_entity_expansions),
+                            });
+                        }
+                    }
+                }
+                Ok(Event::DocType(_)) if security_config.disable_dtd => {
+                    return Err(ParseError::SecurityViolation {
+                        message: "DTD declarations are disabled for security".to_string(),
+                    });
                 }
                 Ok(Event::Eof) => break,
                 Ok(_) => {} // Ignore other events for namespace detection
-                Err(e) => return Err(ParseError::XmlError { 
+                Err(e) => return Err(ParseError::XmlError {
                     message: format!("XML parsing error: {}", e),
                     location: crate::error::ErrorLocation::default(),
                 }),
@@ -89,7 +136,7 @@ impl NamespaceDetector {
 
         // Validate detected namespaces
         self.validate_namespaces();
-        
+
         Ok(self.build_result())
     }
 
@@ -100,7 +147,7 @@ impl NamespaceDetector {
         let mut new_scope = current_scope.new_child();
         
         // Extract namespace declarations from attributes
-        let mut has_namespace_declarations = false;
+        let mut _has_namespace_declarations = false;
         let mut new_default_namespace = self.default_namespace_stack.last().cloned().unwrap_or(None);
         
         for attr_result in element.attributes() {
@@ -117,7 +164,7 @@ impl NamespaceDetector {
                 new_default_namespace = Some(value.clone());
                 new_scope.declare_namespace("".to_string(), value.clone());
                 self.detected_namespaces.insert("".to_string(), value.clone());
-                has_namespace_declarations = true;
+                _has_namespace_declarations = true;
                 
                 // Try to detect ERN version
                 if let Some(version) = self.registry.detect_version(&value) {
@@ -133,12 +180,12 @@ impl NamespaceDetector {
                 
                 new_scope.declare_namespace(prefix.to_string(), value.clone());
                 self.detected_namespaces.insert(prefix.to_string(), value.clone());
-                has_namespace_declarations = true;
+                _has_namespace_declarations = true;
                 
                 // Track namespace aliases
                 self.namespace_aliases
                     .entry(value.clone())
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(prefix.to_string());
                 
                 // Try to detect ERN version

@@ -16,17 +16,18 @@ pub fn parse_dom<R: BufRead + Seek>(
     mut reader: R,
     version: ERNVersion,
     options: ParseOptions,
+    security_config: &crate::parser::security::SecurityConfig,
 ) -> Result<ParsedERNMessage, ParseError> {
     let start = Instant::now();
-    
+
     // Check timeout
     if !options.allow_blocking && options.timeout_ms > 0 {
         // Would implement timeout checking
     }
-    
-    // First pass: detect namespaces
+
+    // First pass: detect namespaces with security enforcement
     let mut namespace_detector = NamespaceDetector::new();
-    let namespace_result = namespace_detector.detect_from_xml(&mut reader)?;
+    let namespace_result = namespace_detector.detect_from_xml_with_security(&mut reader, security_config)?;
     let namespace_context = NamespaceContext::from_detection_result(namespace_result);
     
     // Reset reader for second pass

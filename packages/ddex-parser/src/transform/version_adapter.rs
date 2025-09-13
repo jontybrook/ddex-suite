@@ -7,15 +7,15 @@ use ddex_core::models::versions::VersionDifferences;
 use ddex_core::models::versions::ERNVersion;
 
 pub struct VersionAdapter {
-    version: ERNVersion,
-    differences: VersionDifferences,
+    _version: ERNVersion,
+    _differences: VersionDifferences,
 }
 
 impl VersionAdapter {
     pub fn new(version: ERNVersion) -> Self {
         Self {
-            version,
-            differences: VersionDifferences::for_version(version),
+            _version: version,
+            _differences: VersionDifferences::for_version(version),
         }
     }
     

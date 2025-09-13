@@ -36,7 +36,7 @@ Beyond the core implementation, this is a showcase of **software craftsmanship a
 ## 🚧 Development Status
 
 **Latest Release**: Suite v0.3.5 🎉  
-**Current Development Phase**: 4.3.5 - Core Stabilization  
+**Current Development Phase**: 4.4 - Streaming Parser  
 **Target Release**: Suite v1.0.0 in Q1 2026
 
 ### 📦 Available Packages
@@ -56,7 +56,8 @@ All packages published across npm, PyPI, and **crates.io**! ✅
 ✅ **crates.io Publishing** - **NEW!** All Rust crates published to the official registry  
 ✅ **Phase 4.2: Documentation** - [Docusaurus](https://ddex-suite.org) site in React  
 ✅ **Phase 4.3: Perfect Fidelity Engine** - Round-trip, deterministic output  
-🔄 **Phase 4.3.5: Core Stabilization** - Stability and performance upgrades
+✅ **Phase 4.3.5: Core Stabilization** - Stability and performance upgrades
+🔄 **Phase 4.4: Streaming Parser** - Implementation
 
 For detailed development progress and technical implementation details, see [blueprint.md](./blueprint.md).
 
@@ -94,7 +95,7 @@ interface ParsedRelease {
 
 ## 🎯 Perfect Fidelity Engine
 
-**New in v0.3.5**: The Perfect Fidelity Engine ensures 100% round-trip preservation of DDEX XML with mathematical guarantees.
+The Perfect Fidelity Engine ensures 100% round-trip preservation of DDEX XML with mathematical guarantees.
 
 ### 🔒 Fidelity Guarantees
 
@@ -190,7 +191,7 @@ console.log(`🔍 Round-trip: ${result.verification.round_trip_success ? 'PASSED
 
 ```bash
 # JavaScript/TypeScript
-npm install ddex-parser  # ✅ Latest: v0.3.5
+npm install ddex-parser  # ✅ Latest: v0.3.6
 npm install ddex-builder # ✅ Latest: v0.3.5
 
 # Python
@@ -411,7 +412,7 @@ DDEX Suite is designed to complement [DDEX Workbench](https://ddex-workbench.org
 
 **Repository**: https://github.com/daddykev/ddex-suite  
 **Status**: Phase 4.4 - Additional Bindings  
-**Parser**: v0.3.5 on [npm](https://www.npmjs.com/package/ddex-parser) and [PyPI](https://pypi.org/project/ddex-parser/)  
+**Parser**: v0.3.6 on [npm](https://www.npmjs.com/package/ddex-parser) and v0.3.5 on [PyPI](https://pypi.org/project/ddex-parser/)  
 **Builder**: v0.3.5 on [npm](https://www.npmjs.com/package/ddex-builder) and [PyPI](https://pypi.org/project/ddex-builder/)  
 **Suite Target**: v1.0.0 in Q1 2026  
-**Last Updated**: September 12, 2025
+**Last Updated**: September 13, 2025

@@ -6,6 +6,7 @@ pub mod graph;
 pub mod flat;
 pub mod versions;  // Add this line to export the versions module
 pub mod attributes;
+pub mod streaming_types;
 
 pub use common::{Identifier, IdentifierType, LocalizedString};
 pub use attributes::{AttributeMap, AttributeValue, QName, AttributeType, AttributeInheritance};

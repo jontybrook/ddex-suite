@@ -11,6 +11,12 @@ pub struct ReferenceResolver {
     deal_map: HashMap<String, Deal>,
 }
 
+impl Default for ReferenceResolver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ReferenceResolver {
     pub fn new() -> Self {
         Self {

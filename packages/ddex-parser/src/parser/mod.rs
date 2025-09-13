@@ -55,24 +55,25 @@ impl Default for ParseOptions {
 pub fn parse<R: BufRead + std::io::Seek>(
     mut reader: R,
     options: ParseOptions,
+    security_config: &security::SecurityConfig,
 ) -> Result<ParsedERNMessage, ParseError> {
-    // Detect version first
+    // Detect version first - this now validates XML
     let version = detector::VersionDetector::detect(&mut reader)?;
     reader.seek(std::io::SeekFrom::Start(0))?;
-    
+
     // Select parsing mode
     let mode_selector = mode::ModeSelector::new(options.auto_threshold);
     let selected_mode = mode_selector.select_mode(&mut reader, options.mode)?;
     reader.seek(std::io::SeekFrom::Start(0))?;
-    
+
     match selected_mode {
         mode::ParseMode::Dom => {
             // Use DOM parser for smaller files
-            dom::parse_dom(reader, version, options)
+            dom::parse_dom(reader, version, options, security_config)
         }
         mode::ParseMode::Stream => {
             // Use streaming parser for larger files
-            stream::parse_streaming(reader, version, options)
+            stream::parse_streaming(reader, version, options, security_config)
         }
         mode::ParseMode::Auto => unreachable!(), // Already resolved
     }

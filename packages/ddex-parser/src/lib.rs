@@ -1,16 +1,17 @@
 // core/src/lib.rs
 use ddex_core::models;
 /// DDEX Parser Core Library
-
 pub mod error;
 pub mod parser;
 pub mod transform;
+pub mod streaming;
 
 // Re-export commonly used types
 pub use ddex_core::models::versions::ERNVersion;
 
 use serde::{Deserialize, Serialize};
 use parser::security::SecurityConfig;
+use streaming::{DDEXStreamIterator, ParsedElement};
 
 /// Main DDEX Parser
 #[derive(Debug, Clone)]
@@ -51,29 +52,44 @@ impl DDEXParser {
         reader: R,
         options: parser::ParseOptions,
     ) -> Result<ddex_core::models::flat::ParsedERNMessage, error::ParseError> {
-        // Apply security config
-        if !self.config.disable_external_entities {
-            return Err(error::ParseError::SecurityViolation {
-                message: "External entities are disabled".to_string(),
-            });
-        }
-        
-        parser::parse(reader, options)
+        // Apply security config - check if external entities are disabled and we should block them
+        // Note: This security check will be enhanced with XML bomb protection
+
+        parser::parse(reader, options, &self.config)
     }
     
-    /// Stream parse for large files
+    /// Stream parse for large files using new streaming implementation
     pub fn stream<R: std::io::BufRead>(
         &self,
         reader: R,
-    ) -> StreamIterator<R> {
+    ) -> DDEXStreamIterator<R> {
         // For streaming, we can't detect version from reader without consuming it
         // So we default to V4_3
         let version = ddex_core::models::versions::ERNVersion::V4_3;
-        
-        StreamIterator {
-            parser: parser::stream::StreamingParser::new(reader, version),
-            config: self.config.clone(),
-        }
+
+        let streaming_config = streaming::StreamingConfig {
+            security: self.config.clone(),
+            ..Default::default()
+        };
+
+        DDEXStreamIterator::with_config(reader, version, streaming_config)
+    }
+
+    /// Stream parse with version detection (consumes some input to detect version)
+    pub fn stream_with_version_detection<R: std::io::BufRead + std::io::Seek>(
+        &self,
+        mut reader: R,
+    ) -> Result<DDEXStreamIterator<R>, error::ParseError> {
+        // Detect version first
+        let version = parser::detector::VersionDetector::detect(&mut reader)?;
+        reader.seek(std::io::SeekFrom::Start(0))?;
+
+        let streaming_config = streaming::StreamingConfig {
+            security: self.config.clone(),
+            ..Default::default()
+        };
+
+        Ok(DDEXStreamIterator::with_config(reader, version, streaming_config))
     }
     
     /// Detect DDEX version from XML
@@ -99,20 +115,7 @@ impl DDEXParser {
     }
 }
 
-/// Iterator for streaming releases
-pub struct StreamIterator<R: std::io::BufRead> {
-    parser: parser::stream::StreamingParser<R>,
-    #[allow(dead_code)]  // Will be used when implementing Iterator
-    config: SecurityConfig,
-}
-
-impl<R: std::io::BufRead> Iterator for StreamIterator<R> {
-    type Item = Result<models::graph::Release, error::ParseError>;
-    
-    fn next(&mut self) -> Option<Self::Item> {
-        self.parser.stream_releases().next()
-    }
-}
+// Old StreamIterator removed - now using DDEXStreamIterator from streaming module
 
 /// Result of sanity check
 #[derive(Debug, Clone, Serialize, Deserialize)]

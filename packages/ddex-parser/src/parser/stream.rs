@@ -25,7 +25,7 @@ pub struct ParseProgress {
 /// Streaming parser for memory-efficient processing
 pub struct StreamingParser<R: BufRead> {
     reader: Reader<R>,
-    version: ERNVersion,
+    _version: ERNVersion,
     progress_callback: Option<Box<dyn FnMut(ParseProgress) + Send>>,
     start_time: Instant,
     bytes_processed: u64,
@@ -45,7 +45,7 @@ impl<R: BufRead> StreamingParser<R> {
         
         Self {
             reader: xml_reader,
-            version,
+            _version: version,
             progress_callback: None,
             start_time: Instant::now(),
             bytes_processed: 0,
@@ -89,7 +89,7 @@ impl<R: BufRead> StreamingParser<R> {
     }
     
     fn update_byte_position(&mut self) {
-        self.bytes_processed = self.reader.buffer_position() as u64;
+        self.bytes_processed = self.reader.buffer_position();
     }
     
     /// Parse the message header
@@ -538,17 +538,17 @@ impl<'a, R: BufRead> Iterator for ReleaseIterator<'a, R> {
 
 // Similar iterators for other types
 pub struct ResourceIterator<'a, R: BufRead> {
-    parser: &'a mut StreamingParser<R>,
-    done: bool,
-    in_resource_list: bool,
+    _parser: &'a mut StreamingParser<R>,
+    _done: bool,
+    _in_resource_list: bool,
 }
 
 impl<'a, R: BufRead> ResourceIterator<'a, R> {
     fn new(parser: &'a mut StreamingParser<R>) -> Self {
         Self {
-            parser,
-            done: false,
-            in_resource_list: false,
+            _parser: parser,
+            _done: false,
+            _in_resource_list: false,
         }
     }
 }
@@ -563,15 +563,15 @@ impl<'a, R: BufRead> Iterator for ResourceIterator<'a, R> {
 }
 
 pub struct PartyIterator<'a, R: BufRead> {
-    parser: &'a mut StreamingParser<R>,
-    done: bool,
+    _parser: &'a mut StreamingParser<R>,
+    _done: bool,
 }
 
 impl<'a, R: BufRead> PartyIterator<'a, R> {
     fn new(parser: &'a mut StreamingParser<R>) -> Self {
         Self {
-            parser,
-            done: false,
+            _parser: parser,
+            _done: false,
         }
     }
 }
@@ -585,15 +585,15 @@ impl<'a, R: BufRead> Iterator for PartyIterator<'a, R> {
 }
 
 pub struct DealIterator<'a, R: BufRead> {
-    parser: &'a mut StreamingParser<R>,
-    done: bool,
+    _parser: &'a mut StreamingParser<R>,
+    _done: bool,
 }
 
 impl<'a, R: BufRead> DealIterator<'a, R> {
     fn new(parser: &'a mut StreamingParser<R>) -> Self {
         Self {
-            parser,
-            done: false,
+            _parser: parser,
+            _done: false,
         }
     }
 }
@@ -611,11 +611,12 @@ pub fn parse_streaming<R: BufRead>(
     reader: R,
     version: ERNVersion,
     options: ParseOptions,
+    _security_config: &crate::parser::security::SecurityConfig,
 ) -> Result<ParsedERNMessage, ParseError> {
     let mut parser = StreamingParser::new(reader, version)
         .with_chunk_size(options.chunk_size)
         .with_max_memory(options.max_memory);
-    
+
     // Parse header first
     let message_header = parser.parse_header()?;
     

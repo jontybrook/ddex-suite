@@ -172,7 +172,7 @@ impl XmlFragment {
     
     /// Check if this fragment is from a specific namespace
     pub fn is_from_namespace(&self, namespace_uri: &str) -> bool {
-        self.namespace_uri.as_ref().map_or(false, |uri| uri == namespace_uri)
+        self.namespace_uri.as_ref().is_some_and(|uri| uri == namespace_uri)
     }
     
     /// Add a child fragment
@@ -504,7 +504,7 @@ pub mod utils {
     
     /// Extract local name from a qualified name
     pub fn extract_local_name(qualified_name: &str) -> &str {
-        qualified_name.split(':').last().unwrap_or(qualified_name)
+        qualified_name.split(':').next_back().unwrap_or(qualified_name)
     }
     
     /// Validate XML fragment content

@@ -416,7 +416,7 @@ impl NamespaceScope {
     /// Check if a namespace is declared in this scope or parents
     pub fn is_namespace_declared(&self, uri: &str) -> bool {
         self.declarations.values().any(|declared_uri| declared_uri == uri) ||
-        self.parent.as_ref().map_or(false, |parent| parent.is_namespace_declared(uri))
+        self.parent.as_ref().is_some_and(|parent| parent.is_namespace_declared(uri))
     }
 
     /// Find the prefix for a namespace URI

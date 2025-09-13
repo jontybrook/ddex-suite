@@ -1764,12 +1764,18 @@ interface DeterminismConfig {
 - [x] Documentation improvements
 - [x] Publish v0.3.5 as "Security & Stability" release
 
-#### Phase 4.4 Additional Bindings 🔄 **NEXT**
-- [ ] Swift binding (experimental)
-- [ ] C# (.NET) binding (planned)
-- [ ] Go binding (experimental)
-- [ ] Java binding (experimental)
-- [ ] Publish v0.4.0 with additional bindings
+#### Phase 4.4 Streaming Parser 🔄 **IN PROGRESS**
+- [x] Core streaming architecture implementation (state machine, event-driven, Iterator trait)
+- [x] Security features (XXE, depth limits, entity expansion protection)
+- [x] Minimal working parser with progress tracking
+- [x] Fix data model compatibility and create streaming-friendly types
+- [ ] Incremental building with reference resolution
+- [ ] Advanced features (selective parsing, parallel processing, zero-copy)
+- [ ] Memory optimization (bounded buffers, pressure handling, <50MB for 1GB files)
+- [ ] Language bindings (Python callbacks/async, Node.js streams, WASM)
+- [ ] Comprehensive testing (equivalence, memory, performance, security)
+- [ ] Documentation updates (API, migration guide, examples)
+- [ ] Publish v0.4.0 with production-ready streaming
 
 #### Phase 4.5 Performance & Scale
 - [ ] Implement fuzz testing (deferred from security)
@@ -1804,6 +1810,12 @@ interface DeterminismConfig {
 #### 6.1 Launch v1.0.0
 - [ ] Prepare marketing materials
 - [ ] Official v1.0.0 release
+
+#### 6.2 Additional Bindings
+- [ ] Swift binding (planned)
+- [ ] C# (.NET) binding (planned)
+- [ ] Go binding (explore)
+- [ ] Java binding (explore)
 
 ## Success Metrics
 

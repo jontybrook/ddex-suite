@@ -39,6 +39,12 @@ pub struct ExtensionCaptureContext {
     pub current_column: usize,
 }
 
+impl Default for ExtensionCaptureContext {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ExtensionCaptureContext {
     /// Create a new extension capture context
     pub fn new() -> Self {
@@ -134,20 +140,18 @@ impl ExtensionCaptureContext {
         self.extension_buffer.push_str(std::str::from_utf8(event.name().as_ref()).unwrap_or("unknown"));
 
         // Add attributes
-        for attr_result in event.attributes() {
-            if let Ok(attr) = attr_result {
-                self.extension_buffer.push(' ');
-                self.extension_buffer.push_str(std::str::from_utf8(attr.key.as_ref()).unwrap_or("unknown"));
-                self.extension_buffer.push_str("=\"");
-                self.extension_buffer.push_str(&String::from_utf8_lossy(&attr.value));
-                self.extension_buffer.push('"');
-                
-                // Store attribute in current extension
-                if let Some(ref mut ext) = self.current_extension {
-                    let key = std::str::from_utf8(attr.key.as_ref()).unwrap_or("unknown").to_string();
-                    let value = String::from_utf8_lossy(&attr.value).to_string();
-                    ext.add_attribute(key, value);
-                }
+        for attr in event.attributes().flatten() {
+            self.extension_buffer.push(' ');
+            self.extension_buffer.push_str(std::str::from_utf8(attr.key.as_ref()).unwrap_or("unknown"));
+            self.extension_buffer.push_str("=\"");
+            self.extension_buffer.push_str(&String::from_utf8_lossy(&attr.value));
+            self.extension_buffer.push('"');
+
+            // Store attribute in current extension
+            if let Some(ref mut ext) = self.current_extension {
+                let key = std::str::from_utf8(attr.key.as_ref()).unwrap_or("unknown").to_string();
+                let value = String::from_utf8_lossy(&attr.value).to_string();
+                ext.add_attribute(key, value);
             }
         }
 
@@ -302,18 +306,16 @@ impl ExtensionAwareParser {
                     let (namespace_uri, namespace_prefix) = self.extract_namespace_info(e);
                     
                     // Update namespace context with any new declarations
-                    for attr_result in e.attributes() {
-                        if let Ok(attr) = attr_result {
-                            let key = std::str::from_utf8(attr.key.as_ref()).unwrap_or("");
-                            if key.starts_with("xmlns") {
-                                let prefix = if key == "xmlns" {
-                                    "".to_string()
-                                } else {
-                                    key.strip_prefix("xmlns:").unwrap_or("").to_string()
-                                };
-                                let uri = String::from_utf8_lossy(&attr.value).to_string();
-                                self.context.add_namespace_declaration(prefix, uri);
-                            }
+                    for attr in e.attributes().flatten() {
+                        let key = std::str::from_utf8(attr.key.as_ref()).unwrap_or("");
+                        if key.starts_with("xmlns") {
+                            let prefix = if key == "xmlns" {
+                                "".to_string()
+                            } else {
+                                key.strip_prefix("xmlns:").unwrap_or("").to_string()
+                            };
+                            let uri = String::from_utf8_lossy(&attr.value).to_string();
+                            self.context.add_namespace_declaration(prefix, uri);
                         }
                     }
 

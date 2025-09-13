@@ -6,6 +6,7 @@ fn test_error_on_invalid_xml() {
     let parser = DDEXParser::new();
     let invalid_xml = "not xml";
     let result = parser.parse(std::io::Cursor::new(invalid_xml.as_bytes()));
+    println!("Result for 'not xml': {:?}", result);
     assert!(result.is_err());
 }
 
