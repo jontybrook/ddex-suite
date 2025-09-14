@@ -1,11 +1,11 @@
 // core/tests/integration_test.rs
-use ddex_parser::DDEXParser;
 use ddex_core::models::versions::ERNVersion;
+use ddex_parser::DDEXParser;
 
 #[test]
 fn test_parse_all_versions() {
-    let parser = DDEXParser::new();
-    
+    let mut parser = DDEXParser::new();
+
     let test_cases = vec![
         (
             "3.8.2",
@@ -23,12 +23,12 @@ fn test_parse_all_versions() {
             ERNVersion::V4_3,
         ),
     ];
-    
+
     for (version_name, xml, expected_version) in test_cases {
         println!("Testing ERN {}", version_name);
         let result = parser.parse(std::io::Cursor::new(xml.as_bytes()));
         assert!(result.is_ok(), "Failed to parse ERN {}", version_name);
-        
+
         let parsed = result.unwrap();
         assert_eq!(parsed.graph.version, expected_version);
     }

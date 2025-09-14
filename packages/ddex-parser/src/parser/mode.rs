@@ -37,9 +37,13 @@ impl ModeSelector {
     pub fn new(threshold: u64) -> Self {
         Self { threshold }
     }
-    
+
     /// Select parsing mode based on file size
-    pub fn select_mode<R: BufRead + Seek>(&self, reader: &mut R, mode: ParseMode) -> Result<ParseMode, std::io::Error> {
+    pub fn select_mode<R: BufRead + Seek>(
+        &self,
+        reader: &mut R,
+        mode: ParseMode,
+    ) -> Result<ParseMode, std::io::Error> {
         match mode {
             ParseMode::Dom | ParseMode::Stream => Ok(mode),
             ParseMode::Auto => {
@@ -47,7 +51,7 @@ impl ModeSelector {
                 let current_pos = reader.stream_position()?;
                 let size = reader.seek(SeekFrom::End(0))?;
                 reader.seek(SeekFrom::Start(current_pos))?;
-                
+
                 if size > self.threshold {
                     Ok(ParseMode::Stream)
                 } else {
@@ -56,7 +60,7 @@ impl ModeSelector {
             }
         }
     }
-    
+
     /// Select mode without seeking (for non-seekable streams)
     pub fn select_mode_hint(&self, size_hint: Option<u64>, mode: ParseMode) -> ParseMode {
         match mode {

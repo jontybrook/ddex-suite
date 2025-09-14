@@ -1,15 +1,15 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use ddex_builder::{DDEXBuilder, BuildRequest, BuildOptions};
+use ddex_builder::{BuildOptions, BuildRequest, DDEXBuilder};
 
 fn benchmark_building(c: &mut Criterion) {
     c.bench_function("build_simple_release", |b| {
         let builder = DDEXBuilder::new();
         let request = create_test_request();
-        
+
         b.iter(|| {
             let result = builder.build(
-                black_box(request.clone()), 
-                black_box(BuildOptions::default())
+                black_box(request.clone()),
+                black_box(BuildOptions::default()),
             );
             black_box(result)
         });
@@ -17,10 +17,8 @@ fn benchmark_building(c: &mut Criterion) {
 }
 
 fn create_test_request() -> BuildRequest {
-    use ddex_builder::builder::{
-        MessageHeaderRequest, PartyRequest, LocalizedStringRequest
-    };
-    
+    use ddex_builder::builder::{LocalizedStringRequest, MessageHeaderRequest, PartyRequest};
+
     BuildRequest {
         header: MessageHeaderRequest {
             message_id: Some("BENCH_001".to_string()),

@@ -2,14 +2,15 @@
 //! Comprehensive benchmarks for FastStreamingParser targeting 280+ MB/s throughput
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use ddex_parser::streaming::{FastStreamingParser, StreamingConfig, create_fast_parser};
 use ddex_parser::parser::security::SecurityConfig;
+use ddex_parser::streaming::{create_fast_parser, FastStreamingParser, StreamingConfig};
 use std::io::{BufReader, Cursor};
 use std::time::Instant;
 
 /// Generate test XML data of specified size
 fn generate_test_xml(num_releases: usize, release_size_kb: usize) -> String {
-    let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43" MessageSchemaVersionId="ern/43">
     <ern:MessageHeader>
         <ern:MessageThreadId>THREAD_FAST_BENCHMARK</ern:MessageThreadId>
@@ -26,7 +27,8 @@ fn generate_test_xml(num_releases: usize, release_size_kb: usize) -> String {
         <ern:MessageCreatedDateTime>2024-01-15T10:30:00Z</ern:MessageCreatedDateTime>
         <ern:MessageAuditTrail>Fast streaming performance test</ern:MessageAuditTrail>
     </ern:MessageHeader>
-    <ern:ReleaseList>"#);
+    <ern:ReleaseList>"#,
+    );
 
     // Generate padding content to reach target size
     let padding = "A".repeat(release_size_kb * 1024 / 20); // Distribute across fields
@@ -140,9 +142,9 @@ fn benchmark_fast_streaming_parser(c: &mut Criterion) {
                 b.iter(|| {
                     let mut parser = create_fast_parser();
                     let cursor = Cursor::new(xml_data.as_bytes());
-                    let reader = BufReader::new(cursor);
+                    let mut reader = BufReader::new(cursor);
 
-                    let result = parser.parse_streaming(reader, None);
+                    let result = parser.parse_streaming(&mut reader, None);
                     let iterator = result.expect("Parsing should succeed");
 
                     // Consume the iterator to measure full performance
@@ -166,38 +168,50 @@ fn benchmark_parser_configurations(c: &mut Criterion) {
 
     // Test different configurations
     let configs = vec![
-        ("relaxed_security", StreamingConfig {
-            security: SecurityConfig::relaxed(),
-            buffer_size: 64 * 1024,
-            max_memory: 200 * 1024 * 1024,
-            chunk_size: 512,
-            enable_progress: false,
-            progress_interval: 0,
-        }),
-        ("strict_security", StreamingConfig {
-            security: SecurityConfig::strict(),
-            buffer_size: 64 * 1024,
-            max_memory: 200 * 1024 * 1024,
-            chunk_size: 512,
-            enable_progress: false,
-            progress_interval: 0,
-        }),
-        ("large_buffer", StreamingConfig {
-            security: SecurityConfig::relaxed(),
-            buffer_size: 256 * 1024, // 256KB buffer
-            max_memory: 200 * 1024 * 1024,
-            chunk_size: 1024, // 1MB chunks
-            enable_progress: false,
-            progress_interval: 0,
-        }),
-        ("small_buffer", StreamingConfig {
-            security: SecurityConfig::relaxed(),
-            buffer_size: 16 * 1024, // 16KB buffer
-            max_memory: 50 * 1024 * 1024,
-            chunk_size: 128, // 128KB chunks
-            enable_progress: false,
-            progress_interval: 0,
-        }),
+        (
+            "relaxed_security",
+            StreamingConfig {
+                security: SecurityConfig::relaxed(),
+                buffer_size: 64 * 1024,
+                max_memory: 200 * 1024 * 1024,
+                chunk_size: 512,
+                enable_progress: false,
+                progress_interval: 0,
+            },
+        ),
+        (
+            "strict_security",
+            StreamingConfig {
+                security: SecurityConfig::strict(),
+                buffer_size: 64 * 1024,
+                max_memory: 200 * 1024 * 1024,
+                chunk_size: 512,
+                enable_progress: false,
+                progress_interval: 0,
+            },
+        ),
+        (
+            "large_buffer",
+            StreamingConfig {
+                security: SecurityConfig::relaxed(),
+                buffer_size: 256 * 1024, // 256KB buffer
+                max_memory: 200 * 1024 * 1024,
+                chunk_size: 1024, // 1MB chunks
+                enable_progress: false,
+                progress_interval: 0,
+            },
+        ),
+        (
+            "small_buffer",
+            StreamingConfig {
+                security: SecurityConfig::relaxed(),
+                buffer_size: 16 * 1024, // 16KB buffer
+                max_memory: 50 * 1024 * 1024,
+                chunk_size: 128, // 128KB chunks
+                enable_progress: false,
+                progress_interval: 0,
+            },
+        ),
     ];
 
     for (config_name, config) in configs {
@@ -208,9 +222,9 @@ fn benchmark_parser_configurations(c: &mut Criterion) {
                 b.iter(|| {
                     let mut parser = FastStreamingParser::new(config.clone());
                     let cursor = Cursor::new(xml_data.as_bytes());
-                    let reader = BufReader::new(cursor);
+                    let mut reader = BufReader::new(cursor);
 
-                    let result = parser.parse_streaming(reader, None);
+                    let result = parser.parse_streaming(&mut reader, None);
                     let iterator = result.expect("Parsing should succeed");
 
                     let elements: Vec<_> = iterator.collect();
@@ -229,15 +243,18 @@ fn validate_throughput_target(c: &mut Criterion) {
     let data_size = xml.len();
 
     println!("\n=== THROUGHPUT VALIDATION ===");
-    println!("Test data size: {:.2} MB", data_size as f64 / (1024.0 * 1024.0));
+    println!(
+        "Test data size: {:.2} MB",
+        data_size as f64 / (1024.0 * 1024.0)
+    );
 
     // Run the test and measure throughput
     let mut parser = create_fast_parser();
     let cursor = Cursor::new(xml.as_bytes());
-    let reader = BufReader::new(cursor);
+    let mut reader = BufReader::new(cursor);
 
     let start = Instant::now();
-    let result = parser.parse_streaming(reader, None);
+    let result = parser.parse_streaming(&mut reader, None);
     let parsing_duration = start.elapsed();
 
     match result {
@@ -246,7 +263,8 @@ fn validate_throughput_target(c: &mut Criterion) {
             let elements: Vec<_> = iterator.collect();
             let total_duration = start.elapsed();
 
-            let throughput_mbps = (data_size as f64) / (1024.0 * 1024.0) / parsing_duration.as_secs_f64();
+            let throughput_mbps =
+                (data_size as f64) / (1024.0 * 1024.0) / parsing_duration.as_secs_f64();
 
             println!("Parsing Results:");
             println!("  Elements found: {}", elements.len());
@@ -258,8 +276,10 @@ fn validate_throughput_target(c: &mut Criterion) {
             if throughput_mbps >= 280.0 {
                 println!("  ✅ TARGET ACHIEVED!");
             } else {
-                println!("  ⚠️  Target not reached ({}% of target)",
-                    (throughput_mbps / 280.0 * 100.0) as u32);
+                println!(
+                    "  ⚠️  Target not reached ({}% of target)",
+                    (throughput_mbps / 280.0 * 100.0) as u32
+                );
             }
 
             println!("  Stats from parser: {:#?}", stats);
@@ -277,9 +297,9 @@ fn validate_throughput_target(c: &mut Criterion) {
         b.iter(|| {
             let mut parser = create_fast_parser();
             let cursor = Cursor::new(xml.as_bytes());
-            let reader = BufReader::new(cursor);
+            let mut reader = BufReader::new(cursor);
 
-            let result = parser.parse_streaming(reader, None);
+            let result = parser.parse_streaming(&mut reader, None);
             let iterator = result.expect("Parsing should succeed");
             let elements: Vec<_> = iterator.collect();
             black_box(elements);
@@ -301,7 +321,7 @@ fn benchmark_memory_efficiency(c: &mut Criterion) {
         b.iter(|| {
             let config = StreamingConfig {
                 security: SecurityConfig::relaxed(),
-                buffer_size: 32 * 1024, // Smaller buffer
+                buffer_size: 32 * 1024,       // Smaller buffer
                 max_memory: 10 * 1024 * 1024, // 10MB memory limit
                 chunk_size: 256,
                 enable_progress: false,
@@ -310,14 +330,18 @@ fn benchmark_memory_efficiency(c: &mut Criterion) {
 
             let mut parser = FastStreamingParser::new(config);
             let cursor = Cursor::new(xml.as_bytes());
-            let reader = BufReader::new(cursor);
+            let mut reader = BufReader::new(cursor);
 
-            let result = parser.parse_streaming(reader, None);
+            let result = parser.parse_streaming(&mut reader, None);
             let iterator = result.expect("Parsing should succeed");
             let stats = iterator.stats();
 
             // Verify memory usage is within bounds
-            assert!(stats.peak_memory_mb < 15.0, "Memory usage too high: {:.2}MB", stats.peak_memory_mb);
+            assert!(
+                stats.peak_memory_mb < 15.0,
+                "Memory usage too high: {:.2}MB",
+                stats.peak_memory_mb
+            );
 
             let elements: Vec<_> = iterator.collect();
             black_box((elements, stats));

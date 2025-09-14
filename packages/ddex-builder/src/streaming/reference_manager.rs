@@ -1,10 +1,10 @@
 //! Reference management for streaming DDEX XML generation
-//! 
+//!
 //! Manages stable reference generation and validation during streaming
 //! to ensure proper linking between releases and resources.
 
 use crate::error::BuildError;
-use crate::id_generator::{StableHashGenerator, StableHashConfig};
+use crate::id_generator::{StableHashConfig, StableHashGenerator};
 use indexmap::{IndexMap, IndexSet};
 
 /// Configuration for reference management during streaming
@@ -123,27 +123,27 @@ pub struct StreamingReferenceManager {
     config: ReferenceConfig,
     #[allow(dead_code)]
     hash_generator: StableHashGenerator,
-    
+
     // Resource tracking
     resource_references: IndexMap<String, String>, // resource_id -> reference_id
     resource_metadata: IndexMap<String, ResourceReference>,
     resource_sequence: usize,
-    
+
     // Release tracking
-    release_references: IndexMap<String, String>, // release_id -> reference_id  
+    release_references: IndexMap<String, String>, // release_id -> reference_id
     release_metadata: IndexMap<String, ReleaseReference>,
     release_sequence: usize,
-    
+
     // Deal tracking
     deal_references: IndexMap<String, String>, // deal_id -> reference_id
     deal_sequence: usize,
-    
+
     // Validation tracking
     used_references: IndexSet<String>,
     orphaned_references: Vec<String>,
     duplicate_resource_ids: IndexSet<String>,
     duplicate_release_ids: IndexSet<String>,
-    
+
     // Memory management
     references_generated: usize,
 }
@@ -153,11 +153,11 @@ impl StreamingReferenceManager {
     pub fn new() -> Self {
         Self::new_with_config(ReferenceConfig::default())
     }
-    
+
     /// Create a new streaming reference manager with custom configuration
     pub fn new_with_config(config: ReferenceConfig) -> Self {
         let hash_config = StableHashConfig::default();
-        
+
         StreamingReferenceManager {
             config,
             hash_generator: StableHashGenerator::new(hash_config),
@@ -176,7 +176,7 @@ impl StreamingReferenceManager {
             references_generated: 0,
         }
     }
-    
+
     /// Generate a stable reference for a resource
     pub fn generate_resource_reference(&mut self, resource_id: &str) -> Result<String, BuildError> {
         // Check for duplicate resource ID
@@ -184,38 +184,42 @@ impl StreamingReferenceManager {
             self.duplicate_resource_ids.insert(resource_id.to_string());
             return Ok(self.resource_references[resource_id].clone());
         }
-        
+
         // Generate stable reference
         let reference_id = if self.config.deterministic {
             // Use a simplified hash approach for now
-            use sha2::{Sha256, Digest};
+            use sha2::{Digest, Sha256};
             let mut hasher = Sha256::new();
             hasher.update(resource_id.as_bytes());
             let hash = format!("{:x}", hasher.finalize());
             format!("{}{}", self.config.resource_prefix, &hash[..8])
         } else {
-            format!("{}{:06}", self.config.resource_prefix, self.resource_sequence)
+            format!(
+                "{}{:06}",
+                self.config.resource_prefix, self.resource_sequence
+            )
         };
-        
+
         // Check for reference collision
         if self.used_references.contains(&reference_id) {
-            return Err(BuildError::InvalidReference { 
+            return Err(BuildError::InvalidReference {
                 reference: reference_id,
             });
         }
-        
+
         // Store the mapping
-        self.resource_references.insert(resource_id.to_string(), reference_id.clone());
+        self.resource_references
+            .insert(resource_id.to_string(), reference_id.clone());
         self.used_references.insert(reference_id.clone());
         self.resource_sequence += 1;
         self.references_generated += 1;
-        
+
         // Manage memory usage
         self.manage_cache_size()?;
-        
+
         Ok(reference_id)
     }
-    
+
     /// Generate a stable reference for a release
     pub fn generate_release_reference(&mut self, release_id: &str) -> Result<String, BuildError> {
         // Check for duplicate release ID
@@ -223,11 +227,11 @@ impl StreamingReferenceManager {
             self.duplicate_release_ids.insert(release_id.to_string());
             return Ok(self.release_references[release_id].clone());
         }
-        
+
         // Generate stable reference
         let reference_id = if self.config.deterministic {
             // Use a simplified hash approach for now
-            use sha2::{Sha256, Digest};
+            use sha2::{Digest, Sha256};
             let mut hasher = Sha256::new();
             hasher.update(release_id.as_bytes());
             let hash = format!("{:x}", hasher.finalize());
@@ -235,37 +239,38 @@ impl StreamingReferenceManager {
         } else {
             format!("{}{:06}", self.config.release_prefix, self.release_sequence)
         };
-        
+
         // Check for reference collision
         if self.used_references.contains(&reference_id) {
-            return Err(BuildError::InvalidReference { 
+            return Err(BuildError::InvalidReference {
                 reference: reference_id,
             });
         }
-        
+
         // Store the mapping
-        self.release_references.insert(release_id.to_string(), reference_id.clone());
+        self.release_references
+            .insert(release_id.to_string(), reference_id.clone());
         self.used_references.insert(reference_id.clone());
         self.release_sequence += 1;
         self.references_generated += 1;
-        
+
         // Manage memory usage
         self.manage_cache_size()?;
-        
+
         Ok(reference_id)
     }
-    
+
     /// Generate a stable reference for a deal
     pub fn generate_deal_reference(&mut self, deal_id: &str) -> Result<String, BuildError> {
         // Check for existing mapping
         if let Some(existing_ref) = self.deal_references.get(deal_id) {
             return Ok(existing_ref.clone());
         }
-        
+
         // Generate stable reference
         let reference_id = if self.config.deterministic {
             // Use a simplified hash approach for now
-            use sha2::{Sha256, Digest};
+            use sha2::{Digest, Sha256};
             let mut hasher = Sha256::new();
             hasher.update(deal_id.as_bytes());
             let hash = format!("{:x}", hasher.finalize());
@@ -273,38 +278,43 @@ impl StreamingReferenceManager {
         } else {
             format!("{}{:06}", self.config.deal_prefix, self.deal_sequence)
         };
-        
+
         // Check for reference collision
         if self.used_references.contains(&reference_id) {
-            return Err(BuildError::InvalidReference { 
+            return Err(BuildError::InvalidReference {
                 reference: reference_id,
             });
         }
-        
+
         // Store the mapping
-        self.deal_references.insert(deal_id.to_string(), reference_id.clone());
+        self.deal_references
+            .insert(deal_id.to_string(), reference_id.clone());
         self.used_references.insert(reference_id.clone());
         self.deal_sequence += 1;
         self.references_generated += 1;
-        
+
         // Manage memory usage
         self.manage_cache_size()?;
-        
+
         Ok(reference_id)
     }
-    
+
     /// Store metadata for a resource reference
-    pub fn store_resource_metadata(&mut self, 
-                                   resource_id: &str,
-                                   title: &str,
-                                   artist: &str,
-                                   resource_type: &str) -> Result<(), BuildError> {
-        let reference_id = self.resource_references.get(resource_id)
-            .ok_or_else(|| BuildError::InvalidReference { 
-                reference: format!("Resource {} not found", resource_id) 
+    pub fn store_resource_metadata(
+        &mut self,
+        resource_id: &str,
+        title: &str,
+        artist: &str,
+        resource_type: &str,
+    ) -> Result<(), BuildError> {
+        let reference_id = self
+            .resource_references
+            .get(resource_id)
+            .ok_or_else(|| BuildError::InvalidReference {
+                reference: format!("Resource {} not found", resource_id),
             })?
             .clone();
-        
+
         let metadata = ResourceReference {
             reference_id: reference_id.clone(),
             resource_id: resource_id.to_string(),
@@ -313,30 +323,34 @@ impl StreamingReferenceManager {
             resource_type: resource_type.to_string(),
             sequence_number: self.resource_metadata.len() + 1,
         };
-        
+
         self.resource_metadata.insert(reference_id, metadata);
         Ok(())
     }
-    
+
     /// Store metadata for a release reference
-    pub fn store_release_metadata(&mut self,
-                                  release_id: &str,
-                                  title: &str, 
-                                  artist: &str,
-                                  resource_references: Vec<String>) -> Result<(), BuildError> {
-        let reference_id = self.release_references.get(release_id)
-            .ok_or_else(|| BuildError::InvalidReference { 
-                reference: format!("Release {} not found", release_id) 
+    pub fn store_release_metadata(
+        &mut self,
+        release_id: &str,
+        title: &str,
+        artist: &str,
+        resource_references: Vec<String>,
+    ) -> Result<(), BuildError> {
+        let reference_id = self
+            .release_references
+            .get(release_id)
+            .ok_or_else(|| BuildError::InvalidReference {
+                reference: format!("Release {} not found", release_id),
             })?
             .clone();
-        
+
         // Validate that all resource references exist
         for resource_ref in &resource_references {
             if !self.used_references.contains(resource_ref) {
                 self.orphaned_references.push(resource_ref.clone());
             }
         }
-        
+
         let metadata = ReleaseReference {
             reference_id: reference_id.clone(),
             release_id: release_id.to_string(),
@@ -345,49 +359,59 @@ impl StreamingReferenceManager {
             resource_references,
             sequence_number: self.release_metadata.len() + 1,
         };
-        
+
         self.release_metadata.insert(reference_id, metadata);
         Ok(())
     }
-    
+
     /// Validate all references at the end of streaming
     pub fn validate_references(&self) -> ReferenceValidationResult {
         let mut errors = Vec::new();
         let mut warnings = Vec::new();
-        
+
         // Check for orphaned references
         if !self.orphaned_references.is_empty() {
-            warnings.push(format!("Found {} orphaned resource references", 
-                                 self.orphaned_references.len()));
+            warnings.push(format!(
+                "Found {} orphaned resource references",
+                self.orphaned_references.len()
+            ));
         }
-        
+
         // Check for duplicate resource IDs
         if !self.duplicate_resource_ids.is_empty() {
-            warnings.push(format!("Found {} duplicate resource IDs", 
-                                 self.duplicate_resource_ids.len()));
+            warnings.push(format!(
+                "Found {} duplicate resource IDs",
+                self.duplicate_resource_ids.len()
+            ));
         }
-        
+
         // Check for duplicate release IDs
         if !self.duplicate_release_ids.is_empty() {
-            warnings.push(format!("Found {} duplicate release IDs", 
-                                 self.duplicate_release_ids.len()));
+            warnings.push(format!(
+                "Found {} duplicate release IDs",
+                self.duplicate_release_ids.len()
+            ));
         }
-        
+
         // Check reference consistency
         for (resource_id, reference_id) in &self.resource_references {
             if !self.used_references.contains(reference_id) {
-                errors.push(format!("Resource reference {} for resource {} not properly tracked", 
-                                   reference_id, resource_id));
+                errors.push(format!(
+                    "Resource reference {} for resource {} not properly tracked",
+                    reference_id, resource_id
+                ));
             }
         }
-        
+
         for (release_id, reference_id) in &self.release_references {
             if !self.used_references.contains(reference_id) {
-                errors.push(format!("Release reference {} for release {} not properly tracked", 
-                                   reference_id, release_id));
+                errors.push(format!(
+                    "Release reference {} for release {} not properly tracked",
+                    reference_id, release_id
+                ));
             }
         }
-        
+
         ReferenceValidationResult {
             is_valid: errors.is_empty(),
             errors,
@@ -398,7 +422,7 @@ impl StreamingReferenceManager {
             deal_count: self.deal_references.len(),
         }
     }
-    
+
     /// Get statistics about reference management
     pub fn get_stats(&self) -> ReferenceStats {
         ReferenceStats {
@@ -412,53 +436,60 @@ impl StreamingReferenceManager {
             orphaned_references: self.orphaned_references.len(),
         }
     }
-    
+
     /// Get a resource reference by resource ID
     pub fn get_resource_reference(&self, resource_id: &str) -> Option<&str> {
-        self.resource_references.get(resource_id).map(|s| s.as_str())
+        self.resource_references
+            .get(resource_id)
+            .map(|s| s.as_str())
     }
-    
+
     /// Get a release reference by release ID
     pub fn get_release_reference(&self, release_id: &str) -> Option<&str> {
         self.release_references.get(release_id).map(|s| s.as_str())
     }
-    
+
     /// Clear old references to manage memory usage
     fn manage_cache_size(&mut self) -> Result<(), BuildError> {
         let current_size = self.current_cache_size();
-        
+
         if current_size > self.config.max_cache_size {
             // Remove oldest 25% of entries to free up memory
             let to_remove = current_size / 4;
-            
+
             // Remove oldest resource references
-            let resource_to_remove = std::cmp::min(to_remove / 2, self.resource_references.len() / 2);
+            let resource_to_remove =
+                std::cmp::min(to_remove / 2, self.resource_references.len() / 2);
             for _ in 0..resource_to_remove {
-                if let Some((_resource_id, reference_id)) = self.resource_references.shift_remove_index(0) {
+                if let Some((_resource_id, reference_id)) =
+                    self.resource_references.shift_remove_index(0)
+                {
                     self.resource_metadata.shift_remove(&reference_id);
                     self.used_references.shift_remove(&reference_id);
                 }
             }
-            
-            // Remove oldest release references  
+
+            // Remove oldest release references
             let release_to_remove = std::cmp::min(to_remove / 2, self.release_references.len() / 2);
             for _ in 0..release_to_remove {
-                if let Some((_release_id, reference_id)) = self.release_references.shift_remove_index(0) {
+                if let Some((_release_id, reference_id)) =
+                    self.release_references.shift_remove_index(0)
+                {
                     self.release_metadata.shift_remove(&reference_id);
                     self.used_references.shift_remove(&reference_id);
                 }
             }
         }
-        
+
         Ok(())
     }
-    
+
     fn current_cache_size(&self) -> usize {
-        self.resource_references.len() + 
-        self.release_references.len() + 
-        self.deal_references.len() + 
-        self.resource_metadata.len() + 
-        self.release_metadata.len()
+        self.resource_references.len()
+            + self.release_references.len()
+            + self.deal_references.len()
+            + self.resource_metadata.len()
+            + self.release_metadata.len()
     }
 }
 
@@ -576,75 +607,84 @@ pub struct ReferenceStats {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_resource_reference_generation() {
         let mut manager = StreamingReferenceManager::new();
-        
+
         let ref1 = manager.generate_resource_reference("resource1").unwrap();
         let ref2 = manager.generate_resource_reference("resource2").unwrap();
-        
+
         assert_ne!(ref1, ref2);
         assert!(ref1.starts_with("R"));
         assert!(ref2.starts_with("R"));
-        
+
         // Test duplicate handling
         let ref3 = manager.generate_resource_reference("resource1").unwrap();
         assert_eq!(ref1, ref3);
     }
-    
+
     #[test]
     fn test_release_reference_generation() {
         let mut manager = StreamingReferenceManager::new();
-        
+
         let ref1 = manager.generate_release_reference("release1").unwrap();
         let ref2 = manager.generate_release_reference("release2").unwrap();
-        
+
         assert_ne!(ref1, ref2);
         assert!(ref1.starts_with("REL"));
         assert!(ref2.starts_with("REL"));
     }
-    
+
     #[test]
     fn test_metadata_storage() {
         let mut manager = StreamingReferenceManager::new();
-        
+
         let resource_ref = manager.generate_resource_reference("resource1").unwrap();
-        manager.store_resource_metadata("resource1", "Title", "Artist", "SoundRecording").unwrap();
-        
+        manager
+            .store_resource_metadata("resource1", "Title", "Artist", "SoundRecording")
+            .unwrap();
+
         let metadata = manager.resource_metadata.get(&resource_ref).unwrap();
         assert_eq!(metadata.title, "Title");
         assert_eq!(metadata.artist, "Artist");
     }
-    
+
     #[test]
     fn test_reference_validation() {
         let mut manager = StreamingReferenceManager::new();
-        
+
         // Add some resources and releases
         let resource_ref = manager.generate_resource_reference("resource1").unwrap();
         let _release_ref = manager.generate_release_reference("release1").unwrap();
-        
+
         // Store metadata with valid resource reference
-        manager.store_release_metadata("release1", "Album Title", "Artist", 
-                                      vec![resource_ref]).unwrap();
-        
+        manager
+            .store_release_metadata("release1", "Album Title", "Artist", vec![resource_ref])
+            .unwrap();
+
         let validation = manager.validate_references();
         assert!(validation.is_valid);
         assert_eq!(validation.resource_count, 1);
         assert_eq!(validation.release_count, 1);
     }
-    
+
     #[test]
     fn test_orphaned_references() {
         let mut manager = StreamingReferenceManager::new();
 
         let _release_ref = manager.generate_release_reference("release1").unwrap();
-        
+
         // Store metadata with invalid resource reference
-        manager.store_release_metadata("release1", "Album Title", "Artist", 
-                                      vec!["R999999".to_string()]).unwrap();
-        
+        manager
+            .store_release_metadata(
+                "release1",
+                "Album Title",
+                "Artist",
+                vec!["R999999".to_string()],
+            )
+            .unwrap();
+
         let validation = manager.validate_references();
         assert!(!validation.warnings.is_empty());
     }

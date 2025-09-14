@@ -65,23 +65,23 @@ impl RoundTripTester {
             crate::CanonicalizationAlgorithm::None => {
                 // No canonicalization - normalize whitespace only
                 Ok(self.normalize_whitespace(xml))
-            },
+            }
             crate::CanonicalizationAlgorithm::C14N => {
                 // TODO: Implement C14N canonicalization
                 Ok(self.normalize_whitespace(xml))
-            },
+            }
             crate::CanonicalizationAlgorithm::C14N11 => {
                 // TODO: Implement C14N11 canonicalization
                 Ok(self.normalize_whitespace(xml))
-            },
+            }
             crate::CanonicalizationAlgorithm::DbC14N => {
                 // TODO: Implement DB-C14N canonicalization
                 Ok(self.normalize_whitespace(xml))
-            },
+            }
             crate::CanonicalizationAlgorithm::Custom(_rules) => {
                 // TODO: Implement custom canonicalization
                 Ok(self.normalize_whitespace(xml))
-            },
+            }
         }
     }
 
@@ -108,23 +108,24 @@ impl RoundTripTester {
 
         // Analyze elements preservation
         let element_analysis = self.analyze_elements(original_xml)?;
-        
+
         // Analyze attributes preservation
         let attribute_analysis = self.analyze_attributes(original_xml)?;
-        
+
         // Analyze comments preservation
         let comment_analysis = self.analyze_comments(original_xml)?;
-        
+
         // Analyze extensions preservation
         let extension_analysis = self.analyze_extensions(original_xml)?;
-        
+
         // Analyze namespace preservation
         let namespace_analysis = self.analyze_namespaces(original_xml)?;
 
         let analysis_time = start_time.elapsed();
 
-        let overall_score = self.calculate_overall_score(&element_analysis, &attribute_analysis, &comment_analysis);
-        
+        let overall_score =
+            self.calculate_overall_score(&element_analysis, &attribute_analysis, &comment_analysis);
+
         Ok(FidelityAnalysis {
             element_analysis,
             attribute_analysis,
@@ -148,13 +149,15 @@ impl RoundTripTester {
                     total_elements += 1;
                     let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
                     *elements_found.entry(name).or_insert(0) += 1;
-                },
+                }
                 Ok(quick_xml::events::Event::Eof) => break,
                 Ok(_) => continue,
-                Err(e) => return Err(BuildError::InvalidFormat {
-                    field: "xml".to_string(),
-                    message: format!("XML parsing error: {}", e),
-                }),
+                Err(e) => {
+                    return Err(BuildError::InvalidFormat {
+                        field: "xml".to_string(),
+                        message: format!("XML parsing error: {}", e),
+                    })
+                }
             }
         }
 
@@ -179,20 +182,22 @@ impl RoundTripTester {
                     let attr_count = e.attributes().count();
                     total_attributes += attr_count;
                     *attributes_by_element.entry(element_name).or_insert(0) += attr_count;
-                },
+                }
                 Ok(quick_xml::events::Event::Eof) => break,
                 Ok(_) => continue,
-                Err(e) => return Err(BuildError::InvalidFormat {
-                    field: "xml".to_string(),
-                    message: format!("XML parsing error: {}", e),
-                }),
+                Err(e) => {
+                    return Err(BuildError::InvalidFormat {
+                        field: "xml".to_string(),
+                        message: format!("XML parsing error: {}", e),
+                    })
+                }
             }
         }
 
         Ok(AttributeAnalysis {
             total_attributes,
             attributes_by_element,
-            unknown_attributes: 0, // Would be calculated
+            unknown_attributes: 0,                  // Would be calculated
             preserved_attributes: total_attributes, // Placeholder
         })
     }
@@ -204,7 +209,7 @@ impl RoundTripTester {
         } else {
             Vec::new()
         };
-        
+
         Ok(CommentAnalysis {
             total_comments: comments.len(),
             document_level_comments: 0, // Would analyze position
@@ -222,13 +227,13 @@ impl RoundTripTester {
     fn analyze_extensions(&self, xml: &str) -> Result<ExtensionAnalysis, BuildError> {
         // Look for non-standard namespaces
         let mut extension_namespaces = std::collections::HashMap::new();
-        
+
         if let Ok(namespace_regex) = regex::Regex::new(r#"xmlns:(\w+)=['"]([^'"]+)['"]"#) {
             for caps in namespace_regex.captures_iter(xml) {
                 if let (Some(prefix_match), Some(uri_match)) = (caps.get(1), caps.get(2)) {
                     let prefix = prefix_match.as_str();
                     let uri = uri_match.as_str();
-                    
+
                     // Check if this is a known DDEX namespace
                     if !uri.contains("ddex.net") && !uri.contains("w3.org") {
                         extension_namespaces.insert(prefix.to_string(), uri.to_string());
@@ -272,7 +277,7 @@ impl RoundTripTester {
 
         let total_namespaces = namespaces.len() + if default_namespace.is_some() { 1 } else { 0 };
         let preserved_namespaces = namespaces.len(); // Placeholder
-        
+
         Ok(NamespaceAnalysis {
             total_namespaces,
             prefixed_namespaces: namespaces,
@@ -295,7 +300,8 @@ impl RoundTripTester {
         };
 
         let attribute_score = if attribute_analysis.total_attributes > 0 {
-            attribute_analysis.preserved_attributes as f64 / attribute_analysis.total_attributes as f64
+            attribute_analysis.preserved_attributes as f64
+                / attribute_analysis.total_attributes as f64
         } else {
             1.0
         };
@@ -431,10 +437,10 @@ mod tests {
     fn test_whitespace_normalization() {
         let fidelity_options = FidelityOptions::default();
         let tester = RoundTripTester::new(fidelity_options);
-        
+
         let xml = "  <test>  \n  <inner>value</inner>  \n  </test>  ";
         let normalized = tester.normalize_whitespace(xml);
-        
+
         assert_eq!(normalized, "<test>\n<inner>value</inner>\n</test>");
     }
 
@@ -442,10 +448,10 @@ mod tests {
     fn test_element_analysis() {
         let fidelity_options = FidelityOptions::default();
         let tester = RoundTripTester::new(fidelity_options);
-        
+
         let xml = r#"<root><element1/><element2><element3/></element2></root>"#;
         let analysis = tester.analyze_elements(xml).unwrap();
-        
+
         assert_eq!(analysis.total_elements, 4);
         assert!(analysis.elements_by_type.contains_key("root"));
         assert!(analysis.elements_by_type.contains_key("element1"));
@@ -455,10 +461,10 @@ mod tests {
     fn test_comment_analysis() {
         let fidelity_options = FidelityOptions::default();
         let tester = RoundTripTester::new(fidelity_options);
-        
+
         let xml = r#"<root><!-- comment 1 --><element/><!-- comment 2 --></root>"#;
         let analysis = tester.analyze_comments(xml).unwrap();
-        
+
         assert_eq!(analysis.total_comments, 2);
     }
 
@@ -466,11 +472,11 @@ mod tests {
     fn test_extension_analysis() {
         let fidelity_options = FidelityOptions::default();
         let tester = RoundTripTester::new(fidelity_options);
-        
+
         let xml = r#"<root xmlns:spotify="http://spotify.com/ddex" xmlns:custom="http://example.com/custom">
             <spotify:trackId>123</spotify:trackId>
         </root>"#;
-        
+
         let analysis = tester.analyze_extensions(xml).unwrap();
         assert!(analysis.extension_namespaces.contains_key("spotify"));
         assert!(analysis.extension_namespaces.contains_key("custom"));

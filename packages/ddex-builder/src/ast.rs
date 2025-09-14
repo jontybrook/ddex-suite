@@ -1,7 +1,7 @@
 //! Abstract Syntax Tree for DDEX XML generation
 
-use indexmap::IndexMap;
 use ddex_core::models::{Comment, CommentPosition};
+use indexmap::IndexMap;
 // Remove unused serde imports since we're not serializing AST
 
 /// Abstract Syntax Tree representation of DDEX XML
@@ -75,7 +75,7 @@ impl Element {
             children: Vec::new(),
         }
     }
-    
+
     /// Set the namespace for this element
     ///
     /// # Arguments
@@ -91,7 +91,7 @@ impl Element {
         self.namespace = Some(ns.into());
         self
     }
-    
+
     /// Add an attribute to this element
     ///
     /// # Arguments
@@ -108,7 +108,7 @@ impl Element {
         self.attributes.insert(key.into(), value.into());
         self
     }
-    
+
     /// Add text content to this element
     ///
     /// # Arguments
@@ -124,7 +124,7 @@ impl Element {
         self.children.push(Node::Text(text.into()));
         self
     }
-    
+
     /// Add a child element
     ///
     /// # Arguments
@@ -140,7 +140,7 @@ impl Element {
     pub fn add_child(&mut self, child: Element) {
         self.children.push(Node::Element(child));
     }
-    
+
     /// Add text content as a child node
     ///
     /// # Arguments
@@ -155,7 +155,7 @@ impl Element {
     pub fn add_text(&mut self, text: impl Into<String>) {
         self.children.push(Node::Text(text.into()));
     }
-    
+
     /// Add a structured comment to this element
     ///
     /// # Arguments
@@ -172,7 +172,7 @@ impl Element {
     pub fn add_comment(&mut self, comment: Comment) {
         self.children.push(Node::Comment(comment));
     }
-    
+
     /// Add a simple comment (for backward compatibility)
     ///
     /// # Arguments
@@ -187,7 +187,7 @@ impl Element {
     pub fn add_simple_comment(&mut self, comment: impl Into<String>) {
         self.children.push(Node::SimpleComment(comment.into()));
     }
-    
+
     /// Add a comment with a specific position
     ///
     /// # Arguments

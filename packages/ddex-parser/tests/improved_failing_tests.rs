@@ -3,10 +3,9 @@
 //! This module provides updated implementations of the 4 failing tests
 //! with appropriate categorization and timeout handling.
 
-
 // Import our test categorization system
 mod test_categories;
-use test_categories::{TestCategory, generate_reasonable_test_data};
+use test_categories::{generate_reasonable_test_data, TestCategory};
 
 // Improved namespace inheritance test
 categorized_test! {
@@ -457,12 +456,21 @@ mod integration_tests {
         let data_50mb = generate_reasonable_test_data(50);
 
         // Should cap at reasonable sizes
-        assert!(data_1mb.len() <= 2 * 1024 * 1024, "1MB request should be reasonable");
-        assert!(data_50mb.len() <= 51 * 1024 * 1024, "50MB request should be capped");
+        assert!(
+            data_1mb.len() <= 2 * 1024 * 1024,
+            "1MB request should be reasonable"
+        );
+        assert!(
+            data_50mb.len() <= 51 * 1024 * 1024,
+            "50MB request should be capped"
+        );
 
         // Should be valid XML
         assert!(data_1mb.starts_with(b"<?xml"), "Should be valid XML");
-        assert!(data_1mb.ends_with(b"</ern:NewReleaseMessage>"), "Should be complete XML");
+        assert!(
+            data_1mb.ends_with(b"</ern:NewReleaseMessage>"),
+            "Should be complete XML"
+        );
 
         println!("✅ Optimized data generation working correctly");
     }

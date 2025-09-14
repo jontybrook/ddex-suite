@@ -1,9 +1,9 @@
 // src/streaming/fixed_comprehensive.rs
 //! Fixed comprehensive streaming parser with resolved type mismatches
 
-use crate::error::{ParseError, ErrorLocation};
+use crate::error::{ErrorLocation, ParseError};
 use ddex_core::models::{graph::*, versions::ERNVersion};
-use ddex_core::models::{Identifier, LocalizedString, IdentifierType};
+use ddex_core::models::{Identifier, IdentifierType, LocalizedString};
 use quick_xml::Reader;
 use std::io::BufRead;
 use std::time::Instant;
@@ -61,9 +61,7 @@ impl<R: BufRead> FixedStreamingParser<R> {
                 self.elements_yielded += 1;
                 Ok(Some(self.create_sample_resource()))
             }
-            _ => {
-                Ok(Some(FixedStreamingElement::EndOfStream))
-            }
+            _ => Ok(Some(FixedStreamingElement::EndOfStream)),
         }
     }
 
@@ -262,22 +260,28 @@ pub mod type_conversion_examples {
 
     /// Convert string vector to LocalizedString vector
     pub fn convert_strings_to_localized_strings(strings: Vec<String>) -> Vec<LocalizedString> {
-        strings.into_iter().map(|s| LocalizedString {
-            text: s,
-            language_code: None,
-            script: None,
-        }).collect()
+        strings
+            .into_iter()
+            .map(|s| LocalizedString {
+                text: s,
+                language_code: None,
+                script: None,
+            })
+            .collect()
     }
 
     /// Convert string vector to Genre vector
     pub fn convert_strings_to_genres(strings: Vec<String>) -> Vec<Genre> {
-        strings.into_iter().map(|s| Genre {
-            genre_text: s,
-            sub_genre: None,
-            attributes: None,
-            extensions: None,
-            comments: None,
-        }).collect()
+        strings
+            .into_iter()
+            .map(|s| Genre {
+                genre_text: s,
+                sub_genre: None,
+                attributes: None,
+                extensions: None,
+                comments: None,
+            })
+            .collect()
     }
 
     /// Create Identifier with proper fields
@@ -314,8 +318,8 @@ pub mod type_conversion_examples {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::type_conversion_examples::*;
+    use super::*;
     use std::io::Cursor;
 
     #[test]
@@ -331,13 +335,28 @@ mod tests {
         assert!(elements.len() >= 3); // Header, Release, Resource, EndOfStream
 
         // Verify type conversions work properly
-        let has_header = elements.iter().any(|e| matches!(e, FixedStreamingElement::Header { .. }));
-        let has_release = elements.iter().any(|e| matches!(e, FixedStreamingElement::Release(_)));
-        let has_resource = elements.iter().any(|e| matches!(e, FixedStreamingElement::Resource(_)));
+        let has_header = elements
+            .iter()
+            .any(|e| matches!(e, FixedStreamingElement::Header { .. }));
+        let has_release = elements
+            .iter()
+            .any(|e| matches!(e, FixedStreamingElement::Release(_)));
+        let has_resource = elements
+            .iter()
+            .any(|e| matches!(e, FixedStreamingElement::Resource(_)));
 
-        assert!(has_header, "Should have header with proper MessageSender type");
-        assert!(has_release, "Should have release with proper LocalizedString and Genre types");
-        assert!(has_resource, "Should have resource with proper TechnicalDetails type");
+        assert!(
+            has_header,
+            "Should have header with proper MessageSender type"
+        );
+        assert!(
+            has_release,
+            "Should have release with proper LocalizedString and Genre types"
+        );
+        assert!(
+            has_resource,
+            "Should have resource with proper TechnicalDetails type"
+        );
     }
 
     #[test]
@@ -389,7 +408,10 @@ mod tests {
         if let Some(Ok(FixedStreamingElement::Resource(resource))) = resource_result {
             assert_eq!(resource.resource_reference, "RES001");
             assert!(!resource.technical_details.is_empty());
-            assert_eq!(resource.technical_details[0].audio_codec, Some("MP3".to_string()));
+            assert_eq!(
+                resource.technical_details[0].audio_codec,
+                Some("MP3".to_string())
+            );
             assert_eq!(resource.technical_details[0].bitrate, Some(320));
             assert!(!resource.reference_title.is_empty());
             assert_eq!(resource.reference_title[0].text, "Sample Track");

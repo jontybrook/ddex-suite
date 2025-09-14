@@ -89,11 +89,18 @@ fn test_parser_builder_round_trip() {
 
     // Validate parsed structure
     assert_eq!(parsed_data.releases.len(), 1, "Should find 1 release");
-    assert_eq!(parsed_data.sound_recordings.len(), 2, "Should find 2 sound recordings");
+    assert_eq!(
+        parsed_data.sound_recordings.len(),
+        2,
+        "Should find 2 sound recordings"
+    );
     assert_eq!(parsed_data.deals.len(), 1, "Should find 1 deal");
 
     println!("  - Found {} releases", parsed_data.releases.len());
-    println!("  - Found {} sound recordings", parsed_data.sound_recordings.len());
+    println!(
+        "  - Found {} sound recordings",
+        parsed_data.sound_recordings.len()
+    );
     println!("  - Found {} deals", parsed_data.deals.len());
 
     // Step 2: Convert to builder format
@@ -103,12 +110,26 @@ fn test_parser_builder_round_trip() {
     let build_request = convert_to_build_request(&parsed_data);
     let convert_time = start_convert.elapsed();
 
-    println!("✅ Conversion completed in {:.3}s", convert_time.as_secs_f64());
+    println!(
+        "✅ Conversion completed in {:.3}s",
+        convert_time.as_secs_f64()
+    );
 
     // Validate conversion
-    assert!(!build_request.message_id.is_empty(), "Message ID should be preserved");
-    assert_eq!(build_request.releases.len(), 1, "Releases should be preserved");
-    assert_eq!(build_request.sound_recordings.len(), 2, "Sound recordings should be preserved");
+    assert!(
+        !build_request.message_id.is_empty(),
+        "Message ID should be preserved"
+    );
+    assert_eq!(
+        build_request.releases.len(),
+        1,
+        "Releases should be preserved"
+    );
+    assert_eq!(
+        build_request.sound_recordings.len(),
+        2,
+        "Sound recordings should be preserved"
+    );
 
     println!("  - Message ID: {}", build_request.message_id);
     println!("  - Release title: {}", build_request.releases[0].title);
@@ -126,13 +147,28 @@ fn test_parser_builder_round_trip() {
     let rebuilt_content = rebuilt_xml.unwrap();
 
     // Validate rebuilt XML structure
-    assert!(rebuilt_content.contains("<?xml"), "Should contain XML declaration");
-    assert!(rebuilt_content.contains("NewReleaseMessage"), "Should contain root element");
-    assert!(rebuilt_content.contains("INTEGRATION-TEST-001"), "Should preserve message ID");
-    assert!(rebuilt_content.contains("Round Trip Test Album"), "Should preserve release title");
+    assert!(
+        rebuilt_content.contains("<?xml"),
+        "Should contain XML declaration"
+    );
+    assert!(
+        rebuilt_content.contains("NewReleaseMessage"),
+        "Should contain root element"
+    );
+    assert!(
+        rebuilt_content.contains("INTEGRATION-TEST-001"),
+        "Should preserve message ID"
+    );
+    assert!(
+        rebuilt_content.contains("Round Trip Test Album"),
+        "Should preserve release title"
+    );
 
     println!("  - XML size: {} bytes", rebuilt_content.len());
-    println!("  - Contains message ID: {}", rebuilt_content.contains("INTEGRATION-TEST-001"));
+    println!(
+        "  - Contains message ID: {}",
+        rebuilt_content.contains("INTEGRATION-TEST-001")
+    );
 
     // Step 4: Parse rebuilt XML to verify round-trip fidelity
     println!("\nStep 4: Verifying round-trip fidelity...");
@@ -141,7 +177,10 @@ fn test_parser_builder_round_trip() {
     let reparsed_result = parse_ddex_xml(&rebuilt_content);
     let reparse_time = start_reparse.elapsed();
 
-    println!("✅ Re-parsing completed in {:.3}s", reparse_time.as_secs_f64());
+    println!(
+        "✅ Re-parsing completed in {:.3}s",
+        reparse_time.as_secs_f64()
+    );
 
     assert!(reparsed_result.is_ok(), "Re-parsing should succeed");
     let reparsed_data = reparsed_result.unwrap();
@@ -153,13 +192,25 @@ fn test_parser_builder_round_trip() {
 
     println!("📊 Round-trip fidelity report:");
     println!("  - Releases match: {}", fidelity_report.releases_match);
-    println!("  - Sound recordings match: {}", fidelity_report.sound_recordings_match);
+    println!(
+        "  - Sound recordings match: {}",
+        fidelity_report.sound_recordings_match
+    );
     println!("  - Deals match: {}", fidelity_report.deals_match);
-    println!("  - Message metadata match: {}", fidelity_report.metadata_match);
+    println!(
+        "  - Message metadata match: {}",
+        fidelity_report.metadata_match
+    );
 
     // Assert round-trip fidelity
-    assert!(fidelity_report.releases_match, "Release data should match after round-trip");
-    assert!(fidelity_report.sound_recordings_match, "Sound recording data should match");
+    assert!(
+        fidelity_report.releases_match,
+        "Release data should match after round-trip"
+    );
+    assert!(
+        fidelity_report.sound_recordings_match,
+        "Sound recording data should match"
+    );
     assert!(fidelity_report.deals_match, "Deal data should match");
     assert!(fidelity_report.metadata_match, "Metadata should match");
 
@@ -174,12 +225,21 @@ fn test_parser_builder_round_trip() {
     println!("  - Convert time: {:.3}s", convert_time.as_secs_f64());
     println!("  - Build time: {:.3}s", build_time.as_secs_f64());
     println!("  - Re-parse time: {:.3}s", reparse_time.as_secs_f64());
-    println!("  - Total round-trip time: {:.3}s", total_time.as_secs_f64());
+    println!(
+        "  - Total round-trip time: {:.3}s",
+        total_time.as_secs_f64()
+    );
     println!("  - Round-trip throughput: {:.2} bytes/s", throughput);
 
     // Performance assertions
-    assert!(total_time.as_millis() < 1000, "Total round-trip should complete under 1 second");
-    assert!(throughput > 10000.0, "Round-trip throughput should exceed 10KB/s");
+    assert!(
+        total_time.as_millis() < 1000,
+        "Total round-trip should complete under 1 second"
+    );
+    assert!(
+        throughput > 10000.0,
+        "Round-trip throughput should exceed 10KB/s"
+    );
 
     println!("\n🎉 Parser-Builder Integration Test: ALL PHASES PASSED!");
     println!("{}", "=".repeat(60));
@@ -193,7 +253,10 @@ fn test_large_file_round_trip() {
     // Generate a larger test file (100KB+)
     let large_xml = generate_large_test_file(100 * 1024); // 100KB target
 
-    println!("Generated test file: {:.2}KB", large_xml.len() as f64 / 1024.0);
+    println!(
+        "Generated test file: {:.2}KB",
+        large_xml.len() as f64 / 1024.0
+    );
 
     let start = Instant::now();
 
@@ -213,8 +276,14 @@ fn test_large_file_round_trip() {
     println!("  - Throughput: {:.2}KB/s", throughput / 1024.0);
 
     // Performance requirements for large files
-    assert!(throughput > 1024.0 * 100.0, "Large file throughput should exceed 100KB/s");
-    assert!(total_time.as_secs() < 10, "Large file processing should complete under 10s");
+    assert!(
+        throughput > 1024.0 * 100.0,
+        "Large file throughput should exceed 100KB/s"
+    );
+    assert!(
+        total_time.as_secs() < 10,
+        "Large file processing should complete under 10s"
+    );
 
     println!("✅ Large file round-trip test passed!");
 }
@@ -245,7 +314,11 @@ fn test_selective_round_trip() {
     let isrc_time = start.elapsed();
 
     println!("ISRC extraction:");
-    println!("  - Found {} ISRCs in {:.3}s", isrcs.len(), isrc_time.as_secs_f64());
+    println!(
+        "  - Found {} ISRCs in {:.3}s",
+        isrcs.len(),
+        isrc_time.as_secs_f64()
+    );
     println!("  - ISRCs: {:?}", isrcs);
 
     assert_eq!(isrcs.len(), 1, "Should find 1 ISRC");
@@ -257,7 +330,11 @@ fn test_selective_round_trip() {
     let title_time = start.elapsed();
 
     println!("\nTitle extraction:");
-    println!("  - Found {} titles in {:.3}s", titles.len(), title_time.as_secs_f64());
+    println!(
+        "  - Found {} titles in {:.3}s",
+        titles.len(),
+        title_time.as_secs_f64()
+    );
     println!("  - Titles: {:?}", titles);
 
     assert_eq!(titles.len(), 2, "Should find 2 titles");
@@ -274,12 +351,21 @@ fn test_selective_round_trip() {
     let selective_build_time = start.elapsed();
 
     println!("\nSelective rebuild:");
-    println!("  - Built XML in {:.3}s", selective_build_time.as_secs_f64());
+    println!(
+        "  - Built XML in {:.3}s",
+        selective_build_time.as_secs_f64()
+    );
     println!("  - Output size: {} bytes", selective_xml.len());
 
     // Validate selective rebuild
-    assert!(selective_xml.contains("SELECTIVE-REBUILT"), "Should contain new message ID");
-    assert!(selective_xml.contains("SELECT2400001"), "Should contain original ISRC");
+    assert!(
+        selective_xml.contains("SELECTIVE-REBUILT"),
+        "Should contain new message ID"
+    );
+    assert!(
+        selective_xml.contains("SELECT2400001"),
+        "Should contain original ISRC"
+    );
 
     println!("✅ Selective round-trip test passed!");
 }
@@ -373,7 +459,8 @@ fn parse_ddex_xml(xml: &str) -> Result<ParsedData, String> {
                         if let Ok(attr) = attr {
                             let key = std::str::from_utf8(attr.key.as_ref()).unwrap_or("");
                             if key.contains("Reference") {
-                                release_ref = std::str::from_utf8(&attr.value).unwrap_or("").to_string();
+                                release_ref =
+                                    std::str::from_utf8(&attr.value).unwrap_or("").to_string();
                             }
                         }
                     }
@@ -409,7 +496,7 @@ fn parse_ddex_xml(xml: &str) -> Result<ParsedData, String> {
             }
             quick_xml::events::Event::Text(e) => {
                 let text_content = e.unescape().unwrap_or_default();
-            current_text = text_content.trim().to_string();
+                current_text = text_content.trim().to_string();
 
                 if current_element.contains("MessageId") && !current_text.is_empty() {
                     data.message_id = current_text.clone();
@@ -491,20 +578,25 @@ fn convert_to_build_request(data: &ParsedData) -> BuildRequest {
 
 /// Build DDEX XML from build request
 fn build_ddex_xml(request: &BuildRequest) -> Result<String, String> {
-    let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43">
     <MessageHeader>
-        <MessageId>"#);
+        <MessageId>"#,
+    );
 
     xml.push_str(&request.message_id);
-    xml.push_str(r#"</MessageId>
+    xml.push_str(
+        r#"</MessageId>
         <CreatedDateTime>2024-09-13T12:00:00Z</CreatedDateTime>
     </MessageHeader>
-"#);
+"#,
+    );
 
     // Add releases
     for release in &request.releases {
-        xml.push_str(&format!(r#"    <Release ReleaseReference="{}">
+        xml.push_str(&format!(
+            r#"    <Release ReleaseReference="{}">
         <ReferenceTitle>
             <TitleText>{}</TitleText>
         </ReferenceTitle>
@@ -512,12 +604,15 @@ fn build_ddex_xml(request: &BuildRequest) -> Result<String, String> {
             <PartyName>{}</PartyName>
         </DisplayArtist>
     </Release>
-"#, release.reference, release.title, release.artist));
+"#,
+            release.reference, release.title, release.artist
+        ));
     }
 
     // Add sound recordings
     for sr in &request.sound_recordings {
-        xml.push_str(&format!(r#"    <SoundRecording SoundRecordingReference="{}">
+        xml.push_str(&format!(
+            r#"    <SoundRecording SoundRecordingReference="{}">
         <ISRC>{}</ISRC>
         <ReferenceTitle>
             <TitleText>{}</TitleText>
@@ -527,19 +622,24 @@ fn build_ddex_xml(request: &BuildRequest) -> Result<String, String> {
         </DisplayArtist>
         <Duration>{}</Duration>
     </SoundRecording>
-"#, sr.reference, sr.isrc, sr.title, sr.artist, sr.duration));
+"#,
+            sr.reference, sr.isrc, sr.title, sr.artist, sr.duration
+        ));
     }
 
     // Add deals
     for deal in &request.deals {
-        xml.push_str(&format!(r#"    <Deal>
+        xml.push_str(&format!(
+            r#"    <Deal>
         <DealReference>{}</DealReference>
         <DealTerms>
             <TerritoryCode>{}</TerritoryCode>
             <RightsType>{}</RightsType>
         </DealTerms>
     </Deal>
-"#, deal.reference, deal.territory, deal.rights_type));
+"#,
+            deal.reference, deal.territory, deal.rights_type
+        ));
     }
 
     xml.push_str("</ern:NewReleaseMessage>");
@@ -549,16 +649,25 @@ fn build_ddex_xml(request: &BuildRequest) -> Result<String, String> {
 
 /// Compare two parsed data structures for fidelity
 fn compare_parsed_data(original: &ParsedData, rebuilt: &ParsedData) -> FidelityReport {
-    let releases_match = original.releases.len() == rebuilt.releases.len() &&
-        original.releases.iter().zip(rebuilt.releases.iter())
+    let releases_match = original.releases.len() == rebuilt.releases.len()
+        && original
+            .releases
+            .iter()
+            .zip(rebuilt.releases.iter())
             .all(|(a, b)| a.title == b.title && a.artist == b.artist);
 
-    let sound_recordings_match = original.sound_recordings.len() == rebuilt.sound_recordings.len() &&
-        original.sound_recordings.iter().zip(rebuilt.sound_recordings.iter())
+    let sound_recordings_match = original.sound_recordings.len() == rebuilt.sound_recordings.len()
+        && original
+            .sound_recordings
+            .iter()
+            .zip(rebuilt.sound_recordings.iter())
             .all(|(a, b)| a.isrc == b.isrc && a.title == b.title);
 
-    let deals_match = original.deals.len() == rebuilt.deals.len() &&
-        original.deals.iter().zip(rebuilt.deals.iter())
+    let deals_match = original.deals.len() == rebuilt.deals.len()
+        && original
+            .deals
+            .iter()
+            .zip(rebuilt.deals.iter())
             .all(|(a, b)| a.territory == b.territory && a.rights_type == b.rights_type);
 
     let metadata_match = original.message_id == rebuilt.message_id;
@@ -573,17 +682,21 @@ fn compare_parsed_data(original: &ParsedData, rebuilt: &ParsedData) -> FidelityR
 
 /// Generate a large test file for performance testing
 fn generate_large_test_file(target_size: usize) -> String {
-    let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43">
     <MessageHeader>
         <MessageId>LARGE-FILE-TEST</MessageId>
         <CreatedDateTime>2024-09-13T12:00:00Z</CreatedDateTime>
     </MessageHeader>
-"#);
+"#,
+    );
 
     let mut count = 0;
-    while xml.len() < target_size && count < 1000 { // Safety limit
-        xml.push_str(&format!(r#"    <Release ReleaseReference="LARGE-REL-{:04}">
+    while xml.len() < target_size && count < 1000 {
+        // Safety limit
+        xml.push_str(&format!(
+            r#"    <Release ReleaseReference="LARGE-REL-{:04}">
         <ReferenceTitle>
             <TitleText>Large Test Release #{}</TitleText>
         </ReferenceTitle>
@@ -598,7 +711,9 @@ fn generate_large_test_file(target_size: usize) -> String {
         </ReferenceTitle>
         <Duration>PT3M30S</Duration>
     </SoundRecording>
-"#, count, count, count, count, count, count));
+"#,
+            count, count, count, count, count, count
+        ));
         count += 1;
     }
 
@@ -670,32 +785,41 @@ fn extract_titles_only(xml: &str) -> Vec<String> {
 
 /// Build selective XML from minimal data
 fn build_selective_xml(request: &SelectiveBuildRequest) -> String {
-    let mut xml = format!(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut xml = format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43">
     <MessageHeader>
         <MessageId>{}</MessageId>
     </MessageHeader>
-"#, request.message_id);
+"#,
+        request.message_id
+    );
 
     // Add titles as releases
     for (i, title) in request.titles.iter().enumerate() {
-        xml.push_str(&format!(r#"    <Release ReleaseReference="SEL-REL-{:02}">
+        xml.push_str(&format!(
+            r#"    <Release ReleaseReference="SEL-REL-{:02}">
         <ReferenceTitle>
             <TitleText>{}</TitleText>
         </ReferenceTitle>
     </Release>
-"#, i, title));
+"#,
+            i, title
+        ));
     }
 
     // Add ISRCs as sound recordings
     for (i, isrc) in request.isrcs.iter().enumerate() {
-        xml.push_str(&format!(r#"    <SoundRecording SoundRecordingReference="SEL-SR-{:02}">
+        xml.push_str(&format!(
+            r#"    <SoundRecording SoundRecordingReference="SEL-SR-{:02}">
         <ISRC>{}</ISRC>
         <ReferenceTitle>
             <TitleText>Selective Track #{}</TitleText>
         </ReferenceTitle>
     </SoundRecording>
-"#, i, isrc, i));
+"#,
+            i, isrc, i
+        ));
     }
 
     xml.push_str("</ern:NewReleaseMessage>");

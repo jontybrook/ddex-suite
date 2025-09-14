@@ -471,14 +471,17 @@ mod tests {
         let config = ExtensionPreservationConfig::default();
         assert!(config.enabled);
         assert!(!config.known_extensions.is_empty());
-        assert_eq!(config.unknown_extension_handling, UnknownExtensionHandling::Preserve);
+        assert_eq!(
+            config.unknown_extension_handling,
+            UnknownExtensionHandling::Preserve
+        );
     }
 
     #[test]
     fn test_namespace_minimization() {
         let strategy = NamespaceMinimizationStrategy::Aggressive;
         match strategy {
-            NamespaceMinimizationStrategy::Aggressive => {},
+            NamespaceMinimizationStrategy::Aggressive => {}
             _ => panic!("Expected Aggressive strategy"),
         }
     }

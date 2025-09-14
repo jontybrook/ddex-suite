@@ -1,9 +1,9 @@
 // src/streaming/minimal.rs
 //! Minimal working streaming parser implementation
 
-use crate::error::{ParseError, ErrorLocation};
+use crate::error::{ErrorLocation, ParseError};
 use ddex_core::models::versions::ERNVersion;
-use quick_xml::{Reader, events::Event};
+use quick_xml::{events::Event, Reader};
 use std::io::BufRead;
 use std::time::Instant;
 
@@ -17,15 +17,9 @@ pub enum MinimalElement {
         version: ERNVersion,
     },
     /// Release element found
-    Release {
-        reference: String,
-        title: String,
-    },
+    Release { reference: String, title: String },
     /// Resource element found
-    Resource {
-        reference: String,
-        title: String,
-    },
+    Resource { reference: String, title: String },
     /// End of stream
     EndOfStream,
 }
@@ -70,8 +64,7 @@ impl<R: BufRead> MinimalStreamingParser<R> {
                 Event::Start(e) => {
                     self.current_depth += 1;
                     let name_bytes = e.name();
-                    let name = std::str::from_utf8(name_bytes.as_ref())
-                        ?;
+                    let name = std::str::from_utf8(name_bytes.as_ref())?;
 
                     self.in_element = Some(name.to_string());
                     self.text_buffer.clear();
@@ -95,8 +88,7 @@ impl<R: BufRead> MinimalStreamingParser<R> {
                     }
                 }
                 Event::Text(e) => {
-                    let text = std::str::from_utf8(&e)
-                        ?;
+                    let text = std::str::from_utf8(&e)?;
                     self.text_buffer.push_str(text.trim());
                 }
                 Event::Eof => {
@@ -112,27 +104,24 @@ impl<R: BufRead> MinimalStreamingParser<R> {
         }
     }
 
-    fn check_completed_element(&mut self, name: &str) -> Result<Option<MinimalElement>, ParseError> {
+    fn check_completed_element(
+        &mut self,
+        name: &str,
+    ) -> Result<Option<MinimalElement>, ParseError> {
         match name {
-            "MessageHeader" => {
-                Ok(Some(MinimalElement::Header {
-                    message_id: "test-message".to_string(),
-                    created_date_time: "2023-01-01T00:00:00".to_string(),
-                    version: self.version,
-                }))
-            }
-            "Release" => {
-                Ok(Some(MinimalElement::Release {
-                    reference: "REL001".to_string(),
-                    title: self.text_buffer.clone(),
-                }))
-            }
-            "Resource" => {
-                Ok(Some(MinimalElement::Resource {
-                    reference: "RES001".to_string(),
-                    title: self.text_buffer.clone(),
-                }))
-            }
+            "MessageHeader" => Ok(Some(MinimalElement::Header {
+                message_id: "test-message".to_string(),
+                created_date_time: "2023-01-01T00:00:00".to_string(),
+                version: self.version,
+            })),
+            "Release" => Ok(Some(MinimalElement::Release {
+                reference: "REL001".to_string(),
+                title: self.text_buffer.clone(),
+            })),
+            "Resource" => Ok(Some(MinimalElement::Resource {
+                reference: "RES001".to_string(),
+                title: self.text_buffer.clone(),
+            })),
             _ => Ok(None),
         }
     }
@@ -245,7 +234,9 @@ mod tests {
         assert!(elements.len() >= 1);
 
         // Should find at least a header
-        let has_header = elements.iter().any(|e| matches!(e, MinimalElement::Header { .. }));
+        let has_header = elements
+            .iter()
+            .any(|e| matches!(e, MinimalElement::Header { .. }));
         assert!(has_header);
     }
 

@@ -4,14 +4,14 @@
 //! sensitive information is not leaked through error messages while maintaining
 //! useful debugging capabilities for developers.
 
-use std::collections::HashMap;
-use std::fmt;
+use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::fmt;
+use std::sync::Mutex;
 use tracing::error;
 use uuid::Uuid;
-use once_cell::sync::Lazy;
-use std::sync::Mutex;
 
 /// Operating mode for error sanitization
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -70,19 +70,19 @@ pub enum ErrorContext {
 pub trait SecureError: fmt::Display + fmt::Debug {
     /// Get the public-safe error message
     fn public_message(&self) -> String;
-    
+
     /// Get the internal error message for logging
     fn internal_message(&self) -> String;
-    
+
     /// Get the debug error message (development only)
     fn debug_message(&self) -> String;
-    
+
     /// Get the error classification level
     fn error_level(&self) -> ErrorLevel;
-    
+
     /// Get the error context
     fn error_context(&self) -> ErrorContext;
-    
+
     /// Generate a unique error ID for correlation
     fn error_id(&self) -> String {
         Uuid::new_v4().to_string()
@@ -125,7 +125,7 @@ impl RedactionRule {
             testing,
         })
     }
-    
+
     /// Check if this rule applies in the given mode
     pub fn applies_to_mode(&self, mode: ErrorMode) -> bool {
         match mode {
@@ -134,10 +134,12 @@ impl RedactionRule {
             ErrorMode::Testing => self.testing,
         }
     }
-    
+
     /// Apply this rule to a message
     pub fn apply(&self, message: &str) -> String {
-        self.pattern.replace_all(message, self.replacement.as_str()).to_string()
+        self.pattern
+            .replace_all(message, self.replacement.as_str())
+            .to_string()
     }
 }
 
@@ -200,11 +202,11 @@ impl fmt::Display for SanitizedError {
         } else {
             write!(f, "{}", self.message)?;
         }
-        
+
         if let Some(context) = &self.context {
             write!(f, " ({})", context)?;
         }
-        
+
         write!(f, " [ID: {}]", &self.correlation_id[0..8])
     }
 }
@@ -212,7 +214,7 @@ impl fmt::Display for SanitizedError {
 /// Pre-defined redaction rules for common sensitive data patterns
 static DEFAULT_REDACTION_RULES: Lazy<Vec<RedactionRule>> = Lazy::new(|| {
     let mut rules = Vec::new();
-    
+
     // File system paths - most aggressive in production
     if let Ok(rule) = RedactionRule::new(
         "filesystem_paths",
@@ -224,7 +226,7 @@ static DEFAULT_REDACTION_RULES: Lazy<Vec<RedactionRule>> = Lazy::new(|| {
     ) {
         rules.push(rule);
     }
-    
+
     // Development-friendly path redaction (keep filename)
     if let Ok(rule) = RedactionRule::new(
         "filesystem_paths_dev",
@@ -236,7 +238,7 @@ static DEFAULT_REDACTION_RULES: Lazy<Vec<RedactionRule>> = Lazy::new(|| {
     ) {
         rules.push(rule);
     }
-    
+
     // IP addresses
     if let Ok(rule) = RedactionRule::new(
         "ip_addresses",
@@ -248,7 +250,7 @@ static DEFAULT_REDACTION_RULES: Lazy<Vec<RedactionRule>> = Lazy::new(|| {
     ) {
         rules.push(rule);
     }
-    
+
     // Hostnames and URLs
     if let Ok(rule) = RedactionRule::new(
         "hostnames",
@@ -260,7 +262,7 @@ static DEFAULT_REDACTION_RULES: Lazy<Vec<RedactionRule>> = Lazy::new(|| {
     ) {
         rules.push(rule);
     }
-    
+
     // Memory addresses
     if let Ok(rule) = RedactionRule::new(
         "memory_addresses",
@@ -272,7 +274,7 @@ static DEFAULT_REDACTION_RULES: Lazy<Vec<RedactionRule>> = Lazy::new(|| {
     ) {
         rules.push(rule);
     }
-    
+
     // Stack traces (line numbers and function names)
     if let Ok(rule) = RedactionRule::new(
         "stack_traces",
@@ -284,7 +286,7 @@ static DEFAULT_REDACTION_RULES: Lazy<Vec<RedactionRule>> = Lazy::new(|| {
     ) {
         rules.push(rule);
     }
-    
+
     // API keys and tokens (basic patterns)
     if let Ok(rule) = RedactionRule::new(
         "api_keys",
@@ -296,7 +298,7 @@ static DEFAULT_REDACTION_RULES: Lazy<Vec<RedactionRule>> = Lazy::new(|| {
     ) {
         rules.push(rule);
     }
-    
+
     // User-specific paths (home directories)
     if let Ok(rule) = RedactionRule::new(
         "user_paths",
@@ -308,7 +310,7 @@ static DEFAULT_REDACTION_RULES: Lazy<Vec<RedactionRule>> = Lazy::new(|| {
     ) {
         rules.push(rule);
     }
-    
+
     // Database connection strings
     if let Ok(rule) = RedactionRule::new(
         "db_connections",
@@ -320,7 +322,7 @@ static DEFAULT_REDACTION_RULES: Lazy<Vec<RedactionRule>> = Lazy::new(|| {
     ) {
         rules.push(rule);
     }
-    
+
     rules
 });
 
@@ -329,11 +331,11 @@ impl ErrorSanitizer {
     pub fn new() -> Self {
         Self::with_config(SanitizerConfig::default())
     }
-    
+
     /// Create a new error sanitizer with custom configuration
     pub fn with_config(config: SanitizerConfig) -> Self {
         let error_code_map = Self::create_error_code_map();
-        
+
         ErrorSanitizer {
             config,
             redaction_rules: DEFAULT_REDACTION_RULES.clone(),
@@ -341,14 +343,14 @@ impl ErrorSanitizer {
             correlation_store: HashMap::new(),
         }
     }
-    
+
     /// Add a custom redaction rule
     pub fn add_redaction_rule(&mut self, rule: RedactionRule) {
         self.redaction_rules.push(rule);
     }
-    
+
     /// Sanitize an error message based on context and mode
-    pub fn sanitize<E>(&mut self, error: E, context: ErrorContext) -> SanitizedError 
+    pub fn sanitize<E>(&mut self, error: E, context: ErrorContext) -> SanitizedError
     where
         E: std::error::Error + fmt::Display + fmt::Debug,
     {
@@ -357,11 +359,11 @@ impl ErrorSanitizer {
         } else {
             "none".to_string()
         };
-        
+
         // Get the raw error message
         let raw_message = error.to_string();
         let debug_message = format!("{:?}", error);
-        
+
         // Log full details internally if enabled
         if self.config.log_internal_details {
             error!(
@@ -371,33 +373,39 @@ impl ErrorSanitizer {
                 debug_info = %debug_message,
                 "Internal error details"
             );
-            
+
             // Store full details for potential debugging
             if self.config.generate_correlation_ids {
                 self.correlation_store.insert(
                     correlation_id.clone(),
-                    format!("Context: {:?}, Error: {}, Debug: {}", context, raw_message, debug_message)
+                    format!(
+                        "Context: {:?}, Error: {}, Debug: {}",
+                        context, raw_message, debug_message
+                    ),
                 );
             }
         }
-        
+
         // Apply sanitization based on mode and context
         let sanitized_message = self.apply_sanitization(&raw_message, context);
-        
+
         // Truncate if too long
         let final_message = if sanitized_message.len() > self.config.max_message_length {
-            format!("{}...", &sanitized_message[0..self.config.max_message_length.saturating_sub(3)])
+            format!(
+                "{}...",
+                &sanitized_message[0..self.config.max_message_length.saturating_sub(3)]
+            )
         } else {
             sanitized_message
         };
-        
+
         // Get error code
         let error_code = if self.config.include_error_codes {
             self.error_code_map.get(&context).map(|&s| s.to_string())
         } else {
             None
         };
-        
+
         SanitizedError {
             correlation_id,
             message: final_message,
@@ -405,31 +413,39 @@ impl ErrorSanitizer {
             context: Some(self.get_safe_context_description(context)),
         }
     }
-    
+
     /// Apply sanitization rules to a message
     fn apply_sanitization(&self, message: &str, context: ErrorContext) -> String {
         let mut sanitized = message.to_string();
-        
+
         // Apply context-specific sanitization first
         sanitized = self.apply_context_specific_sanitization(sanitized, context);
-        
+
         // Apply general redaction rules
         for rule in &self.redaction_rules {
             if rule.applies_to_mode(self.config.mode) {
                 sanitized = rule.apply(&sanitized);
             }
         }
-        
+
         sanitized
     }
-    
+
     /// Apply context-specific sanitization logic
-    fn apply_context_specific_sanitization(&self, message: String, context: ErrorContext) -> String {
+    fn apply_context_specific_sanitization(
+        &self,
+        message: String,
+        context: ErrorContext,
+    ) -> String {
         match (context, self.config.mode) {
-            (ErrorContext::FileOpen | ErrorContext::FileRead | ErrorContext::FileWrite, ErrorMode::Production) => {
-                "File operation failed".to_string()
-            },
-            (ErrorContext::FileOpen | ErrorContext::FileRead | ErrorContext::FileWrite, ErrorMode::Development) => {
+            (
+                ErrorContext::FileOpen | ErrorContext::FileRead | ErrorContext::FileWrite,
+                ErrorMode::Production,
+            ) => "File operation failed".to_string(),
+            (
+                ErrorContext::FileOpen | ErrorContext::FileRead | ErrorContext::FileWrite,
+                ErrorMode::Development,
+            ) => {
                 // Keep operation type but redact full paths
                 let operation = match context {
                     ErrorContext::FileOpen => "open",
@@ -438,42 +454,40 @@ impl ErrorSanitizer {
                     _ => "access",
                 };
                 format!("Failed to {} file", operation)
-            },
+            }
             (ErrorContext::NetworkRequest, ErrorMode::Production) => {
                 "Network operation failed".to_string()
-            },
+            }
             (ErrorContext::XmlParsing, ErrorMode::Production) => {
                 "Invalid XML structure".to_string()
-            },
+            }
             (ErrorContext::XmlBuilding, ErrorMode::Production) => {
                 "XML generation failed".to_string()
-            },
+            }
             (ErrorContext::SecurityValidation, ErrorMode::Production) => {
                 "Security validation failed".to_string()
-            },
+            }
             (ErrorContext::EntityClassification, ErrorMode::Production) => {
                 "Entity validation failed".to_string()
-            },
+            }
             (ErrorContext::PathValidation, ErrorMode::Production) => {
                 "Path validation failed".to_string()
-            },
+            }
             (ErrorContext::MemoryAllocation, ErrorMode::Production) => {
                 "Memory allocation failed".to_string()
-            },
+            }
             (ErrorContext::DatabaseConnection, ErrorMode::Production) => {
                 "Database connection failed".to_string()
-            },
+            }
             (ErrorContext::Authentication, ErrorMode::Production) => {
                 "Authentication failed".to_string()
-            },
-            (ErrorContext::Authorization, ErrorMode::Production) => {
-                "Access denied".to_string()
-            },
+            }
+            (ErrorContext::Authorization, ErrorMode::Production) => "Access denied".to_string(),
             // In development and testing modes, allow more detail
             _ => message,
         }
     }
-    
+
     /// Create error code mapping
     fn create_error_code_map() -> HashMap<ErrorContext, &'static str> {
         let mut map = HashMap::new();
@@ -492,7 +506,7 @@ impl ErrorSanitizer {
         map.insert(ErrorContext::Authorization, "E7002");
         map
     }
-    
+
     /// Get a safe description of the error context
     fn get_safe_context_description(&self, context: ErrorContext) -> String {
         match context {
@@ -511,22 +525,24 @@ impl ErrorSanitizer {
             ErrorContext::Authorization => "authorization".to_string(),
         }
     }
-    
+
     /// Retrieve stored error details by correlation ID (for debugging)
     pub fn get_error_details(&self, correlation_id: &str) -> Option<&String> {
         self.correlation_store.get(correlation_id)
     }
-    
+
     /// Clear stored error details (for memory management)
     pub fn clear_error_store(&mut self) {
         self.correlation_store.clear();
     }
-    
+
     /// Get statistics about sanitization
     pub fn get_statistics(&self) -> SanitizerStatistics {
         SanitizerStatistics {
             mode: self.config.mode,
-            active_rules: self.redaction_rules.iter()
+            active_rules: self
+                .redaction_rules
+                .iter()
                 .filter(|r| r.applies_to_mode(self.config.mode))
                 .count(),
             stored_errors: self.correlation_store.len(),
@@ -560,7 +576,7 @@ impl ErrorSanitizer {
     {
         self.sanitize(error, context)
     }
-    
+
     /// Sanitize a parsing error
     pub fn sanitize_parse_error<E>(&mut self, error: E) -> SanitizedError
     where
@@ -568,7 +584,7 @@ impl ErrorSanitizer {
     {
         self.sanitize(error, ErrorContext::XmlParsing)
     }
-    
+
     /// Sanitize a build error
     pub fn sanitize_build_error<E>(&mut self, error: E) -> SanitizedError
     where
@@ -576,7 +592,7 @@ impl ErrorSanitizer {
     {
         self.sanitize(error, ErrorContext::XmlBuilding)
     }
-    
+
     /// Sanitize a security error
     pub fn sanitize_security_error<E>(&mut self, error: E) -> SanitizedError
     where
@@ -587,9 +603,8 @@ impl ErrorSanitizer {
 }
 
 /// Global error sanitizer instance - thread-safe and no unsafe code required
-static GLOBAL_SANITIZER: Lazy<Mutex<ErrorSanitizer>> = Lazy::new(|| {
-    Mutex::new(ErrorSanitizer::with_config(SanitizerConfig::default()))
-});
+static GLOBAL_SANITIZER: Lazy<Mutex<ErrorSanitizer>> =
+    Lazy::new(|| Mutex::new(ErrorSanitizer::with_config(SanitizerConfig::default())));
 
 /// Initialize the global error sanitizer with custom configuration
 pub fn init_global_sanitizer(config: SanitizerConfig) {
@@ -666,7 +681,11 @@ mod tests {
 
         impl fmt::Debug for TestError {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                write!(f, "TestError {{ message: {:?}, context: {:?} }}", self.message, self.context)
+                write!(
+                    f,
+                    "TestError {{ message: {:?}, context: {:?} }}",
+                    self.message, self.context
+                )
             }
         }
 
@@ -711,8 +730,11 @@ mod tests {
             "test_paths",
             r"/[^/\s]+/[^/\s]+",
             "<redacted path>",
-            true, true, false
-        ).unwrap();
+            true,
+            true,
+            false,
+        )
+        .unwrap();
 
         let message = "Failed to open /home/user/secret.txt";
         let redacted = rule.apply(message);
@@ -734,10 +756,13 @@ mod tests {
         };
 
         let mut sanitizer = ErrorSanitizer::with_config(config);
-        let io_error = Error::new(ErrorKind::NotFound, "File not found: /home/user/secrets.txt");
-        
+        let io_error = Error::new(
+            ErrorKind::NotFound,
+            "File not found: /home/user/secrets.txt",
+        );
+
         let sanitized = sanitizer.sanitize_io_error(io_error, ErrorContext::FileOpen);
-        
+
         assert_eq!(sanitized.message, "File operation failed");
         assert_eq!(sanitized.code, Some("E1001".to_string()));
         assert!(sanitized.context.is_some());
@@ -755,10 +780,13 @@ mod tests {
         };
 
         let mut sanitizer = ErrorSanitizer::with_config(config);
-        let io_error = Error::new(ErrorKind::PermissionDenied, "Permission denied: /etc/shadow");
-        
+        let io_error = Error::new(
+            ErrorKind::PermissionDenied,
+            "Permission denied: /etc/shadow",
+        );
+
         let sanitized = sanitizer.sanitize_io_error(io_error, ErrorContext::FileRead);
-        
+
         // Should be more descriptive in development mode
         assert!(sanitized.message.contains("file"));
         assert_eq!(sanitized.code, Some("E1002".to_string()));
@@ -772,9 +800,12 @@ mod tests {
             ..SanitizerConfig::default()
         });
 
-        let error = Error::new(ErrorKind::NotFound, "Cannot find /Users/john/Documents/secret.pdf");
+        let error = Error::new(
+            ErrorKind::NotFound,
+            "Cannot find /Users/john/Documents/secret.pdf",
+        );
         let sanitized = sanitizer.sanitize_io_error(error, ErrorContext::FileOpen);
-        
+
         // In production mode, should get generic message
         assert_eq!(sanitized.message, "File operation failed");
     }
@@ -785,8 +816,11 @@ mod tests {
             "test_ips",
             r"\b(?:\d{1,3}\.){3}\d{1,3}\b",
             "<ip>",
-            true, true, true
-        ).unwrap();
+            true,
+            true,
+            true,
+        )
+        .unwrap();
 
         let message = "Connection failed to 192.168.1.1:8080";
         let redacted = rule.apply(message);
@@ -799,8 +833,11 @@ mod tests {
             "test_memory",
             r"0x[0-9a-fA-F]+",
             "<addr>",
-            true, true, false
-        ).unwrap();
+            true,
+            true,
+            false,
+        )
+        .unwrap();
 
         let message = "Segfault at address 0x7fff5fbff000";
         let redacted = rule.apply(message);
@@ -813,8 +850,11 @@ mod tests {
             "test_keys",
             r#"(?i)(api_?key|token)[\s]*[:=][\s]*"?[a-zA-Z0-9\-_]{16,}"?"#,
             "$1=<redacted>",
-            true, true, true
-        ).unwrap();
+            true,
+            true,
+            true,
+        )
+        .unwrap();
 
         let message = r#"Authentication failed: api_key="sk_test_123456789abcdefghij""#;
         let redacted = rule.apply(message);
@@ -833,13 +873,19 @@ mod tests {
         let contexts = vec![
             (ErrorContext::XmlParsing, "Invalid XML structure"),
             (ErrorContext::XmlBuilding, "XML generation failed"),
-            (ErrorContext::SecurityValidation, "Security validation failed"),
+            (
+                ErrorContext::SecurityValidation,
+                "Security validation failed",
+            ),
             (ErrorContext::Authentication, "Authentication failed"),
             (ErrorContext::Authorization, "Access denied"),
         ];
 
         for (context, expected) in contexts {
-            let error = Error::new(ErrorKind::InvalidInput, "Detailed error message with /path/to/file.txt");
+            let error = Error::new(
+                ErrorKind::InvalidInput,
+                "Detailed error message with /path/to/file.txt",
+            );
             let sanitized = sanitizer.sanitize_io_error(error, context);
             assert_eq!(sanitized.message, expected);
         }
@@ -854,8 +900,11 @@ mod tests {
         };
 
         let mut sanitizer = ErrorSanitizer::with_config(config);
-        let long_error = Error::new(ErrorKind::Other, "This is a very long error message that should be truncated.");
-        
+        let long_error = Error::new(
+            ErrorKind::Other,
+            "This is a very long error message that should be truncated.",
+        );
+
         let sanitized = sanitizer.sanitize_io_error(long_error, ErrorContext::FileRead);
         assert!(sanitized.message.len() <= 20);
         assert!(sanitized.message.ends_with("..."));
@@ -883,17 +932,27 @@ mod tests {
     fn test_error_codes() {
         let sanitizer = ErrorSanitizer::new();
         let stats = sanitizer.get_statistics();
-        
-        assert_eq!(stats.mode, if cfg!(debug_assertions) { ErrorMode::Development } else { ErrorMode::Production });
+
+        assert_eq!(
+            stats.mode,
+            if cfg!(debug_assertions) {
+                ErrorMode::Development
+            } else {
+                ErrorMode::Production
+            }
+        );
         assert!(stats.active_rules > 0);
         assert_eq!(stats.stored_errors, 0);
     }
 
     #[test]
     fn test_global_sanitizer() {
-        let error = Error::new(ErrorKind::PermissionDenied, "Access denied to /secret/file.txt");
+        let error = Error::new(
+            ErrorKind::PermissionDenied,
+            "Access denied to /secret/file.txt",
+        );
         let sanitized = sanitize_io_error(error, ErrorContext::FileRead);
-        
+
         assert!(!sanitized.correlation_id.is_empty());
         assert!(!sanitized.message.is_empty());
         assert!(sanitized.code.is_some());

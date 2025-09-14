@@ -1,8 +1,8 @@
 //! Run with: cargo test -p ddex-parser run_performance_benchmarks -- --nocapture --test-threads=1
 
 use ddex_parser::DDEXParser;
+use std::io::{BufReader, Cursor, Read};
 use std::time::Instant;
-use std::io::{Read, BufReader, Cursor};
 
 fn generate_test_xml(size: usize) -> String {
     let header = r#"<?xml version="1.0" encoding="utf-8"?>
@@ -37,7 +37,8 @@ fn generate_test_xml(size: usize) -> String {
     </Release>"#;
 
     let mut count = 0;
-    while xml.len() + footer.len() < size && count < 20 { // Reduced limit to avoid depth issues
+    while xml.len() + footer.len() < size && count < 20 {
+        // Reduced limit to avoid depth issues
         xml.push_str(element);
         count += 1;
     }
@@ -58,7 +59,9 @@ fn test_baseline_io_speed() {
     let mut total = 0;
 
     while let Ok(n) = reader.read(&mut buffer) {
-        if n == 0 { break; }
+        if n == 0 {
+            break;
+        }
         total += n;
     }
 
@@ -97,7 +100,7 @@ fn test_streaming_with_different_buffer_sizes() {
     println!("------------------------");
 
     for buffer_size in sizes {
-        let parser = DDEXParser::new();
+        let mut parser = DDEXParser::new();
         let start = Instant::now();
 
         // Use a cursor with buffered reader
@@ -236,7 +239,7 @@ fn test_element_complexity_impact() {
     println!("\nElement Complexity Impact:");
     println!("--------------------------");
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
 
     let start = Instant::now();
     let simple_result = parser.parse(Cursor::new(simple.as_bytes()));
@@ -248,7 +251,10 @@ fn test_element_complexity_impact() {
 
     println!("  Simple elements:  {:.2} MB/s", simple_throughput);
     println!("  Complex elements: {:.2} MB/s", complex_throughput);
-    println!("  Slowdown factor:  {:.2}x", simple_throughput / complex_throughput);
+    println!(
+        "  Slowdown factor:  {:.2}x",
+        simple_throughput / complex_throughput
+    );
 
     match (simple_result, complex_result) {
         (Ok(s), Ok(c)) => {
@@ -269,15 +275,21 @@ fn identify_performance_bottleneck() {
     let start = Instant::now();
     let _bytes = data.as_bytes().to_vec();
     let read_throughput = calculate_throughput(data.len(), start.elapsed());
-    println!("1. Raw memory copy:     {:.2} MB/s (baseline)", read_throughput);
+    println!(
+        "1. Raw memory copy:     {:.2} MB/s (baseline)",
+        read_throughput
+    );
 
     // Level 2: Scan for angle brackets
     let start = Instant::now();
     let bytes = data.as_bytes();
     let _count = bytes.iter().filter(|&&b| b == b'<' || b == b'>').count();
     let scan_throughput = calculate_throughput(data.len(), start.elapsed());
-    println!("2. Byte scanning:       {:.2} MB/s ({:.1}x slower)",
-             scan_throughput, read_throughput/scan_throughput);
+    println!(
+        "2. Byte scanning:       {:.2} MB/s ({:.1}x slower)",
+        scan_throughput,
+        read_throughput / scan_throughput
+    );
 
     // Level 3: XML tokenization only
     let start = Instant::now();
@@ -292,29 +304,41 @@ fn identify_performance_bottleneck() {
         buf.clear();
     }
     let tokenize_throughput = calculate_throughput(data.len(), start.elapsed());
-    println!("3. XML tokenization:    {:.2} MB/s ({:.1}x slower)",
-             tokenize_throughput, read_throughput/tokenize_throughput);
+    println!(
+        "3. XML tokenization:    {:.2} MB/s ({:.1}x slower)",
+        tokenize_throughput,
+        read_throughput / tokenize_throughput
+    );
 
     // Level 4: DDEX parsing without validation
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let start = Instant::now();
     let _result = parser.parse(Cursor::new(data.as_bytes()));
     let parse_throughput = calculate_throughput(data.len(), start.elapsed());
-    println!("4. Parse (no validate): {:.2} MB/s ({:.1}x slower)",
-             parse_throughput, read_throughput/parse_throughput);
+    println!(
+        "4. Parse (no validate): {:.2} MB/s ({:.1}x slower)",
+        parse_throughput,
+        read_throughput / parse_throughput
+    );
 
     // Level 5: Full DDEX parsing with validation
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let start = Instant::now();
     let _result = parser.parse(Cursor::new(data.as_bytes()));
     let full_throughput = calculate_throughput(data.len(), start.elapsed());
-    println!("5. Full parsing:        {:.2} MB/s ({:.1}x slower)",
-             full_throughput, read_throughput/full_throughput);
+    println!(
+        "5. Full parsing:        {:.2} MB/s ({:.1}x slower)",
+        full_throughput,
+        read_throughput / full_throughput
+    );
 
     println!("\nBottleneck Analysis:");
-    let tokenize_cost = 100.0 * (1.0/tokenize_throughput - 1.0/scan_throughput) / (1.0/full_throughput);
-    let parse_cost = 100.0 * (1.0/parse_throughput - 1.0/tokenize_throughput) / (1.0/full_throughput);
-    let validate_cost = 100.0 * (1.0/full_throughput - 1.0/parse_throughput) / (1.0/full_throughput);
+    let tokenize_cost =
+        100.0 * (1.0 / tokenize_throughput - 1.0 / scan_throughput) / (1.0 / full_throughput);
+    let parse_cost =
+        100.0 * (1.0 / parse_throughput - 1.0 / tokenize_throughput) / (1.0 / full_throughput);
+    let validate_cost =
+        100.0 * (1.0 / full_throughput - 1.0 / parse_throughput) / (1.0 / full_throughput);
 
     println!("  XML tokenization: {:.1}% of time", tokenize_cost);
     println!("  DDEX parsing:     {:.1}% of time", parse_cost);

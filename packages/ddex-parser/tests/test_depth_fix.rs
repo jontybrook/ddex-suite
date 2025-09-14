@@ -6,10 +6,12 @@ fn test_depth_tracking_with_siblings() {
     println!("Testing depth tracking fix with siblings...");
 
     // Create XML with many sibling elements at depth 3
-    let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <NewReleaseMessage xmlns="http://ddex.net/xml/ern/43">
     <MessageHeader><MessageId>MSG123</MessageId></MessageHeader>
-    <ReleaseList>"#);
+    <ReleaseList>"#,
+    );
 
     // Add 10 sibling Release elements (depth should remain 3 for all)
     for i in 0..10 {
@@ -22,7 +24,7 @@ fn test_depth_tracking_with_siblings() {
     println!("Previous bug would count this as depth 13+ (incorrect!)");
     println!("Our fix should keep it at depth 3 (correct)");
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(xml.as_bytes());
 
     match parser.parse(cursor) {

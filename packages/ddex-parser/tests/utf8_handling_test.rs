@@ -1,5 +1,5 @@
-use ddex_parser::{DDEXParser, error::ParseError};
 use ddex_parser::parser::security::SecurityConfig;
+use ddex_parser::{error::ParseError, DDEXParser};
 use std::io::Cursor;
 
 #[test]
@@ -29,7 +29,7 @@ fn test_utf8_characters_in_titles() {
         </ern:ReleaseList>
     </ern:NewReleaseMessage>"#;
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(xml.as_bytes());
     let result = parser.parse(cursor).unwrap();
 
@@ -67,12 +67,15 @@ fn test_utf8_in_artist_names() {
         </ern:ReleaseList>
     </ern:NewReleaseMessage>"#;
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(xml.as_bytes());
     let result = parser.parse(cursor);
 
     // Should not fail on UTF-8 content
-    assert!(result.is_ok(), "UTF-8 artist names should parse successfully");
+    assert!(
+        result.is_ok(),
+        "UTF-8 artist names should parse successfully"
+    );
 }
 
 #[test]
@@ -102,11 +105,14 @@ fn test_utf8_mixed_languages() {
         </ern:ReleaseList>
     </ern:NewReleaseMessage>"#;
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(xml.as_bytes());
     let result = parser.parse(cursor);
 
-    assert!(result.is_ok(), "Mixed language UTF-8 content should parse successfully");
+    assert!(
+        result.is_ok(),
+        "Mixed language UTF-8 content should parse successfully"
+    );
 }
 
 #[test]
@@ -134,11 +140,14 @@ fn test_utf8_emoji_handling() {
         </ern:ReleaseList>
     </ern:NewReleaseMessage>"#;
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(xml.as_bytes());
     let result = parser.parse(cursor);
 
-    assert!(result.is_ok(), "Emoji UTF-8 content should parse successfully");
+    assert!(
+        result.is_ok(),
+        "Emoji UTF-8 content should parse successfully"
+    );
 }
 
 #[test]
@@ -169,11 +178,14 @@ fn test_utf8_xml_attributes() {
         </ern:ReleaseList>
     </ern:NewReleaseMessage>"#;
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(xml.as_bytes());
     let result = parser.parse(cursor);
 
-    assert!(result.is_ok(), "UTF-8 content in XML attributes should parse successfully");
+    assert!(
+        result.is_ok(),
+        "UTF-8 content in XML attributes should parse successfully"
+    );
 }
 
 #[test]
@@ -196,7 +208,8 @@ fn test_invalid_utf8_handling() {
                 <ern:ReleaseId>REL004</ern:ReleaseId>
                 <ern:ReleaseReference>R004</ern:ReleaseReference>
                 <ern:Title>
-                    <ern:TitleText>Bad UTF-8: "#.as_bytes()
+                    <ern:TitleText>Bad UTF-8: "#
+            .as_bytes(),
     );
 
     // Insert invalid UTF-8 sequence
@@ -207,10 +220,11 @@ fn test_invalid_utf8_handling() {
                 </ern:Title>
             </ern:Release>
         </ern:ReleaseList>
-    </ern:NewReleaseMessage>"#.as_bytes()
+    </ern:NewReleaseMessage>"#
+            .as_bytes(),
     );
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(&xml_bytes);
     let result = parser.parse(cursor);
 
@@ -222,11 +236,16 @@ fn test_invalid_utf8_handling() {
         Err(ParseError::XmlError { message, .. }) if message.contains("UTF-8") => {
             // Also acceptable - quick-xml may catch it first
         }
-        Err(ParseError::SimpleXmlError(message)) if message.contains("UTF-8") || message.contains("utf-8") => {
+        Err(ParseError::SimpleXmlError(message))
+            if message.contains("UTF-8") || message.contains("utf-8") =>
+        {
             // Also acceptable - utf8_utils may catch it during unescaping
         }
         other => {
-            panic!("Expected InvalidUtf8, UTF-8 XmlError, or UTF-8 SimpleXmlError, got: {:?}", other);
+            panic!(
+                "Expected InvalidUtf8, UTF-8 XmlError, or UTF-8 SimpleXmlError, got: {:?}",
+                other
+            );
         }
     }
 }
@@ -257,11 +276,14 @@ fn test_utf8_boundary_conditions() {
         </ern:ReleaseList>
     </ern:NewReleaseMessage>"#;
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(xml.as_bytes());
     let result = parser.parse(cursor);
 
-    assert!(result.is_ok(), "4-byte UTF-8 characters should parse successfully");
+    assert!(
+        result.is_ok(),
+        "4-byte UTF-8 characters should parse successfully"
+    );
 }
 
 #[test]
@@ -290,11 +312,14 @@ fn test_utf8_normalization_forms() {
         </ern:ReleaseList>
     </ern:NewReleaseMessage>"#;
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(xml.as_bytes());
     let result = parser.parse(cursor);
 
-    assert!(result.is_ok(), "Different Unicode normalization forms should parse successfully");
+    assert!(
+        result.is_ok(),
+        "Different Unicode normalization forms should parse successfully"
+    );
 }
 
 #[test]
@@ -321,19 +346,23 @@ fn test_utf8_streaming_parser() {
         </ern:ReleaseList>
     </ern:NewReleaseMessage>"#;
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(xml.as_bytes());
     let result = parser.parse(cursor);
 
     // Should work with streaming parser as well
-    assert!(result.is_ok(), "UTF-8 content should work with streaming parser");
+    assert!(
+        result.is_ok(),
+        "UTF-8 content should work with streaming parser"
+    );
 }
 
 #[test]
 fn test_large_utf8_content() {
     // Test with a larger UTF-8 content to stress test the parser
     let large_title = "🎵".repeat(1000); // 1000 music note emojis
-    let xml = format!(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let xml = format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
     <ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43">
         <ern:MessageHeader>
             <ern:MessageId>MSG_LARGE</ern:MessageId>
@@ -353,11 +382,16 @@ fn test_large_utf8_content() {
                 </ern:Title>
             </ern:Release>
         </ern:ReleaseList>
-    </ern:NewReleaseMessage>"#, large_title);
+    </ern:NewReleaseMessage>"#,
+        large_title
+    );
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(xml.as_bytes());
     let result = parser.parse(cursor);
 
-    assert!(result.is_ok(), "Large UTF-8 content should parse successfully");
+    assert!(
+        result.is_ok(),
+        "Large UTF-8 content should parse successfully"
+    );
 }

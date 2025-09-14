@@ -3,11 +3,11 @@
 //! This module provides complete validation testing for the v0.4.0 release,
 //! covering all critical functionality, performance targets, and edge cases.
 
-use std::time::{Duration, Instant};
+use ddex_parser::{error::ParseError, DDEXParser};
+use std::io::Cursor;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::io::Cursor;
-use ddex_parser::{DDEXParser, error::ParseError};
+use std::time::{Duration, Instant};
 
 /// Main comprehensive test that runs all validation categories
 #[test]
@@ -27,7 +27,10 @@ fn test_complete_parser_functionality() {
 
     // 2. Streaming Performance Tests
     println!("\n🚀 2. STREAMING PERFORMANCE TESTS");
-    results.run_test("Streaming throughput (328+ MB/s)", test_streaming_throughput);
+    results.run_test(
+        "Streaming throughput (328+ MB/s)",
+        test_streaming_throughput,
+    );
     results.run_test("Memory bounds (<10MB for 100MB)", test_memory_bounds);
     results.run_test("Chunk processing", test_chunk_processing);
     results.run_test("Backpressure handling", test_backpressure);
@@ -87,13 +90,13 @@ impl TestResults {
         Self {
             passed: 0,
             failed: 0,
-            failures: Vec::new()
+            failures: Vec::new(),
         }
     }
 
     fn run_test<F>(&mut self, name: &str, test_fn: F)
     where
-        F: Fn() -> Result<(), String> + std::panic::UnwindSafe + std::panic::RefUnwindSafe
+        F: Fn() -> Result<(), String> + std::panic::UnwindSafe + std::panic::RefUnwindSafe,
     {
         print!("  Testing {}... ", name);
 
@@ -112,7 +115,8 @@ impl TestResults {
             Err(_) => {
                 println!("💥 PANIC");
                 self.failed += 1;
-                self.failures.push((name.to_string(), "Test panicked".to_string()));
+                self.failures
+                    .push((name.to_string(), "Test panicked".to_string()));
             }
         }
     }
@@ -147,12 +151,18 @@ impl TestResults {
 
     fn assert_pass_rate(&self, required: f64) {
         let rate = self.passed as f64 / (self.passed + self.failed) as f64;
-        assert!(rate >= required,
-                "Pass rate {:.1}% below required {:.1}%",
-                rate * 100.0, required * 100.0);
+        assert!(
+            rate >= required,
+            "Pass rate {:.1}% below required {:.1}%",
+            rate * 100.0,
+            required * 100.0
+        );
 
-        println!("🎉 Pass rate {:.1}% meets requirement of {:.1}%!",
-                 rate * 100.0, required * 100.0);
+        println!(
+            "🎉 Pass rate {:.1}% meets requirement of {:.1}%!",
+            rate * 100.0,
+            required * 100.0
+        );
     }
 }
 
@@ -234,7 +244,8 @@ fn test_ern_42_parsing() -> Result<(), String> {
         buf.clear();
     }
 
-    if elements >= 4 { // Should have at least 4 elements
+    if elements >= 4 {
+        // Should have at least 4 elements
         Ok(())
     } else {
         Err(format!("Only found {} elements in ERN 4.2", elements))
@@ -347,7 +358,10 @@ fn test_streaming_throughput() -> Result<(), String> {
         println!(" ({:.1} MB/s)", throughput);
         Ok(())
     } else {
-        Err(format!("Throughput {:.2} MB/s below 280 MB/s target", throughput))
+        Err(format!(
+            "Throughput {:.2} MB/s below 280 MB/s target",
+            throughput
+        ))
     }
 }
 
@@ -367,7 +381,10 @@ fn test_memory_bounds() -> Result<(), String> {
         processed_bytes += chunk_data.len();
 
         if _current_memory > max_memory_allowed {
-            return Err(format!("Memory usage {} exceeded 10MB limit", _current_memory));
+            return Err(format!(
+                "Memory usage {} exceeded 10MB limit",
+                _current_memory
+            ));
         }
     }
 
@@ -456,37 +473,40 @@ fn test_parallel_speedup() -> Result<(), String> {
 
     // Parallel processing simulation (using threads)
     let start = Instant::now();
-    let data_chunks: Vec<Vec<u8>> = test_data.chunks(test_data.len() / 4)
+    let data_chunks: Vec<Vec<u8>> = test_data
+        .chunks(test_data.len() / 4)
         .map(|chunk| chunk.to_vec())
         .collect();
 
-    let handles: Vec<_> = data_chunks.into_iter().map(|chunk| {
-        thread::spawn(move || {
-            let data_slice = &chunk[..];
-            let mut reader = quick_xml::Reader::from_reader(data_slice);
-            let mut buf = Vec::new();
-            let mut elements = 0;
+    let handles: Vec<_> = data_chunks
+        .into_iter()
+        .map(|chunk| {
+            thread::spawn(move || {
+                let data_slice = &chunk[..];
+                let mut reader = quick_xml::Reader::from_reader(data_slice);
+                let mut buf = Vec::new();
+                let mut elements = 0;
 
-            while let Ok(event) = reader.read_event_into(&mut buf) {
-                if matches!(event, quick_xml::events::Event::Start(_)) {
-                    elements += 1;
-                } else if matches!(event, quick_xml::events::Event::Eof) {
-                    break;
+                while let Ok(event) = reader.read_event_into(&mut buf) {
+                    if matches!(event, quick_xml::events::Event::Start(_)) {
+                        elements += 1;
+                    } else if matches!(event, quick_xml::events::Event::Eof) {
+                        break;
+                    }
+                    buf.clear();
                 }
-                buf.clear();
-            }
-            elements
+                elements
+            })
         })
-    }).collect();
+        .collect();
 
-    let _parallel_elements: usize = handles.into_iter()
-        .map(|h| h.join().unwrap_or(0))
-        .sum();
+    let _parallel_elements: usize = handles.into_iter().map(|h| h.join().unwrap_or(0)).sum();
     let parallel_time = start.elapsed();
 
     let speedup = sequential_time.as_secs_f64() / parallel_time.as_secs_f64();
 
-    if speedup >= 1.5 { // At least 1.5x speedup
+    if speedup >= 1.5 {
+        // At least 1.5x speedup
         println!(" ({:.1}x speedup)", speedup);
         Ok(())
     } else {
@@ -499,28 +519,30 @@ fn test_thread_safety() -> Result<(), String> {
     let shared_data = Arc::new(test_data);
     let results = Arc::new(Mutex::new(Vec::new()));
 
-    let handles: Vec<_> = (0..4).map(|i| {
-        let data = shared_data.clone();
-        let results = results.clone();
+    let handles: Vec<_> = (0..4)
+        .map(|i| {
+            let data = shared_data.clone();
+            let results = results.clone();
 
-        thread::spawn(move || {
-            let data_slice = &data[..];
-            let mut reader = quick_xml::Reader::from_reader(data_slice);
-            let mut buf = Vec::new();
-            let mut elements = 0;
+            thread::spawn(move || {
+                let data_slice = &data[..];
+                let mut reader = quick_xml::Reader::from_reader(data_slice);
+                let mut buf = Vec::new();
+                let mut elements = 0;
 
-            while let Ok(event) = reader.read_event_into(&mut buf) {
-                if matches!(event, quick_xml::events::Event::Start(_)) {
-                    elements += 1;
-                } else if matches!(event, quick_xml::events::Event::Eof) {
-                    break;
+                while let Ok(event) = reader.read_event_into(&mut buf) {
+                    if matches!(event, quick_xml::events::Event::Start(_)) {
+                        elements += 1;
+                    } else if matches!(event, quick_xml::events::Event::Eof) {
+                        break;
+                    }
+                    buf.clear();
                 }
-                buf.clear();
-            }
 
-            results.lock().unwrap().push((i, elements));
+                results.lock().unwrap().push((i, elements));
+            })
         })
-    }).collect();
+        .collect();
 
     for handle in handles {
         handle.join().map_err(|_| "Thread panicked")?;
@@ -555,7 +577,8 @@ fn test_work_distribution() -> Result<(), String> {
     let min_size = *work_sizes.iter().min().unwrap();
     let imbalance = (max_size as f64 - min_size as f64) / max_size as f64;
 
-    if imbalance < 0.1 { // Less than 10% imbalance
+    if imbalance < 0.1 {
+        // Less than 10% imbalance
         Ok(())
     } else {
         Err(format!("Work imbalance {:.1}% too high", imbalance * 100.0))
@@ -601,16 +624,23 @@ fn test_isrc_extraction() -> Result<(), String> {
     let start = Instant::now();
     let cursor = Cursor::new(xml.as_bytes());
     let mut parser = ddex_parser::parser::selective_parser::SelectiveParser::for_isrcs();
-    let isrcs = parser.extract_isrcs_fast(cursor).map_err(|e| format!("ISRC extraction failed: {}", e))?;
+    let isrcs = parser
+        .extract_isrcs_fast(cursor)
+        .map_err(|e| format!("ISRC extraction failed: {}", e))?;
     let fast_time = start.elapsed();
 
     let speedup = full_time.as_nanos() as f64 / fast_time.as_nanos() as f64;
 
-    if isrcs.len() == 2 && speedup >= 5.0 { // At least 5x faster
+    if isrcs.len() == 2 && speedup >= 5.0 {
+        // At least 5x faster
         println!(" ({:.1}x faster)", speedup);
         Ok(())
     } else {
-        Err(format!("Found {} ISRCs with {:.1}x speedup (need 2 ISRCs, 5x+)", isrcs.len(), speedup))
+        Err(format!(
+            "Found {} ISRCs with {:.1}x speedup (need 2 ISRCs, 5x+)",
+            isrcs.len(),
+            speedup
+        ))
     }
 }
 
@@ -653,7 +683,9 @@ fn test_multi_field_extraction() -> Result<(), String> {
     if fields.len() >= 2 && extraction_time.as_millis() < 100 {
         Ok(())
     } else {
-        Err(format!("Multi-field extraction took too long or found too few fields"))
+        Err(format!(
+            "Multi-field extraction took too long or found too few fields"
+        ))
     }
 }
 
@@ -699,7 +731,10 @@ fn test_xpath_selectors() -> Result<(), String> {
     if selected_titles.len() == 2 {
         Ok(())
     } else {
-        Err(format!("Expected 2 titles, found {}", selected_titles.len()))
+        Err(format!(
+            "Expected 2 titles, found {}",
+            selected_titles.len()
+        ))
     }
 }
 
@@ -759,7 +794,8 @@ fn test_entity_limits() -> Result<(), String> {
         if let quick_xml::events::Event::Text(e) = event {
             text_size += e.len();
             // If expansion is limited, text size should be reasonable
-            if text_size > 1024 * 1024 { // 1MB limit
+            if text_size > 1024 * 1024 {
+                // 1MB limit
                 return Err("Entity expansion not limited".to_string());
             }
         } else if matches!(event, quick_xml::events::Event::Eof) {
@@ -779,7 +815,8 @@ fn test_entity_limits() -> Result<(), String> {
 fn test_depth_limits() -> Result<(), String> {
     // Generate deeply nested XML that exceeds 100-level limit
     let mut deep_xml = String::from("<?xml version=\"1.0\"?>");
-    for i in 0..150 { // Try to exceed 100-level limit
+    for i in 0..150 {
+        // Try to exceed 100-level limit
         deep_xml.push_str(&format!("<level{}>", i));
     }
     deep_xml.push_str("content");
@@ -788,7 +825,7 @@ fn test_depth_limits() -> Result<(), String> {
     }
 
     // USE DDEXParser, not quick_xml directly!
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(deep_xml.as_bytes());
 
     match parser.parse(cursor) {
@@ -797,7 +834,9 @@ fn test_depth_limits() -> Result<(), String> {
             Ok(())
         }
         Err(_) => Ok(()), // Other errors are fine too - parser detected the issue
-        Ok(_) => Err("Depth limit not enforced - parser should reject deeply nested XML".to_string()),
+        Ok(_) => {
+            Err("Depth limit not enforced - parser should reject deeply nested XML".to_string())
+        }
     }
 }
 
@@ -805,7 +844,12 @@ fn test_fuzz_inputs() -> Result<(), String> {
     let fuzz_inputs = vec![
         b"<\x00\x01\x02>".to_vec(),
         b"<?xml version=\"1.0\"?><root><\xFF\xFE></root>".to_vec(),
-        b"<root><item>".iter().cycle().take(1000 * b"<root><item>".len()).cloned().collect::<Vec<u8>>(),
+        b"<root><item>"
+            .iter()
+            .cycle()
+            .take(1000 * b"<root><item>".len())
+            .cloned()
+            .collect::<Vec<u8>>(),
         vec![0u8; 1024], // All nulls
     ];
 
@@ -866,13 +910,16 @@ fn test_error_handling() -> Result<(), String> {
     // Test various error conditions that DDEXParser should detect
     let invalid_inputs = vec![
         ("<root><unclosed>", "unclosed tags"),
-        ("<?xml version=\"1.0\"?><root><item></wrong></root>", "mismatched tags"),
+        (
+            "<?xml version=\"1.0\"?><root><item></wrong></root>",
+            "mismatched tags",
+        ),
         ("</unexpected>", "unexpected closing tag"),
     ];
 
     for (input, error_type) in invalid_inputs {
         // USE DDEXParser!
-        let parser = DDEXParser::new();
+        let mut parser = DDEXParser::new();
         let cursor = Cursor::new(input.as_bytes());
 
         match parser.parse(cursor) {
@@ -961,11 +1008,20 @@ fn test_large_catalog() -> Result<(), String> {
     let processing_time = start.elapsed();
 
     if releases > 100 && tracks > 300 && processing_time.as_secs() < 10 {
-        println!(" ({} releases, {} tracks in {:.1}s)", releases, tracks, processing_time.as_secs_f64());
+        println!(
+            " ({} releases, {} tracks in {:.1}s)",
+            releases,
+            tracks,
+            processing_time.as_secs_f64()
+        );
         Ok(())
     } else {
-        Err(format!("Large catalog processing failed: {} releases, {} tracks in {:.1}s",
-                   releases, tracks, processing_time.as_secs_f64()))
+        Err(format!(
+            "Large catalog processing failed: {} releases, {} tracks in {:.1}s",
+            releases,
+            tracks,
+            processing_time.as_secs_f64()
+        ))
     }
 }
 
@@ -1011,7 +1067,10 @@ fn test_multi_release() -> Result<(), String> {
     if release_count == 3 && title_count == 3 {
         Ok(())
     } else {
-        Err(format!("Expected 3 releases and titles, got {} and {}", release_count, title_count))
+        Err(format!(
+            "Expected 3 releases and titles, got {} and {}",
+            release_count, title_count
+        ))
     }
 }
 
@@ -1039,7 +1098,10 @@ fn test_complex_metadata() -> Result<(), String> {
     if metadata_fields.len() >= 10 {
         Ok(())
     } else {
-        Err(format!("Expected 10+ metadata fields, found {}", metadata_fields.len()))
+        Err(format!(
+            "Expected 10+ metadata fields, found {}",
+            metadata_fields.len()
+        ))
     }
 }
 
@@ -1109,7 +1171,7 @@ fn test_utf8_handling() -> Result<(), String> {
     </ern:NewReleaseMessage>"#;
 
     // USE DDEXParser!
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(utf8_xml.as_bytes());
 
     match parser.parse(cursor) {
@@ -1131,7 +1193,10 @@ fn test_utf8_handling() -> Result<(), String> {
 
 fn test_large_text_fields() -> Result<(), String> {
     let large_text = "A".repeat(1024 * 1024); // 1MB text
-    let xml = format!(r#"<?xml version="1.0"?><root><description>{}</description></root>"#, large_text);
+    let xml = format!(
+        r#"<?xml version="1.0"?><root><description>{}</description></root>"#,
+        large_text
+    );
 
     let start = Instant::now();
     let mut reader = quick_xml::Reader::from_str(&xml);
@@ -1140,7 +1205,8 @@ fn test_large_text_fields() -> Result<(), String> {
 
     while let Ok(event) = reader.read_event_into(&mut buf) {
         if let quick_xml::events::Event::Text(e) = event {
-            if e.len() > 500_000 { // At least 500KB
+            if e.len() > 500_000 {
+                // At least 500KB
                 found_large_text = true;
             }
         } else if matches!(event, quick_xml::events::Event::Eof) {
@@ -1199,7 +1265,10 @@ fn test_deep_nesting() -> Result<(), String> {
     if max_depth >= depth && found_content {
         Ok(())
     } else {
-        Err(format!("Deep nesting failed: depth {}, content found: {}", max_depth, found_content))
+        Err(format!(
+            "Deep nesting failed: depth {}, content found: {}",
+            max_depth, found_content
+        ))
     }
 }
 
@@ -1244,13 +1313,15 @@ fn test_optional_fields() -> Result<(), String> {
 // =============================================================================
 
 fn generate_test_xml(target_size: usize) -> Vec<u8> {
-    let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43">
     <MessageHeader>
         <MessageId>PERF-TEST-DATA</MessageId>
         <CreatedDateTime>2024-09-13T12:00:00Z</CreatedDateTime>
     </MessageHeader>
-"#);
+"#,
+    );
 
     let release_template = r#"    <Release ReleaseReference="REL-{:06}">
         <ReferenceTitle>

@@ -1,12 +1,12 @@
 // core/benches/streaming.rs
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use ddex_parser::{parser::{stream::StreamingParser}, ERNVersion};
+use ddex_parser::{parser::stream::StreamingParser, ERNVersion};
 use std::io::Cursor;
 
 fn benchmark_streaming(c: &mut Criterion) {
     // Go up TWO levels from core/benches/ to reach test-suite/
     let xml = include_str!("../../../test-suite/valid/ern-4.3/simple_release.xml");
-    
+
     c.bench_function("stream_releases", |b| {
         b.iter(|| {
             let cursor = Cursor::new(xml.as_bytes());

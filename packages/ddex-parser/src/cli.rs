@@ -4,16 +4,17 @@ use anyhow::{Context, Result};
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_complete::{generate, Shell};
 use colored::*;
+use glob::glob;
 use indicatif::{ProgressBar, ProgressStyle};
 use rayon::prelude::*;
-use serde_json::{Value as JsonValue};
+use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 use std::fs;
 use std::io::{self, Read, Write};
+use std::path::Path;
 use std::path::PathBuf;
 use std::process;
 use std::time::Instant;
-use glob::glob;
 
 #[derive(Parser)]
 #[command(
@@ -392,63 +393,72 @@ fn setup_colors(color_choice: ColorChoice) {
 
 fn handle_parse_command(cmd: ParseCommand) -> Result<()> {
     use ddex_parser::DDEXParser;
-    
+
     let input_content = read_input_string(&cmd.input)?;
     let mut parser = DDEXParser::new();
     let start_time = Instant::now();
-    
+
     let result = parser.parse(std::io::Cursor::new(input_content.as_bytes()))?;
     let parse_duration = start_time.elapsed();
-    
+
     let output_data = if cmd.flatten {
         serde_json::to_value(&result.flat)?
     } else {
         serde_json::to_value(&result.graph)?
     };
-    
+
     let formatted_output = format_output(&output_data, cmd.format, cmd.pretty)?;
     write_output(&formatted_output, &cmd.output)?;
-    
+
     if !is_quiet() {
-        eprintln!("{} Parsed in {:.2}ms", "✓".green(), parse_duration.as_secs_f64() * 1000.0);
+        eprintln!(
+            "{} Parsed in {:.2}ms",
+            "✓".green(),
+            parse_duration.as_secs_f64() * 1000.0
+        );
         // TODO: Extract DDEX version from result when available
         // eprintln!("  DDEX Version: {:?}", version);
-        eprintln!("  Representation: {}", if cmd.flatten { "Flattened" } else { "Graph" });
+        eprintln!(
+            "  Representation: {}",
+            if cmd.flatten { "Flattened" } else { "Graph" }
+        );
     }
-    
+
     Ok(())
 }
 
 fn handle_extract_command(cmd: ExtractCommand) -> Result<()> {
     use ddex_parser::DDEXParser;
-    
+
     let xml_content = fs::read_to_string(&cmd.input)
         .context(format!("Failed to read file: {}", cmd.input.display()))?;
-    
+
     let mut parser = DDEXParser::new();
     let result = parser.parse(std::io::Cursor::new(xml_content.as_bytes()))?;
-    
+
     // Extract elements based on query
     let extracted_data = extract_elements(&result, &cmd.query, cmd.all, cmd.include_attributes)?;
-    
+
     let formatted_output = format_output(&extracted_data, cmd.format, true)?;
     write_output(&formatted_output, &cmd.output)?;
-    
+
     if !is_quiet() {
-        let count = if extracted_data.is_array() { 
-            extracted_data.as_array().unwrap().len() 
-        } else { 1 };
+        let count = if extracted_data.is_array() {
+            extracted_data.as_array().unwrap().len()
+        } else {
+            1
+        };
         eprintln!("{} Extracted {} element(s)", "✓".green(), count);
     }
-    
+
     Ok(())
 }
 
 fn handle_stream_command(cmd: StreamCommand) -> Result<()> {
     use ddex_parser::DDEXParser;
-    
+
     fs::create_dir_all(&cmd.output_dir)?;
-    
+
     let file_size = fs::metadata(&cmd.input)?.len();
     let progress_bar = if cmd.progress && !is_quiet() {
         let pb = ProgressBar::new(file_size);
@@ -461,41 +471,41 @@ fn handle_stream_command(cmd: StreamCommand) -> Result<()> {
     } else {
         None
     };
-    
+
     // Implement streaming logic here
     let xml_content = fs::read_to_string(&cmd.input)?;
     let mut parser = DDEXParser::new();
     let result = parser.parse(std::io::Cursor::new(xml_content.as_bytes()))?;
-    
+
     // Stream elements to separate files
     let output_file = cmd.output_dir.join(format!("{}_{}.json", cmd.element, 0));
     let output = serde_json::to_string_pretty(&result.flat)?;
     fs::write(output_file, output)?;
-    
+
     if let Some(pb) = progress_bar {
         pb.finish_with_message("Streaming completed");
     }
-    
+
     if !is_quiet() {
         eprintln!("{} Streaming completed", "✓".green());
         eprintln!("  Output directory: {}", cmd.output_dir.display());
     }
-    
+
     Ok(())
 }
 
 fn handle_batch_command(cmd: BatchCommand) -> Result<()> {
-    
     fs::create_dir_all(&cmd.output_dir)?;
-    
-    let input_files: Vec<PathBuf> = glob(&cmd.pattern)?
-        .filter_map(|entry| entry.ok())
-        .collect();
-    
+
+    let input_files: Vec<PathBuf> = glob(&cmd.pattern)?.filter_map(|entry| entry.ok()).collect();
+
     if input_files.is_empty() {
-        return Err(anyhow::anyhow!("No files found matching pattern: {}", cmd.pattern));
+        return Err(anyhow::anyhow!(
+            "No files found matching pattern: {}",
+            cmd.pattern
+        ));
     }
-    
+
     let progress_bar = if !is_quiet() {
         let pb = ProgressBar::new(input_files.len() as u64);
         pb.set_style(
@@ -507,18 +517,19 @@ fn handle_batch_command(cmd: BatchCommand) -> Result<()> {
     } else {
         None
     };
-    
+
     // Setup thread pool
     let pool = rayon::ThreadPoolBuilder::new()
         .num_threads(cmd.workers)
         .build()?;
-    
+
     let results: Vec<BatchResult> = pool.install(|| {
         input_files
             .par_iter()
             .enumerate()
             .map(|(_i, file_path)| {
-                let result = process_file_batch(file_path, &cmd.output_dir, cmd.format.clone(), cmd.flatten);
+                let result =
+                    process_file_batch(file_path, &cmd.output_dir, cmd.format.clone(), cmd.flatten);
                 if let Some(pb) = &progress_bar {
                     pb.set_message(format!("Processing {}", file_path.display()));
                     pb.inc(1);
@@ -531,14 +542,14 @@ fn handle_batch_command(cmd: BatchCommand) -> Result<()> {
             })
             .collect()
     });
-    
+
     if let Some(pb) = &progress_bar {
         pb.finish_with_message("Batch processing completed");
     }
-    
+
     let successful = results.iter().filter(|r| r.success).count();
     let failed = results.len() - successful;
-    
+
     if !is_quiet() {
         eprintln!("\n{} Batch processing completed", "✓".green());
         eprintln!("  Processed: {} files", results.len());
@@ -547,7 +558,7 @@ fn handle_batch_command(cmd: BatchCommand) -> Result<()> {
             eprintln!("  Failed: {}", failed.to_string().red());
         }
     }
-    
+
     if let Some(report_path) = cmd.report {
         let report = BatchReport {
             total_files: results.len(),
@@ -558,36 +569,35 @@ fn handle_batch_command(cmd: BatchCommand) -> Result<()> {
         let report_json = serde_json::to_string_pretty(&report)?;
         fs::write(report_path, report_json)?;
     }
-    
+
     if failed > 0 && !cmd.continue_on_error {
         process::exit(1);
     }
-    
+
     Ok(())
 }
 
 fn handle_validate_command(cmd: ValidateCommand) -> Result<()> {
-    
     let mut all_valid = true;
     let mut results = Vec::new();
-    
+
     for file_path in &cmd.files {
         let validation_result = if cmd.xml_only {
             validate_xml_only(file_path)?
         } else {
             validate_ddex_file(file_path, cmd.level.clone(), cmd.ddex_version.clone())?
         };
-        
+
         let file_valid = validation_result.errors.is_empty();
         all_valid = all_valid && file_valid;
-        
+
         results.push((file_path.clone(), validation_result));
-        
+
         if cmd.fail_fast && !file_valid {
             break;
         }
     }
-    
+
     match cmd.format {
         ValidationFormat::Human => {
             for (file_path, result) in &results {
@@ -607,53 +617,53 @@ fn handle_validate_command(cmd: ValidateCommand) -> Result<()> {
             println!("{}", tap_output);
         }
     }
-    
+
     if !all_valid {
         process::exit(1);
     }
-    
+
     Ok(())
 }
 
 fn handle_convert_command(cmd: ConvertCommand) -> Result<()> {
     use ddex_parser::DDEXParser;
-    
+
     let input_content = fs::read_to_string(&cmd.input)?;
     let mut parser = DDEXParser::new();
     let result = parser.parse(std::io::Cursor::new(input_content.as_bytes()))?;
-    
+
     let output_data = if cmd.flatten {
         serde_json::to_value(&result.flat)?
     } else {
         serde_json::to_value(&result.graph)?
     };
-    
+
     let to_format = cmd.to.clone();
     let formatted_output = format_output(&output_data, cmd.to, cmd.pretty)?;
     write_output(&formatted_output, &cmd.output)?;
-    
+
     if !is_quiet() {
         eprintln!("{} Conversion completed", "✓".green());
         eprintln!("  Format: {:?}", &to_format);
     }
-    
+
     Ok(())
 }
 
 fn handle_stats_command(cmd: StatsCommand) -> Result<()> {
     use ddex_parser::DDEXParser;
-    
+
     let mut stats = StatsReport::new();
     let mut parser = DDEXParser::new();
-    
+
     for file_path in &cmd.files {
         let start_time = Instant::now();
         let file_size = fs::metadata(file_path)?.len();
-        
+
         let xml_content = fs::read_to_string(file_path)?;
         let result = parser.parse(std::io::Cursor::new(xml_content.as_bytes()))?;
         let parse_duration = start_time.elapsed();
-        
+
         stats.add_file_stats(FileStats {
             path: file_path.clone(),
             size_bytes: file_size,
@@ -662,36 +672,40 @@ fn handle_stats_command(cmd: StatsCommand) -> Result<()> {
             element_count: count_elements_flat(&result.flat),
         });
     }
-    
+
     let formatted_output = format_output(&serde_json::to_value(&stats)?, cmd.format, true)?;
     write_output(&formatted_output, &cmd.output)?;
-    
+
     if !is_quiet() {
-        eprintln!("{} Statistics generated for {} files", "✓".green(), cmd.files.len());
+        eprintln!(
+            "{} Statistics generated for {} files",
+            "✓".green(),
+            cmd.files.len()
+        );
         eprintln!("  Total size: {:.2} MB", stats.total_size_mb());
         eprintln!("  Average parse time: {:.2}ms", stats.average_parse_time());
     }
-    
+
     Ok(())
 }
 
 fn handle_interactive_mode() -> Result<()> {
     println!("{}", "DDEX Parser Interactive Mode".bold().blue());
     println!("Type 'help' for available commands, 'exit' to quit\n");
-    
+
     let stdin = io::stdin();
     loop {
         print!("{} ", "ddex>".green().bold());
         io::stdout().flush()?;
-        
+
         let mut input = String::new();
         stdin.read_line(&mut input)?;
         let input = input.trim();
-        
+
         if input.is_empty() {
             continue;
         }
-        
+
         match input {
             "exit" | "quit" => break,
             "help" => print_interactive_help(),
@@ -704,7 +718,7 @@ fn handle_interactive_mode() -> Result<()> {
             _ if input.starts_with("extract ") => {
                 let parts: Vec<&str> = input.split_whitespace().collect();
                 if parts.len() >= 3 {
-                    if let Err(e) = extract_interactive(&parts[1], &parts[2]) {
+                    if let Err(e) = extract_interactive(parts[1], parts[2]) {
                         eprintln!("{} {}", "Error:".red(), e);
                     }
                 } else {
@@ -712,51 +726,52 @@ fn handle_interactive_mode() -> Result<()> {
                 }
             }
             _ => {
-                eprintln!("Unknown command: {}. Type 'help' for available commands.", input);
+                eprintln!(
+                    "Unknown command: {}. Type 'help' for available commands.",
+                    input
+                );
             }
         }
     }
-    
+
     println!("Goodbye!");
     Ok(())
 }
 
 fn handle_completions_command(cmd: CompletionsCommand) -> Result<()> {
     let mut cli = Cli::command();
-    
+
     if let Some(output_path) = cmd.output {
         let mut file = fs::File::create(output_path)?;
         generate(cmd.shell, &mut cli, "ddex-parser", &mut file);
     } else {
         generate(cmd.shell, &mut cli, "ddex-parser", &mut io::stdout());
     }
-    
+
     Ok(())
 }
 
 fn detect_version(path: &str) -> Result<()> {
     use ddex_parser::DDEXParser;
-    
-    let xml = fs::read_to_string(path)
-        .context(format!("Failed to read file: {}", path))?;
-    
-    let mut parser = DDEXParser::new();
+
+    let xml = fs::read_to_string(path).context(format!("Failed to read file: {}", path))?;
+
+    let parser = DDEXParser::new();
     let version = parser.detect_version(std::io::Cursor::new(xml.as_bytes()))?;
-    
+
     println!("DDEX Version: {:?}", version);
-    
+
     Ok(())
 }
 
 fn sanity_check(path: &str) -> Result<()> {
     use ddex_parser::DDEXParser;
-    
-    let xml = fs::read_to_string(path)
-        .context(format!("Failed to read file: {}", path))?;
-    
-    let mut parser = DDEXParser::new();
+
+    let xml = fs::read_to_string(path).context(format!("Failed to read file: {}", path))?;
+
+    let parser = DDEXParser::new();
     let result = parser.sanity_check(std::io::Cursor::new(xml.as_bytes()))?;
-    
+
     if result.is_valid {
         println!("✅ Valid DDEX {:?}", result.version);
     } else {
@@ -765,7 +780,7 @@ fn sanity_check(path: &str) -> Result<()> {
             println!("  Error: {}", error);
         }
     }
-    
+
     std::process::exit(if result.is_valid { 0 } else { 1 })
 }
 
@@ -833,7 +848,7 @@ fn extract_elements(
 ) -> Result<JsonValue> {
     // Convert flat structure to JSON for element extraction
     let flat_json = serde_json::to_value(&result.flat)?;
-    
+
     // For now, implement basic element extraction
     if let Some(value) = find_element_by_path(&flat_json, query) {
         Ok(value.clone())
@@ -845,7 +860,7 @@ fn extract_elements(
 fn find_element_by_path<'a>(data: &'a JsonValue, path: &str) -> Option<&'a JsonValue> {
     let parts: Vec<&str> = path.split('.').collect();
     let mut current = data;
-    
+
     for part in parts {
         if let Some(obj) = current.as_object() {
             if let Some(value) = obj.get(part) {
@@ -857,39 +872,36 @@ fn find_element_by_path<'a>(data: &'a JsonValue, path: &str) -> Option<&'a JsonV
             return None;
         }
     }
-    
+
     Some(current)
 }
 
 fn process_file_batch(
-    file_path: &PathBuf,
-    output_dir: &PathBuf,
+    file_path: &Path,
+    output_dir: &Path,
     format: OutputFormat,
     flatten: bool,
 ) -> Result<()> {
     use ddex_parser::DDEXParser;
-    
+
     let xml_content = fs::read_to_string(file_path)?;
     let mut parser = DDEXParser::new();
     let result = parser.parse(std::io::Cursor::new(xml_content.as_bytes()))?;
-    
+
     let output_data = if flatten {
         serde_json::to_value(&result.flat)?
     } else {
         serde_json::to_value(&result.graph)?
     };
-    
+
     let formatted_output = format_output(&output_data, format.clone(), true)?;
-    
-    let output_filename = file_path
-        .file_stem()
-        .unwrap()
-        .to_string_lossy()
-        .to_string() + &get_extension_for_format(&format);
-    
+
+    let output_filename = file_path.file_stem().unwrap().to_string_lossy().to_string()
+        + &get_extension_for_format(&format);
+
     let output_path = output_dir.join(output_filename);
     fs::write(output_path, formatted_output)?;
-    
+
     Ok(())
 }
 
@@ -903,9 +915,9 @@ fn get_extension_for_format(format: &OutputFormat) -> String {
     }
 }
 
-fn validate_xml_only(file_path: &PathBuf) -> Result<ValidationResult> {
+fn validate_xml_only(file_path: &Path) -> Result<ValidationResult> {
     let xml_content = fs::read_to_string(file_path)?;
-    
+
     // Basic XML validation using quick-xml
     match quick_xml::Reader::from_str(&xml_content).read_event() {
         Ok(_) => Ok(ValidationResult {
@@ -924,15 +936,15 @@ fn validate_xml_only(file_path: &PathBuf) -> Result<ValidationResult> {
 }
 
 fn validate_ddex_file(
-    file_path: &PathBuf,
+    file_path: &Path,
     _level: ValidationLevel,
     _ddex_version: Option<String>,
 ) -> Result<ValidationResult> {
     use ddex_parser::DDEXParser;
-    
+
     let xml_content = fs::read_to_string(file_path)?;
-    let mut parser = DDEXParser::new();
-    
+    let parser = DDEXParser::new();
+
     match parser.sanity_check(std::io::Cursor::new(xml_content.as_bytes())) {
         Ok(result) => Ok(ValidationResult {
             errors: result.errors.clone(),
@@ -953,7 +965,7 @@ fn validate_ddex_file(
     }
 }
 
-fn print_validation_result_human(file_path: &PathBuf, result: &ValidationResult) {
+fn print_validation_result_human(file_path: &Path, result: &ValidationResult) {
     if result.errors.is_empty() {
         println!("{} {} - Valid", "✓".green(), file_path.display());
         for info in &result.info {
@@ -967,11 +979,11 @@ fn print_validation_result_human(file_path: &PathBuf, result: &ValidationResult)
             result.errors.len(),
             result.warnings.len()
         );
-        
+
         for error in &result.errors {
             println!("  {} {}", "Error:".red(), error);
         }
-        
+
         for warning in &result.warnings {
             println!("  {} {}", "Warning:".yellow(), warning);
         }
@@ -981,15 +993,16 @@ fn print_validation_result_human(file_path: &PathBuf, result: &ValidationResult)
 fn format_junit_results(results: &[(PathBuf, ValidationResult)]) -> Result<String> {
     let mut output = String::new();
     output.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-    output.push_str(&format!("<testsuite tests=\"{}\" failures=\"{}\">\n", 
+    output.push_str(&format!(
+        "<testsuite tests=\"{}\" failures=\"{}\">\n",
         results.len(),
         results.iter().filter(|(_, r)| !r.passed).count()
     ));
-    
+
     for (file_path, result) in results {
         let name = file_path.file_name().unwrap().to_string_lossy();
         output.push_str(&format!("  <testcase name=\"{}\"", name));
-        
+
         if !result.passed {
             output.push_str(">\n");
             output.push_str("    <failure>");
@@ -1002,7 +1015,7 @@ fn format_junit_results(results: &[(PathBuf, ValidationResult)]) -> Result<Strin
             output.push_str(" />\n");
         }
     }
-    
+
     output.push_str("</testsuite>\n");
     Ok(output)
 }
@@ -1010,7 +1023,7 @@ fn format_junit_results(results: &[(PathBuf, ValidationResult)]) -> Result<Strin
 fn format_tap_results(results: &[(PathBuf, ValidationResult)]) -> Result<String> {
     let mut output = String::new();
     output.push_str(&format!("1..{}\n", results.len()));
-    
+
     for (i, (file_path, result)) in results.iter().enumerate() {
         let name = file_path.file_name().unwrap().to_string_lossy();
         if result.passed {
@@ -1022,7 +1035,7 @@ fn format_tap_results(results: &[(PathBuf, ValidationResult)]) -> Result<String>
             }
         }
     }
-    
+
     Ok(output)
 }
 
@@ -1041,21 +1054,22 @@ fn count_elements_flat(flat: &ddex_core::models::flat::FlattenedMessage) -> usiz
 fn convert_to_csv(data: &JsonValue) -> Result<String> {
     // Simple CSV conversion for flat objects
     let mut output = String::new();
-    
+
     if let Some(obj) = data.as_object() {
         // Headers
         let headers: Vec<String> = obj.keys().map(|k| k.to_string()).collect();
         output.push_str(&headers.join(","));
         output.push('\n');
-        
+
         // Values
-        let values: Vec<String> = headers.iter()
+        let values: Vec<String> = headers
+            .iter()
             .map(|k| obj.get(k).unwrap().to_string())
             .collect();
         output.push_str(&values.join(","));
         output.push('\n');
     }
-    
+
     Ok(output)
 }
 
@@ -1064,10 +1078,10 @@ fn convert_to_xml(data: &JsonValue) -> Result<String> {
     let mut output = String::new();
     output.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
     output.push_str("<root>\n");
-    
+
     fn json_to_xml(value: &JsonValue, name: &str, output: &mut String, indent: usize) {
         let spaces = "  ".repeat(indent);
-        
+
         match value {
             JsonValue::Object(map) => {
                 output.push_str(&format!("{}<{}>\n", spaces, name));
@@ -1086,7 +1100,7 @@ fn convert_to_xml(data: &JsonValue) -> Result<String> {
             }
         }
     }
-    
+
     json_to_xml(data, "data", &mut output, 1);
     output.push_str("</root>\n");
     Ok(output)
@@ -1095,35 +1109,38 @@ fn convert_to_xml(data: &JsonValue) -> Result<String> {
 fn print_interactive_help() {
     println!("Available commands:");
     println!("  {} <file>       - Parse DDEX XML file", "parse".cyan());
-    println!("  {} <file> <query> - Extract elements from file", "extract".cyan());
+    println!(
+        "  {} <file> <query> - Extract elements from file",
+        "extract".cyan()
+    );
     println!("  {}              - Show this help", "help".cyan());
     println!("  {}              - Exit interactive mode", "exit".cyan());
 }
 
 fn parse_file_interactive(file_path: &str) -> Result<()> {
     use ddex_parser::DDEXParser;
-    
+
     let xml_content = fs::read_to_string(file_path)?;
     let mut parser = DDEXParser::new();
     let result = parser.parse(std::io::Cursor::new(xml_content.as_bytes()))?;
-    
+
     let json = serde_json::to_string_pretty(&result.flat)?;
     println!("{}", json);
-    
+
     Ok(())
 }
 
 fn extract_interactive(file_path: &str, query: &str) -> Result<()> {
     use ddex_parser::DDEXParser;
-    
+
     let xml_content = fs::read_to_string(file_path)?;
     let mut parser = DDEXParser::new();
     let result = parser.parse(std::io::Cursor::new(xml_content.as_bytes()))?;
-    
+
     let extracted = extract_elements(&result, query, false, false)?;
     let json = serde_json::to_string_pretty(&extracted)?;
     println!("{}", json);
-    
+
     Ok(())
 }
 
@@ -1195,29 +1212,29 @@ impl StatsReport {
             },
         }
     }
-    
+
     fn add_file_stats(&mut self, stats: FileStats) {
         self.summary.total_files += 1;
         self.summary.total_size_bytes += stats.size_bytes;
         self.summary.fastest_parse_ms = self.summary.fastest_parse_ms.min(stats.parse_time_ms);
         self.summary.slowest_parse_ms = self.summary.slowest_parse_ms.max(stats.parse_time_ms);
-        
+
         if let Some(version) = &stats.ddex_version {
             let version_str = format!("{:?}", version);
             *self.summary.ddex_versions.entry(version_str).or_insert(0) += 1;
         }
-        
+
         self.files.push(stats);
-        
+
         // Recalculate average
         let total_time: f64 = self.files.iter().map(|f| f.parse_time_ms).sum();
         self.summary.average_parse_time_ms = total_time / self.files.len() as f64;
     }
-    
+
     fn total_size_mb(&self) -> f64 {
         self.summary.total_size_bytes as f64 / 1_048_576.0
     }
-    
+
     fn average_parse_time(&self) -> f64 {
         self.summary.average_parse_time_ms
     }

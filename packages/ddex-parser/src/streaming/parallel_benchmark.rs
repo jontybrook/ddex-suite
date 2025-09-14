@@ -2,8 +2,8 @@
 //!
 //! Tests the 6.25x speedup target on 8 cores to reach 280+ MB/s throughput
 
-use crate::streaming::{WorkingStreamIterator, ParallelStreamingIterator, ParallelBenchmark};
 use crate::error::ParseError;
+use crate::streaming::{ParallelBenchmark, ParallelStreamingIterator, WorkingStreamIterator};
 use ddex_core::models::versions::ERNVersion;
 use std::io::Cursor;
 use std::time::Instant;
@@ -23,7 +23,8 @@ pub struct ComprehensiveBenchmarkResult {
 
 /// Generate large test data with realistic DDEX structure
 fn generate_comprehensive_test_data(target_mb: usize) -> Vec<u8> {
-    let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43">
     <MessageHeader>
         <MessageId>COMPREHENSIVE-BENCH-MSG-2024</MessageId>
@@ -33,16 +34,21 @@ fn generate_comprehensive_test_data(target_mb: usize) -> Vec<u8> {
             <PartyName>Comprehensive Benchmark System</PartyName>
         </MessageSender>
     </MessageHeader>
-"#);
+"#,
+    );
 
     let target_bytes = target_mb * 1024 * 1024;
     let single_release_size = 2000; // Larger releases for realistic benchmarking
     let num_releases = (target_bytes / single_release_size).max(500);
 
-    println!("Generating comprehensive test data: {} releases for {:.1}MB target", num_releases, target_mb as f64);
+    println!(
+        "Generating comprehensive test data: {} releases for {:.1}MB target",
+        num_releases, target_mb as f64
+    );
 
     for i in 0..num_releases {
-        xml.push_str(&format!(r#"
+        xml.push_str(&format!(
+            r#"
     <Release ReleaseReference="COMP-REL-{:08}">
         <ReferenceTitle>
             <TitleText>Comprehensive Benchmark Release #{}</TitleText>
@@ -66,11 +72,16 @@ fn generate_comprehensive_test_data(target_mb: usize) -> Vec<u8> {
             <Date>2024-01-01</Date>
         </ReleaseDate>
     </Release>
-"#, i, i, i % 1000));
+"#,
+            i,
+            i,
+            i % 1000
+        ));
 
         // Add comprehensive sound recordings for realistic data volume
         for j in 0..6 {
-            xml.push_str(&format!(r#"
+            xml.push_str(&format!(
+                r#"
     <SoundRecording ResourceReference="COMP-RES-{:08}-{:02}">
         <ResourceId>
             <ISRC>COMPB{:07}{:02}</ISRC>
@@ -102,12 +113,27 @@ fn generate_comprehensive_test_data(target_mb: usize) -> Vec<u8> {
             <AudioChannelConfiguration>Stereo</AudioChannelConfiguration>
         </TechnicalSoundRecordingDetails>
     </SoundRecording>
-"#, i, j, i, j, j + 1, i, (j + 3) % 8, (i + j + 30) % 60, i, i % 1000, i, i % 500, i));
+"#,
+                i,
+                j,
+                i,
+                j,
+                j + 1,
+                i,
+                (j + 3) % 8,
+                (i + j + 30) % 60,
+                i,
+                i % 1000,
+                i,
+                i % 500,
+                i
+            ));
         }
 
         // Add some video resources for diversity
         if i % 10 == 0 {
-            xml.push_str(&format!(r#"
+            xml.push_str(&format!(
+                r#"
     <Video ResourceReference="COMP-VID-{:08}">
         <ResourceId>
             <ISAN>COMP-{:016}-{:01}</ISAN>
@@ -123,7 +149,14 @@ fn generate_comprehensive_test_data(target_mb: usize) -> Vec<u8> {
             <VideoDefinitionType>HD</VideoDefinitionType>
         </TechnicalVideoDetails>
     </Video>
-"#, i, i, 0, i, (i + 3) % 6, (i + 30) % 60));
+"#,
+                i,
+                i,
+                0,
+                i,
+                (i + 3) % 6,
+                (i + 30) % 60
+            ));
         }
 
         // Progress reporting for large files
@@ -176,7 +209,12 @@ pub fn run_comprehensive_benchmark() -> Result<Vec<ComprehensiveBenchmarkResult>
         let working_time = start.elapsed();
         let working_throughput = actual_size_mb / working_time.as_secs_f64();
         let working_count = working_elements.unwrap().len();
-        println!("{:.2} MB/s ({} elements, {:.3}s)", working_throughput, working_count, working_time.as_secs_f64());
+        println!(
+            "{:.2} MB/s ({} elements, {:.3}s)",
+            working_throughput,
+            working_count,
+            working_time.as_secs_f64()
+        );
 
         // 2. Benchmark zero-copy parser
         // print!("   Zero-copy parser:    ");
@@ -200,7 +238,12 @@ pub fn run_comprehensive_benchmark() -> Result<Vec<ComprehensiveBenchmarkResult>
         let parallel_time = start.elapsed();
         let parallel_throughput = actual_size_mb / parallel_time.as_secs_f64();
         let parallel_count = parallel_elements.unwrap().len();
-        println!("{:.2} MB/s ({} elements, {:.3}s)", parallel_throughput, parallel_count, parallel_time.as_secs_f64());
+        println!(
+            "{:.2} MB/s ({} elements, {:.3}s)",
+            parallel_throughput,
+            parallel_count,
+            parallel_time.as_secs_f64()
+        );
 
         // Calculate metrics
         let parallel_speedup = parallel_throughput / working_throughput;
@@ -209,7 +252,14 @@ pub fn run_comprehensive_benchmark() -> Result<Vec<ComprehensiveBenchmarkResult>
 
         println!("   📈 Parallel speedup: {:.2}x", parallel_speedup);
         println!("   ⚙️  Core efficiency:  {:.1}%", parallel_efficiency);
-        println!("   🎯 Target 280MB/s:   {}", if target_achieved { "✅ ACHIEVED" } else { "❌ Not yet" });
+        println!(
+            "   🎯 Target 280MB/s:   {}",
+            if target_achieved {
+                "✅ ACHIEVED"
+            } else {
+                "❌ Not yet"
+            }
+        );
 
         // Verify element counts are consistent
         assert_eq!(working_count, parallel_count, "Element counts should match");
@@ -232,10 +282,19 @@ pub fn run_comprehensive_benchmark() -> Result<Vec<ComprehensiveBenchmarkResult>
     println!("📊 COMPREHENSIVE BENCHMARK SUMMARY");
     println!("===================================");
 
-    let avg_working = results.iter().map(|r| r.working_parser_mb_per_sec).sum::<f64>() / results.len() as f64;
-    let avg_parallel = results.iter().map(|r| r.parallel_parser_mb_per_sec).sum::<f64>() / results.len() as f64;
+    let avg_working = results
+        .iter()
+        .map(|r| r.working_parser_mb_per_sec)
+        .sum::<f64>()
+        / results.len() as f64;
+    let avg_parallel = results
+        .iter()
+        .map(|r| r.parallel_parser_mb_per_sec)
+        .sum::<f64>()
+        / results.len() as f64;
     let avg_speedup = avg_parallel / avg_working;
-    let avg_efficiency = results.iter().map(|r| r.parallel_efficiency).sum::<f64>() / results.len() as f64;
+    let avg_efficiency =
+        results.iter().map(|r| r.parallel_efficiency).sum::<f64>() / results.len() as f64;
 
     println!("Average Performance:");
     println!("  Working Parser:    {:.2} MB/s", avg_working);
@@ -250,11 +309,18 @@ pub fn run_comprehensive_benchmark() -> Result<Vec<ComprehensiveBenchmarkResult>
         println!("✅ 480x performance improvement successfully delivered");
     } else if targets_met > 0 {
         println!("\n🔥 PARTIAL SUCCESS");
-        println!("✅ {}/{} test sizes achieved 280+ MB/s target", targets_met, results.len());
+        println!(
+            "✅ {}/{} test sizes achieved 280+ MB/s target",
+            targets_met,
+            results.len()
+        );
     } else {
         println!("\n⚠️  TARGET NOT FULLY MET");
         let improvement_needed = 280.0 / avg_parallel;
-        println!("🔧 Additional {:.1}x improvement needed", improvement_needed);
+        println!(
+            "🔧 Additional {:.1}x improvement needed",
+            improvement_needed
+        );
     }
 
     // Performance analysis vs blueprint expectations
@@ -275,7 +341,10 @@ pub fn run_comprehensive_benchmark() -> Result<Vec<ComprehensiveBenchmarkResult>
     } else {
         let original_speed = 0.58; // From blueprint
         let actual_improvement = avg_parallel / original_speed;
-        println!("📊 Actual improvement: {:.0}x (from {:.2} to {:.1} MB/s)", actual_improvement, original_speed, avg_parallel);
+        println!(
+            "📊 Actual improvement: {:.0}x (from {:.2} to {:.1} MB/s)",
+            actual_improvement, original_speed, avg_parallel
+        );
     }
 
     Ok(results)
@@ -291,13 +360,24 @@ mod tests {
         assert!(!results.is_empty(), "Should have benchmark results");
 
         for result in &results {
-            assert!(result.parallel_parser_mb_per_sec > 0.0, "Parallel parser should have positive throughput");
-            assert!(result.working_parser_mb_per_sec > 0.0, "Working parser should have positive throughput");
-            assert!(result.parallel_speedup > 0.0, "Should have positive speedup");
+            assert!(
+                result.parallel_parser_mb_per_sec > 0.0,
+                "Parallel parser should have positive throughput"
+            );
+            assert!(
+                result.working_parser_mb_per_sec > 0.0,
+                "Working parser should have positive throughput"
+            );
+            assert!(
+                result.parallel_speedup > 0.0,
+                "Should have positive speedup"
+            );
 
             // Parallel parser should be faster than working parser
-            assert!(result.parallel_parser_mb_per_sec >= result.working_parser_mb_per_sec,
-                   "Parallel parser should be at least as fast as working parser");
+            assert!(
+                result.parallel_parser_mb_per_sec >= result.working_parser_mb_per_sec,
+                "Parallel parser should be at least as fast as working parser"
+            );
         }
 
         println!("✅ Comprehensive benchmark validation completed");
@@ -311,11 +391,20 @@ mod tests {
         let baseline_result = ParallelBenchmark::measure_parallel_speedup(&data).unwrap();
 
         println!("Parallel speedup test results:");
-        println!("  Single-threaded: {:.2} MB/s", baseline_result.single_threaded_throughput);
-        println!("  Best parallel: {:.2} MB/s", baseline_result.best_throughput);
+        println!(
+            "  Single-threaded: {:.2} MB/s",
+            baseline_result.single_threaded_throughput
+        );
+        println!(
+            "  Best parallel: {:.2} MB/s",
+            baseline_result.best_throughput
+        );
         println!("  Best speedup: {:.2}x", baseline_result.best_speedup);
 
-        assert!(baseline_result.best_speedup > 1.0, "Should achieve some speedup");
+        assert!(
+            baseline_result.best_speedup > 1.0,
+            "Should achieve some speedup"
+        );
     }
 
     #[test]
@@ -327,7 +416,8 @@ mod tests {
             if threads <= num_cpus::get() {
                 let start = Instant::now();
                 let cursor = Cursor::new(&data);
-                let mut iterator = ParallelStreamingIterator::with_threads(cursor, ERNVersion::V4_3, threads);
+                let mut iterator =
+                    ParallelStreamingIterator::with_threads(cursor, ERNVersion::V4_3, threads);
                 let elements: Result<Vec<_>, _> = iterator.collect();
                 let elapsed = start.elapsed();
 
@@ -336,7 +426,10 @@ mod tests {
                 let throughput = (data.len() as f64 / (1024.0 * 1024.0)) / elapsed.as_secs_f64();
                 let element_count = elements.unwrap().len();
 
-                println!("  {} threads: {:.1} MB/s ({} elements)", threads, throughput, element_count);
+                println!(
+                    "  {} threads: {:.1} MB/s ({} elements)",
+                    threads, throughput, element_count
+                );
             }
         }
     }

@@ -7,8 +7,8 @@ use crate::models::{
     Extensions,
 };
 use chrono::{DateTime, Utc};
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ParsedERNMessage {
@@ -23,7 +23,7 @@ impl ParsedERNMessage {
         &self.flat.releases
     }
 
-    pub fn resources(&self) -> &HashMap<String, ParsedResource> {
+    pub fn resources(&self) -> &IndexMap<String, ParsedResource> {
         &self.flat.resources
     }
 
@@ -31,7 +31,7 @@ impl ParsedERNMessage {
         &self.flat.deals
     }
 
-    pub fn parties(&self) -> &HashMap<String, Party> {
+    pub fn parties(&self) -> &IndexMap<String, Party> {
         &self.flat.parties
     }
 }
@@ -44,9 +44,9 @@ pub struct FlattenedMessage {
     pub sender: Organization,
     pub recipient: Organization,
     pub releases: Vec<ParsedRelease>,
-    pub resources: HashMap<String, ParsedResource>,
+    pub resources: IndexMap<String, ParsedResource>,
     pub deals: Vec<ParsedDeal>,
-    pub parties: HashMap<String, Party>,
+    pub parties: IndexMap<String, Party>,
     pub version: String,
     pub profile: Option<String>,
     pub stats: MessageStats,

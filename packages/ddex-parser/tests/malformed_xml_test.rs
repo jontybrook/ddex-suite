@@ -1,5 +1,5 @@
-use ddex_parser::{DDEXParser, error::ParseError};
 use ddex_parser::parser::security::SecurityConfig;
+use ddex_parser::{error::ParseError, DDEXParser};
 use std::io::Cursor;
 
 #[test]
@@ -22,12 +22,14 @@ fn test_mismatched_opening_closing_tags() {
         </ern:ReleaseList>
     </ern:NewReleaseMessage>"#;
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(xml.as_bytes());
     let result = parser.parse(cursor);
 
     match result {
-        Err(ParseError::MismatchedTags { expected, found, .. }) => {
+        Err(ParseError::MismatchedTags {
+            expected, found, ..
+        }) => {
             assert_eq!(expected, "Release");
             assert_eq!(found, "WrongTag");
         }
@@ -56,7 +58,7 @@ fn test_unexpected_closing_tag() {
         </ern:ReleaseList>
     </ern:NewReleaseMessage>"#;
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(xml.as_bytes());
     let result = parser.parse(cursor);
 
@@ -86,7 +88,7 @@ fn test_unclosed_tags() {
                 <ern:ReleaseId>REL003</ern:ReleaseId>
     <!-- Missing closing tags -->"#;
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(xml.as_bytes());
     let result = parser.parse(cursor);
 
@@ -110,7 +112,7 @@ fn test_invalid_element_name() {
         </ern:MessageHeader>
     </ern:NewReleaseMessage>"#;
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(xml.as_bytes());
     let result = parser.parse(cursor);
 
@@ -132,7 +134,7 @@ fn test_duplicate_attributes() {
         </ern:MessageHeader>
     </ern:NewReleaseMessage>"#;
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(xml.as_bytes());
     let result = parser.parse(cursor);
 
@@ -154,7 +156,7 @@ fn test_invalid_attribute_characters() {
         </ern:MessageHeader>
     </ern:NewReleaseMessage>"#;
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(xml.as_bytes());
     let result = parser.parse(cursor);
 
@@ -176,7 +178,7 @@ fn test_malformed_cdata() {
         </ern:MessageHeader>
     </ern:NewReleaseMessage>"#;
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(xml.as_bytes());
     let result = parser.parse(cursor);
 
@@ -200,7 +202,7 @@ fn test_empty_element_name() {
         </ern:MessageHeader>
     </ern:NewReleaseMessage>"#;
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(xml.as_bytes());
     let result = parser.parse(cursor);
 
@@ -209,7 +211,10 @@ fn test_empty_element_name() {
         Err(ParseError::XmlError { .. }) | Err(ParseError::MalformedXml { .. }) => {
             // Either error is acceptable for this malformed case
         }
-        other => panic!("Expected parsing error for empty element name, got: {:?}", other),
+        other => panic!(
+            "Expected parsing error for empty element name, got: {:?}",
+            other
+        ),
     }
 }
 
@@ -237,12 +242,15 @@ fn test_nested_elements_depth_tracking() {
         </ern:ReleaseList>
     </ern:NewReleaseMessage>"#;
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(xml.as_bytes());
     let result = parser.parse(cursor);
 
     // This should succeed as it's well-formed XML
-    assert!(result.is_ok(), "Well-formed nested XML should parse successfully");
+    assert!(
+        result.is_ok(),
+        "Well-formed nested XML should parse successfully"
+    );
 }
 
 #[test]
@@ -263,12 +271,15 @@ fn test_xml_with_comments_and_processing_instructions() {
         </ern:MessageHeader>
     </ern:NewReleaseMessage>"#;
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(xml.as_bytes());
     let result = parser.parse(cursor);
 
     // Comments and PIs should be allowed in well-formed XML
-    assert!(result.is_ok(), "XML with comments and processing instructions should parse successfully");
+    assert!(
+        result.is_ok(),
+        "XML with comments and processing instructions should parse successfully"
+    );
 }
 
 #[test]
@@ -285,12 +296,15 @@ fn test_self_closing_elements() {
         <ern:ReleaseList/>
     </ern:NewReleaseMessage>"#;
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(xml.as_bytes());
     let result = parser.parse(cursor);
 
     // Self-closing elements should be valid
-    assert!(result.is_ok(), "XML with self-closing elements should parse successfully");
+    assert!(
+        result.is_ok(),
+        "XML with self-closing elements should parse successfully"
+    );
 }
 
 #[test]
@@ -308,13 +322,15 @@ fn test_complex_malformed_structure() {
         </ern:MessageHeader>
     </ern:NewReleaseMessage>"#;
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(xml.as_bytes());
     let result = parser.parse(cursor);
 
     // Should catch the first mismatched tag
     match result {
-        Err(ParseError::MismatchedTags { expected, found, .. }) => {
+        Err(ParseError::MismatchedTags {
+            expected, found, ..
+        }) => {
             assert_eq!(expected, "MessageSender");
             assert_eq!(found, "MessageRecipient");
         }
@@ -335,14 +351,20 @@ fn test_strict_vs_lenient_validation() {
     </ern:NewReleaseMessage>"#;
 
     // Test with strict validation (should pass)
-    let strict_parser = DDEXParser::with_config(SecurityConfig::strict());
+    let mut strict_parser = DDEXParser::with_config(SecurityConfig::strict());
     let cursor = Cursor::new(xml.as_bytes());
     let result = strict_parser.parse(cursor);
-    assert!(result.is_ok(), "Well-formed XML should pass strict validation");
+    assert!(
+        result.is_ok(),
+        "Well-formed XML should pass strict validation"
+    );
 
     // Test with default validation (should also pass)
-    let default_parser = DDEXParser::new();
+    let mut default_parser = DDEXParser::new();
     let cursor = Cursor::new(xml.as_bytes());
     let result = default_parser.parse(cursor);
-    assert!(result.is_ok(), "Well-formed XML should pass default validation");
+    assert!(
+        result.is_ok(),
+        "Well-formed XML should pass default validation"
+    );
 }

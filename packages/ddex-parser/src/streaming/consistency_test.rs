@@ -1,7 +1,7 @@
 //! Test to ensure parsing consistency between different parsers
 
-use crate::streaming::{WorkingStreamIterator, ParallelStreamingIterator};
-use crate::error::{ParseError, ErrorLocation};
+use crate::error::{ErrorLocation, ParseError};
+use crate::streaming::{ParallelStreamingIterator, WorkingStreamIterator};
 use ddex_core::models::versions::ERNVersion;
 use std::io::Cursor;
 
@@ -45,14 +45,21 @@ pub fn test_parser_consistency() -> Result<(), ParseError> {
     let parallel_elements: Result<Vec<_>, _> = parallel_iterator.collect();
     let parallel_elements = parallel_elements?;
 
-    println!("Parallel parser found {} elements:", parallel_elements.len());
+    println!(
+        "Parallel parser found {} elements:",
+        parallel_elements.len()
+    );
     for (i, element) in parallel_elements.iter().enumerate() {
         println!("  {}: {:?}", i, std::mem::discriminant(element));
     }
 
     // Check if counts match
     if working_elements.len() != parallel_elements.len() {
-        println!("❌ Element count mismatch: {} vs {}", working_elements.len(), parallel_elements.len());
+        println!(
+            "❌ Element count mismatch: {} vs {}",
+            working_elements.len(),
+            parallel_elements.len()
+        );
 
         // Find differences
         let max_len = working_elements.len().max(parallel_elements.len());
@@ -61,13 +68,16 @@ pub fn test_parser_consistency() -> Result<(), ParseError> {
             let parallel_type = parallel_elements.get(i).map(std::mem::discriminant);
 
             if working_type != parallel_type {
-                println!("  Difference at index {}: working={:?}, parallel={:?}", i, working_type, parallel_type);
+                println!(
+                    "  Difference at index {}: working={:?}, parallel={:?}",
+                    i, working_type, parallel_type
+                );
             }
         }
 
         return Err(ParseError::ConversionError {
             message: "Element count mismatch between parsers".to_string(),
-            location: ErrorLocation::default()
+            location: ErrorLocation::default(),
         });
     }
 

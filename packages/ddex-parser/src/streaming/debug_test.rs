@@ -31,11 +31,21 @@ mod tests {
         }
 
         // Find the release element
-        if let Some(WorkingStreamingElement::Release { reference, title, .. }) =
-            elements.iter().find(|e| matches!(e, WorkingStreamingElement::Release { .. })) {
-            println!("Debug - Found release: reference='{}', title='{}'", reference, title);
+        if let Some(WorkingStreamingElement::Release {
+            reference, title, ..
+        }) = elements
+            .iter()
+            .find(|e| matches!(e, WorkingStreamingElement::Release { .. }))
+        {
+            println!(
+                "Debug - Found release: reference='{}', title='{}'",
+                reference, title
+            );
             assert_eq!(reference, "REL-2023-001", "Release reference should match");
-            assert_eq!(title, "Greatest Hits Collection", "Release title should match");
+            assert_eq!(
+                title, "Greatest Hits Collection",
+                "Release title should match"
+            );
         } else {
             panic!("No release element found");
         }

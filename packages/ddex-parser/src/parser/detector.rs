@@ -1,9 +1,8 @@
+use crate::error::{ErrorLocation, ParseError};
 use ddex_core::models::versions::ERNVersion;
-use quick_xml::{Reader, events::Event};
+use quick_xml::{events::Event, Reader};
 use std::io::BufRead;
-use crate::error::{ParseError, ErrorLocation};
 // core/src/parser/detector.rs
-
 
 pub struct VersionDetector;
 

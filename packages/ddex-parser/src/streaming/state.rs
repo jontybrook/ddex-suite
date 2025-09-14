@@ -1,15 +1,16 @@
 // src/streaming/state.rs
 //! State machine for streaming DDEX parser
 
+use ddex_core::models::common::Copyright;
 use ddex_core::models::{graph::*, versions::ERNVersion};
 use ddex_core::models::{Identifier, LocalizedString};
-use ddex_core::models::common::Copyright;
 use std::collections::HashMap;
 
 /// Parser state for streaming processing
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum ParserState {
     /// Initial state - waiting for root element
+    #[default]
     Initial,
     /// Parsing message header
     InHeader {
@@ -27,15 +28,9 @@ pub enum ParserState {
         depth: usize,
     },
     /// Parsing a party
-    InParty {
-        party: PartialParty,
-        depth: usize,
-    },
+    InParty { party: PartialParty, depth: usize },
     /// Parsing a deal
-    InDeal {
-        deal: PartialDeal,
-        depth: usize,
-    },
+    InDeal { deal: PartialDeal, depth: usize },
     /// Skipping unknown element
     Skipping {
         start_depth: usize,
@@ -45,12 +40,6 @@ pub enum ParserState {
     Complete,
     /// Error state
     Error(String),
-}
-
-impl Default for ParserState {
-    fn default() -> Self {
-        ParserState::Initial
-    }
 }
 
 /// Parsing context that tracks current state
@@ -97,11 +86,11 @@ impl ParsingContext {
     }
 
     pub fn is_at_path(&self, path: &[&str]) -> bool {
-        self.current_path.len() >= path.len() &&
-        self.current_path[self.current_path.len() - path.len()..]
-            .iter()
-            .zip(path.iter())
-            .all(|(a, b)| a == b)
+        self.current_path.len() >= path.len()
+            && self.current_path[self.current_path.len() - path.len()..]
+                .iter()
+                .zip(path.iter())
+                .all(|(a, b)| a == b)
     }
 
     pub fn clear_text_buffer(&mut self) {
@@ -197,8 +186,7 @@ impl PartialRelease {
     }
 
     pub fn is_complete(&self) -> bool {
-        self.release_reference.is_some() &&
-        !self.release_title.is_empty()
+        self.release_reference.is_some() && !self.release_title.is_empty()
     }
 
     pub fn into_release(self) -> Release {
@@ -226,15 +214,17 @@ impl PartialResource {
     pub fn estimate_memory(&self) -> usize {
         let mut size = std::mem::size_of::<PartialResource>();
         size += self.resource_reference.as_ref().map_or(0, |s| s.len());
-        size += self.resource_type.as_ref().map_or(0, |_| std::mem::size_of::<ResourceType>());
+        size += self
+            .resource_type
+            .as_ref()
+            .map_or(0, |_| std::mem::size_of::<ResourceType>());
         size += self.resource_id.len() * std::mem::size_of::<Identifier>();
         size += self.reference_title.len() * std::mem::size_of::<LocalizedString>();
         size
     }
 
     pub fn is_complete(&self) -> bool {
-        self.resource_reference.is_some() &&
-        !self.reference_title.is_empty()
+        self.resource_reference.is_some() && !self.reference_title.is_empty()
     }
 
     pub fn into_resource(self) -> Resource {

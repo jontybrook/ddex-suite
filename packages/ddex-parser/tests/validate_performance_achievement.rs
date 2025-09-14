@@ -3,10 +3,10 @@
 //! This test suite validates the achievement of 328.39 MB/s throughput and documents
 //! the performance improvements achieved in the streaming parser implementation.
 
-use std::time::Instant;
-use std::fs;
-use ddex_parser::streaming::ParallelStreamingParser;
 use chrono;
+use ddex_parser::streaming::ParallelStreamingParser;
+use std::fs;
+use std::time::Instant;
 
 /// Performance validation test that confirms the 328.39 MB/s achievement
 #[test]
@@ -44,7 +44,10 @@ fn validate_328_mbps_achievement() {
             let releases = parser.parse_parallel(&data);
             let elapsed = start.elapsed();
 
-            assert!(releases.is_ok(), "Parser should successfully process valid DDEX data");
+            assert!(
+                releases.is_ok(),
+                "Parser should successfully process valid DDEX data"
+            );
 
             let throughput = (size_mb as f64) / elapsed.as_secs_f64();
             throughputs.push(throughput);
@@ -71,8 +74,11 @@ fn validate_328_mbps_achievement() {
     println!("TARGET:    280.00 MB/s");
     println!("ACHIEVED:  {:.2}% of target", (average / 280.0) * 100.0);
 
-    assert!(average > 280.0,
-            "Performance {:.2} MB/s must exceed 280 MB/s target", average);
+    assert!(
+        average > 280.0,
+        "Performance {:.2} MB/s must exceed 280 MB/s target",
+        average
+    );
 
     println!("\n✅ PERFORMANCE TARGET EXCEEDED!");
 
@@ -97,11 +103,16 @@ fn validate_memory_efficiency() {
     let end_memory = get_memory_usage();
 
     let memory_increase = end_memory - start_memory;
-    println!("Memory used for 100MB file: {:.2} MB", memory_increase / (1024.0 * 1024.0));
+    println!(
+        "Memory used for 100MB file: {:.2} MB",
+        memory_increase / (1024.0 * 1024.0)
+    );
 
     assert!(result.is_ok(), "Parser should handle large files");
-    assert!(memory_increase < 20.0 * 1024.0 * 1024.0, // Less than 20MB
-            "Memory usage should stay bounded for streaming parser");
+    assert!(
+        memory_increase < 20.0 * 1024.0 * 1024.0, // Less than 20MB
+        "Memory usage should stay bounded for streaming parser"
+    );
 
     println!("✅ O(1) Memory complexity validated");
 }
@@ -141,10 +152,15 @@ fn benchmark_against_other_parsers() {
 
     println!("DDEX Parser v0.4.0:  {:.2} MB/s", our_throughput);
     println!("quick-xml baseline:  {:.2} MB/s", quick_throughput);
-    println!("Improvement:         {:.1}x", our_throughput / quick_throughput);
+    println!(
+        "Improvement:         {:.1}x",
+        our_throughput / quick_throughput
+    );
 
-    assert!(our_throughput > quick_throughput,
-            "Our parser should outperform baseline XML parsing");
+    assert!(
+        our_throughput > quick_throughput,
+        "Our parser should outperform baseline XML parsing"
+    );
 }
 
 /// Test parallel efficiency scaling
@@ -164,7 +180,11 @@ fn validate_parallel_scaling() {
         let result = parser.parse_parallel(&data);
         let elapsed = start.elapsed();
 
-        assert!(result.is_ok(), "Parser should work with {} threads", threads);
+        assert!(
+            result.is_ok(),
+            "Parser should work with {} threads",
+            threads
+        );
 
         let throughput = 100.0 / elapsed.as_secs_f64();
         scaling_results.push((threads, throughput));
@@ -177,14 +197,17 @@ fn validate_parallel_scaling() {
     for (threads, throughput) in &scaling_results[1..] {
         let speedup = throughput / single_thread_perf;
         let efficiency = speedup / (*threads as f64) * 100.0;
-        println!("{} threads: {:.2}x speedup ({:.1}% efficiency)",
-                threads, speedup, efficiency);
+        println!(
+            "{} threads: {:.2}x speedup ({:.1}% efficiency)",
+            threads, speedup, efficiency
+        );
     }
 }
 
 /// Generate complex DDEX test data for benchmarking
 fn generate_complex_ddex_file(target_bytes: usize) -> Vec<u8> {
-    let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43">
     <MessageHeader>
         <MessageId>PERFORMANCE-VALIDATION-2024</MessageId>
@@ -194,14 +217,16 @@ fn generate_complex_ddex_file(target_bytes: usize) -> Vec<u8> {
             <PartyName>Performance Validation System</PartyName>
         </MessageSender>
     </MessageHeader>
-"#);
+"#,
+    );
 
     // Calculate number of releases needed to reach target size
     let single_release_size = 2500; // Estimated bytes per complex release
     let num_releases = (target_bytes / single_release_size).max(100);
 
     for i in 0..num_releases {
-        xml.push_str(&format!(r#"
+        xml.push_str(&format!(
+            r#"
     <Release ReleaseReference="PERF-REL-{:08}">
         <ReferenceTitle>
             <TitleText>Performance Test Release #{}</TitleText>
@@ -226,7 +251,12 @@ fn generate_complex_ddex_file(target_bytes: usize) -> Vec<u8> {
             <Year>2024</Year>
             <CLineText>Performance Validation Suite</CLineText>
         </CLine>
-    </Release>"#, i, i, i % 100, i % 100));
+    </Release>"#,
+            i,
+            i,
+            i % 100,
+            i % 100
+        ));
     }
 
     xml.push_str("\n</ern:NewReleaseMessage>");

@@ -1,5 +1,5 @@
-use ddex_parser::{DDEXParser, error::ParseError};
 use ddex_parser::parser::security::SecurityConfig;
+use ddex_parser::{error::ParseError, DDEXParser};
 use std::io::Cursor;
 
 #[test]
@@ -9,7 +9,7 @@ fn test_depth_limit_enforcement() {
 
     // Create parser with strict security config
     let security_config = SecurityConfig::strict();
-    let parser = DDEXParser::with_config(security_config);
+    let mut parser = DDEXParser::with_config(security_config);
 
     let cursor = Cursor::new(deep_xml.as_bytes());
     let result = parser.parse(cursor);
@@ -28,7 +28,7 @@ fn test_depth_limit_within_bounds() {
     // Create a nested XML within the limit
     let xml = create_deep_xml(50); // Within limit of 100
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(xml.as_bytes());
 
     // This should not fail due to depth limits
@@ -50,7 +50,7 @@ fn test_custom_depth_limit() {
     let mut security_config = SecurityConfig::strict();
     security_config.max_element_depth = 10;
 
-    let parser = DDEXParser::with_config(security_config);
+    let mut parser = DDEXParser::with_config(security_config);
     let cursor = Cursor::new(xml.as_bytes());
     let result = parser.parse(cursor);
 
@@ -68,7 +68,7 @@ fn test_relaxed_depth_limit() {
     let xml = create_deep_xml(150); // More than strict limit but within relaxed
 
     let security_config = SecurityConfig::relaxed(); // Should have limit of 200
-    let parser = DDEXParser::with_config(security_config);
+    let mut parser = DDEXParser::with_config(security_config);
 
     let cursor = Cursor::new(xml.as_bytes());
 
@@ -85,7 +85,8 @@ fn test_relaxed_depth_limit() {
 
 /// Creates a deeply nested XML structure for testing depth limits
 fn create_deep_xml(depth: usize) -> String {
-    let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43"
                        xmlns:avs="http://ddex.net/xml/avs"
                        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
@@ -102,7 +103,8 @@ fn create_deep_xml(depth: usize) -> String {
         <ern:Release>
             <ern:ReleaseId>REL001</ern:ReleaseId>
             <ern:ReleaseReference>R001</ern:ReleaseReference>
-"#);
+"#,
+    );
 
     // Add deeply nested elements
     for i in 0..depth {
@@ -116,10 +118,12 @@ fn create_deep_xml(depth: usize) -> String {
         xml.push_str(&format!("</ern:NestedElement{}>", i));
     }
 
-    xml.push_str(r#"
+    xml.push_str(
+        r#"
         </ern:Release>
     </ern:ReleaseList>
-</ern:NewReleaseMessage>"#);
+</ern:NewReleaseMessage>"#,
+    );
 
     xml
 }

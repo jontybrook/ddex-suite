@@ -1,20 +1,20 @@
 // src/streaming/mod.rs
 //! High-performance streaming DDEX parser implementation
 
-pub mod parser;
-pub mod state;
+pub mod aligned_comprehensive;
+pub mod comprehensive;
 pub mod element;
+pub mod fast_streaming_parser;
+pub mod fast_zero_copy;
+pub mod fixed_comprehensive;
 pub mod iterator;
 pub mod minimal;
-pub mod comprehensive;
-pub mod fixed_comprehensive;
-pub mod aligned_comprehensive;
+pub mod parallel_parser;
+pub mod parser;
+pub mod state;
 pub mod verification;
 pub mod working_impl;
 pub mod zero_copy_parser;
-pub mod fast_zero_copy;
-pub mod parallel_parser;
-pub mod fast_streaming_parser;
 
 #[cfg(test)]
 pub mod comprehensive_tests;
@@ -34,15 +34,20 @@ pub mod parallel_benchmark;
 #[cfg(test)]
 pub mod consistency_test;
 
+pub use element::ParsedElement;
+pub use fast_streaming_parser::{
+    create_fast_parser, FastElementType, FastParsingStats, FastStreamingElement,
+    FastStreamingIterator, FastStreamingParser,
+};
+pub use fast_zero_copy::{FastZeroCopyIterator, FastZeroCopyParser};
+pub use iterator::DDEXStreamIterator;
+pub use parallel_parser::{ParallelBenchmark, ParallelStreamingIterator, ParallelStreamingParser};
 pub use parser::StreamingDDEXParser;
 pub use state::{ParserState, ParsingContext};
-pub use element::ParsedElement;
-pub use iterator::DDEXStreamIterator;
-pub use working_impl::{WorkingStreamingParser, WorkingStreamingElement, WorkingStreamIterator, WorkingStreamingStats};
-pub use zero_copy_parser::{ZeroCopyParser, ZeroCopyElement, ZeroCopyStreamIterator};
-pub use fast_zero_copy::{FastZeroCopyParser, FastZeroCopyIterator};
-pub use parallel_parser::{ParallelStreamingParser, ParallelStreamingIterator, ParallelBenchmark};
-pub use fast_streaming_parser::{FastStreamingParser, FastStreamingElement, FastElementType, FastStreamingIterator, FastParsingStats, create_fast_parser};
+pub use working_impl::{
+    WorkingStreamIterator, WorkingStreamingElement, WorkingStreamingParser, WorkingStreamingStats,
+};
+pub use zero_copy_parser::{ZeroCopyElement, ZeroCopyParser, ZeroCopyStreamIterator};
 
 use crate::parser::security::SecurityConfig;
 

@@ -1,5 +1,5 @@
 // Test the connection between FastStreamingParser and main parser API
-use ddex_parser::{DDEXParser, parser::security::SecurityConfig};
+use ddex_parser::{parser::security::SecurityConfig, DDEXParser};
 use std::io::Cursor;
 use std::time::Instant;
 
@@ -31,7 +31,10 @@ fn test_fast_streaming_connection_basic() {
     let message = result.unwrap();
 
     // Should have detected at least one release
-    assert!(message.flat.stats.release_count >= 1, "Should detect releases");
+    assert!(
+        message.flat.stats.release_count >= 1,
+        "Should detect releases"
+    );
 
     println!("Fast streaming parse took: {:?}", elapsed);
     println!("Release count: {}", message.flat.stats.release_count);
@@ -40,23 +43,28 @@ fn test_fast_streaming_connection_basic() {
 #[test]
 fn test_fast_streaming_vs_normal_performance() {
     // Generate larger XML for performance comparison
-    let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43">
     <ern:MessageHeader>
         <ern:MessageId>PERF_TEST</ern:MessageId>
     </ern:MessageHeader>
-    <ern:ReleaseList>"#);
+    <ern:ReleaseList>"#,
+    );
 
     // Add many releases for comparison
     for i in 0..100 {
-        xml.push_str(&format!(r#"
+        xml.push_str(&format!(
+            r#"
             <ern:Release>
                 <ern:ReleaseId>REL{:03}</ern:ReleaseId>
                 <ern:ReleaseReference>R{:03}</ern:ReleaseReference>
                 <ern:Title>
                     <ern:TitleText>Test Release {}</ern:TitleText>
                 </ern:Title>
-            </ern:Release>"#, i, i, i));
+            </ern:Release>"#,
+            i, i, i
+        ));
     }
     xml.push_str("</ern:ReleaseList></ern:NewReleaseMessage>");
 
@@ -84,10 +92,16 @@ fn test_fast_streaming_vs_normal_performance() {
 
     if result_fast.is_ok() {
         let message_fast = result_fast.unwrap();
-        println!("Fast streaming release count: {}", message_fast.flat.stats.release_count);
+        println!(
+            "Fast streaming release count: {}",
+            message_fast.flat.stats.release_count
+        );
 
         // Should have detected releases
-        assert!(message_fast.flat.stats.release_count > 0, "Fast streaming should detect releases");
+        assert!(
+            message_fast.flat.stats.release_count > 0,
+            "Fast streaming should detect releases"
+        );
     } else {
         println!("Fast streaming failed: {:?}", result_fast);
     }
@@ -95,7 +109,10 @@ fn test_fast_streaming_vs_normal_performance() {
     // Note: Normal parsing might fail with empty cursor, but that's OK for this test
     // We're mainly testing that fast streaming is now connected and callable
     if let Ok(message_normal) = result_normal {
-        println!("Normal parsing release count: {}", message_normal.flat.releases.len());
+        println!(
+            "Normal parsing release count: {}",
+            message_normal.flat.releases.len()
+        );
     }
 }
 
@@ -124,9 +141,12 @@ fn test_fast_streaming_explicitly() {
     match result {
         Ok(message) => {
             println!("Success! Message: {:?}", message.flat.message_type);
-        },
+        }
         Err(e) => {
-            println!("Fast streaming error (this shows the connection is working): {}", e);
+            println!(
+                "Fast streaming error (this shows the connection is working): {}",
+                e
+            );
             // The connection is working if we see our custom error message
             return;
         }

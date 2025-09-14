@@ -37,13 +37,13 @@ impl fmt::Display for EntityType {
 pub enum ReferenceStyle {
     /// Sequential numbering (A1, A2, R1, R2)
     Sequential,
-    
+
     /// Reference format with custom separator
     Prefixed {
         /// Separator character(s) between prefix and ID
-        separator: String
+        separator: String,
     },
-    
+
     /// Custom formatter function
     Custom(fn(EntityType, u32) -> String),
 }
@@ -59,13 +59,13 @@ impl Default for ReferenceStyle {
 pub struct LinkerConfig {
     /// Reference generation style
     pub reference_style: ReferenceStyle,
-    
+
     /// Enable auto-linking
     pub auto_link: bool,
-    
+
     /// Validate references on build
     pub validate_on_build: bool,
-    
+
     /// Strict mode (fail on warnings)
     pub strict: bool,
 }
@@ -155,7 +155,7 @@ pub enum LinkingError {
         /// Source of the reference
         from: String,
         /// Target that doesn't exist
-        to: String
+        to: String,
     },
     /// Duplicate reference ID
     #[error("Duplicate reference: {0}")]
@@ -170,4 +170,3 @@ pub enum LinkingError {
     #[error("Validation failed: {0}")]
     ValidationFailed(String),
 }
-

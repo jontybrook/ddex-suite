@@ -36,24 +36,29 @@ pub fn generate_safe_test_data(size_mb: usize) -> Vec<u8> {
     // Cap at 10MB to prevent timeouts
     let actual_size = (size_mb * 1024 * 1024).min(10 * 1024 * 1024);
 
-    let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43">
     <MessageHeader>
         <MessageId>SAFE-TEST-DATA</MessageId>
         <CreatedDateTime>2024-09-13T12:00:00Z</CreatedDateTime>
     </MessageHeader>
-"#);
+"#,
+    );
 
     let release_size = 200;
     let num_releases = (actual_size / release_size).min(1000);
 
     for i in 0..num_releases {
-        xml.push_str(&format!(r#"
+        xml.push_str(&format!(
+            r#"
     <Release ReleaseReference="SAFE-{:06}">
         <ReferenceTitle>
             <TitleText>Safe Test #{}</TitleText>
         </ReferenceTitle>
-    </Release>"#, i, i));
+    </Release>"#,
+            i, i
+        ));
 
         if xml.len() >= actual_size {
             break;
@@ -69,7 +74,8 @@ pub fn run_categorized_test<F>(category: TestCategory, test_name: &str, test_fn:
 where
     F: FnOnce() + std::panic::UnwindSafe,
 {
-    println!("\n🧪 Running {} test: {}",
+    println!(
+        "\n🧪 Running {} test: {}",
         match category {
             TestCategory::Critical => "CRITICAL",
             TestCategory::EdgeCase => "EDGE_CASE",
@@ -92,7 +98,10 @@ where
         }
         Err(_) => {
             if elapsed > timeout && !category.is_release_blocking() {
-                println!("⏰ Test timeout after {:.2}s (non-critical)", elapsed.as_secs_f64());
+                println!(
+                    "⏰ Test timeout after {:.2}s (non-critical)",
+                    elapsed.as_secs_f64()
+                );
                 println!("⚠️  Known issue documented in KNOWN_ISSUES.md");
                 return; // Don't panic for non-critical timeouts
             } else {
@@ -135,7 +144,10 @@ fn improved_namespace_scope_inheritance() {
             }
 
             assert!(element_count >= 4, "Should parse basic structure");
-            println!("✅ Basic namespace parsing works ({} elements)", element_count);
+            println!(
+                "✅ Basic namespace parsing works ({} elements)",
+                element_count
+            );
 
             // Test the working approach
             let standard_xml = r#"<?xml version="1.0"?>
@@ -161,9 +173,12 @@ fn improved_namespace_scope_inheritance() {
             }
 
             assert!(std_elements >= 3, "Standard approach should work perfectly");
-            println!("✅ Standard namespace approach works perfectly ({} elements)", std_elements);
+            println!(
+                "✅ Standard namespace approach works perfectly ({} elements)",
+                std_elements
+            );
             println!("⚠️  Complex inheritance edge case documented in KNOWN_ISSUES.md");
-        }
+        },
     );
 }
 
@@ -177,7 +192,10 @@ fn improved_comprehensive_streaming_parser() {
 
             // Use reasonable test data (not 700MB!)
             let test_data = generate_safe_test_data(5); // 5MB
-            println!("Generated {:.2}MB test data", test_data.len() as f64 / (1024.0 * 1024.0));
+            println!(
+                "Generated {:.2}MB test data",
+                test_data.len() as f64 / (1024.0 * 1024.0)
+            );
 
             let parse_start = Instant::now();
             let mut reader = quick_xml::Reader::from_reader(&test_data[..]);
@@ -200,7 +218,8 @@ fn improved_comprehensive_streaming_parser() {
             }
 
             let parse_time = parse_start.elapsed();
-            let throughput = (test_data.len() as f64 / (1024.0 * 1024.0)) / parse_time.as_secs_f64();
+            let throughput =
+                (test_data.len() as f64 / (1024.0 * 1024.0)) / parse_time.as_secs_f64();
 
             println!("Streaming parser results:");
             println!("  Elements: {}", element_count);
@@ -213,7 +232,7 @@ fn improved_comprehensive_streaming_parser() {
             assert!(throughput > 20.0, "Should achieve good throughput");
 
             println!("✅ Comprehensive streaming parser working excellently!");
-        }
+        },
     );
 }
 
@@ -298,72 +317,74 @@ fn improved_aligned_streaming_with_builders() {
             println!("✅ Phase 3: Processed {} elements", processed);
 
             println!("✅ All integration phases completed successfully!");
-        }
+        },
     );
 }
 
 #[test]
 fn improved_comprehensive_benchmark() {
-    run_categorized_test(
-        TestCategory::Benchmark,
-        "comprehensive_benchmark",
-        || {
-            println!("Testing comprehensive benchmark with reasonable approach...");
+    run_categorized_test(TestCategory::Benchmark, "comprehensive_benchmark", || {
+        println!("Testing comprehensive benchmark with reasonable approach...");
 
-            let test_sizes = vec![1, 2, 5]; // Reasonable sizes
-            let mut results = Vec::new();
+        let test_sizes = vec![1, 2, 5]; // Reasonable sizes
+        let mut results = Vec::new();
 
-            for size_mb in test_sizes {
-                println!("\n📊 Benchmarking {}MB...", size_mb);
+        for size_mb in test_sizes {
+            println!("\n📊 Benchmarking {}MB...", size_mb);
 
-                let data = generate_safe_test_data(size_mb);
-                let actual_mb = data.len() as f64 / (1024.0 * 1024.0);
+            let data = generate_safe_test_data(size_mb);
+            let actual_mb = data.len() as f64 / (1024.0 * 1024.0);
 
-                // Run benchmark
-                let start = Instant::now();
-                let mut reader = quick_xml::Reader::from_reader(&data[..]);
-                let mut buf = Vec::new();
-                let mut elements = 0;
+            // Run benchmark
+            let start = Instant::now();
+            let mut reader = quick_xml::Reader::from_reader(&data[..]);
+            let mut buf = Vec::new();
+            let mut elements = 0;
 
-                while let Ok(event) = reader.read_event_into(&mut buf) {
-                    if matches!(event, quick_xml::events::Event::Start(_)) {
-                        elements += 1;
-                    } else if matches!(event, quick_xml::events::Event::Eof) {
-                        break;
-                    }
-                    buf.clear();
+            while let Ok(event) = reader.read_event_into(&mut buf) {
+                if matches!(event, quick_xml::events::Event::Start(_)) {
+                    elements += 1;
+                } else if matches!(event, quick_xml::events::Event::Eof) {
+                    break;
                 }
-
-                let elapsed = start.elapsed();
-                let throughput = actual_mb / elapsed.as_secs_f64();
-
-                results.push((size_mb, throughput, elements));
-                println!("  Result: {:.2} MB/s ({} elements)", throughput, elements);
+                buf.clear();
             }
 
-            // Analyze results
-            println!("\n📈 BENCHMARK SUMMARY:");
-            let total_throughput: f64 = results.iter().map(|(_, tp, _)| *tp).sum();
-            let avg_throughput = total_throughput / results.len() as f64;
+            let elapsed = start.elapsed();
+            let throughput = actual_mb / elapsed.as_secs_f64();
 
-            for (size, throughput, elements) in &results {
-                println!("  {}MB: {:.2} MB/s ({} elements)", size, throughput, elements);
-            }
-            println!("  Average: {:.2} MB/s", avg_throughput);
-
-            assert!(avg_throughput > 10.0, "Should achieve reasonable performance");
-
-            if avg_throughput > 100.0 {
-                println!("✅ EXCELLENT performance (>100 MB/s)");
-            } else if avg_throughput > 50.0 {
-                println!("✅ GOOD performance (>50 MB/s)");
-            } else {
-                println!("✅ ACCEPTABLE performance (>10 MB/s)");
-            }
-
-            println!("✅ Comprehensive benchmark completed successfully!");
+            results.push((size_mb, throughput, elements));
+            println!("  Result: {:.2} MB/s ({} elements)", throughput, elements);
         }
-    );
+
+        // Analyze results
+        println!("\n📈 BENCHMARK SUMMARY:");
+        let total_throughput: f64 = results.iter().map(|(_, tp, _)| *tp).sum();
+        let avg_throughput = total_throughput / results.len() as f64;
+
+        for (size, throughput, elements) in &results {
+            println!(
+                "  {}MB: {:.2} MB/s ({} elements)",
+                size, throughput, elements
+            );
+        }
+        println!("  Average: {:.2} MB/s", avg_throughput);
+
+        assert!(
+            avg_throughput > 10.0,
+            "Should achieve reasonable performance"
+        );
+
+        if avg_throughput > 100.0 {
+            println!("✅ EXCELLENT performance (>100 MB/s)");
+        } else if avg_throughput > 50.0 {
+            println!("✅ GOOD performance (>50 MB/s)");
+        } else {
+            println!("✅ ACCEPTABLE performance (>10 MB/s)");
+        }
+
+        println!("✅ Comprehensive benchmark completed successfully!");
+    });
 }
 
 #[test]
@@ -375,7 +396,10 @@ fn test_improvements_system() {
     let large_request = generate_safe_test_data(100); // Should cap at 10MB
 
     assert!(small_data.len() > 1000, "Should generate reasonable data");
-    assert!(large_request.len() <= 11 * 1024 * 1024, "Should cap large requests");
+    assert!(
+        large_request.len() <= 11 * 1024 * 1024,
+        "Should cap large requests"
+    );
 
     // Test categorization
     assert_eq!(TestCategory::Critical.timeout_seconds(), 30);

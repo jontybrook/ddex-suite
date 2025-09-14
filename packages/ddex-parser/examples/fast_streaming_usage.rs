@@ -1,8 +1,8 @@
 // examples/fast_streaming_usage.rs
 //! Example demonstrating how to use the FastStreamingParser for high-performance DDEX parsing
 
-use ddex_parser::streaming::{FastStreamingParser, StreamingConfig, create_fast_parser};
 use ddex_parser::parser::security::SecurityConfig;
+use ddex_parser::streaming::{create_fast_parser, FastStreamingParser, StreamingConfig};
 use std::io::{BufReader, Cursor};
 use std::time::Instant;
 
@@ -33,12 +33,12 @@ fn example_default_fast_parsing() -> Result<(), Box<dyn std::error::Error>> {
 
     let sample_xml = generate_sample_xml(100); // 100 releases
     let cursor = Cursor::new(sample_xml.as_bytes());
-    let reader = BufReader::new(cursor);
+    let mut reader = BufReader::new(cursor);
 
     let mut parser = create_fast_parser();
     let start = Instant::now();
 
-    let iterator = parser.parse_streaming(reader, None)?;
+    let iterator = parser.parse_streaming(&mut reader, None)?;
     let stats = iterator.stats();
     let elapsed = start.elapsed();
 
@@ -46,7 +46,10 @@ fn example_default_fast_parsing() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("   Results:");
     println!("   - Elements parsed: {}", elements.len());
-    println!("   - Data size: {:.2} KB", stats.total_bytes as f64 / 1024.0);
+    println!(
+        "   - Data size: {:.2} KB",
+        stats.total_bytes as f64 / 1024.0
+    );
     println!("   - Parse time: {:?}", elapsed);
     println!("   - Throughput: {:.2} MB/s", stats.throughput_mbps);
     println!("   - Elements/sec: {:.0}", stats.elements_per_second);
@@ -64,39 +67,44 @@ fn example_custom_configuration() -> Result<(), Box<dyn std::error::Error>> {
 
     let config = StreamingConfig {
         security: SecurityConfig::strict(), // Strict validation
-        buffer_size: 256 * 1024,           // 256KB buffer
-        max_memory: 500 * 1024 * 1024,     // 500MB memory limit
-        chunk_size: 1024,                  // 1MB chunks
+        buffer_size: 256 * 1024,            // 256KB buffer
+        max_memory: 500 * 1024 * 1024,      // 500MB memory limit
+        chunk_size: 1024,                   // 1MB chunks
         enable_progress: true,              // Enable progress callbacks
-        progress_interval: 100 * 1024,     // Progress every 100KB
+        progress_interval: 100 * 1024,      // Progress every 100KB
     };
 
     let sample_xml = generate_sample_xml(500); // Larger dataset
     let cursor = Cursor::new(sample_xml.as_bytes());
-    let reader = BufReader::new(cursor);
+    let mut reader = BufReader::new(cursor);
 
     let mut parser = FastStreamingParser::new(config);
     let start = Instant::now();
 
     // Parse with progress callback
     let progress_callback = Box::new(|progress: ddex_parser::streaming::StreamingProgress| {
-        println!("   Progress: {:.1}KB processed, {} elements found, depth: {}",
+        println!(
+            "   Progress: {:.1}KB processed, {} elements found, depth: {}",
             progress.bytes_processed as f64 / 1024.0,
             progress.elements_parsed,
             progress.current_depth
         );
     });
 
-    let iterator = parser.parse_streaming(reader, Some(progress_callback))?;
+    let iterator = parser.parse_streaming(&mut reader, Some(progress_callback))?;
     let stats = iterator.stats();
 
-    let releases: Vec<_> = iterator.filter_by_type(ddex_parser::streaming::FastElementType::Release);
+    let releases: Vec<_> =
+        iterator.filter_by_type(ddex_parser::streaming::FastElementType::Release);
     let elapsed = start.elapsed();
 
     println!("   Results:");
     println!("   - Total elements: {}", stats.total_elements);
     println!("   - Releases found: {}", releases.len());
-    println!("   - Data size: {:.2} MB", stats.total_bytes as f64 / (1024.0 * 1024.0));
+    println!(
+        "   - Data size: {:.2} MB",
+        stats.total_bytes as f64 / (1024.0 * 1024.0)
+    );
     println!("   - Parse time: {:?}", elapsed);
     println!("   - Throughput: {:.2} MB/s", stats.throughput_mbps);
     println!();
@@ -116,18 +124,21 @@ fn example_large_file_parsing() -> Result<(), Box<dyn std::error::Error>> {
 
     let config = StreamingConfig {
         security: SecurityConfig::relaxed(),
-        buffer_size: 128 * 1024,       // 128KB buffer
-        max_memory: 50 * 1024 * 1024,  // 50MB memory limit
-        chunk_size: 512,               // 512KB chunks
+        buffer_size: 128 * 1024,      // 128KB buffer
+        max_memory: 50 * 1024 * 1024, // 50MB memory limit
+        chunk_size: 512,              // 512KB chunks
         enable_progress: true,
         progress_interval: 1024 * 1024, // Progress every 1MB
     };
 
     let cursor = Cursor::new(large_xml.as_bytes());
-    let reader = BufReader::new(cursor);
+    let mut reader = BufReader::new(cursor);
     let mut parser = FastStreamingParser::new(config);
 
-    println!("   Processing {:.2} MB of XML data...", total_size as f64 / (1024.0 * 1024.0));
+    println!(
+        "   Processing {:.2} MB of XML data...",
+        total_size as f64 / (1024.0 * 1024.0)
+    );
 
     let start = Instant::now();
     let mut total_releases = 0;
@@ -136,9 +147,12 @@ fn example_large_file_parsing() -> Result<(), Box<dyn std::error::Error>> {
     let progress_callback = Box::new(|progress: ddex_parser::streaming::StreamingProgress| {
         let percent = if total_size > 0 {
             (progress.bytes_processed as f64 / total_size as f64) * 100.0
-        } else { 0.0 };
+        } else {
+            0.0
+        };
 
-        println!("   [{:5.1}%] {:.1}MB processed, {} elements, {:.1}MB memory",
+        println!(
+            "   [{:5.1}%] {:.1}MB processed, {} elements, {:.1}MB memory",
             percent,
             progress.bytes_processed as f64 / (1024.0 * 1024.0),
             progress.elements_parsed,
@@ -146,7 +160,7 @@ fn example_large_file_parsing() -> Result<(), Box<dyn std::error::Error>> {
         );
     });
 
-    let iterator = parser.parse_streaming(reader, Some(progress_callback))?;
+    let iterator = parser.parse_streaming(&mut reader, Some(progress_callback))?;
     let stats = iterator.stats();
 
     // Process elements in chunks to manage memory
@@ -187,38 +201,48 @@ fn example_performance_comparison() -> Result<(), Box<dyn std::error::Error>> {
 
     // Test configurations
     let configs = vec![
-        ("Relaxed/Fast", StreamingConfig {
-            security: SecurityConfig::relaxed(),
-            buffer_size: 64 * 1024,
-            chunk_size: 512,
-            ..Default::default()
-        }),
-        ("Strict/Secure", StreamingConfig {
-            security: SecurityConfig::strict(),
-            buffer_size: 32 * 1024,
-            chunk_size: 256,
-            ..Default::default()
-        }),
-        ("Large Buffer", StreamingConfig {
-            security: SecurityConfig::relaxed(),
-            buffer_size: 512 * 1024,  // 512KB
-            chunk_size: 2048,         // 2MB chunks
-            ..Default::default()
-        }),
+        (
+            "Relaxed/Fast",
+            StreamingConfig {
+                security: SecurityConfig::relaxed(),
+                buffer_size: 64 * 1024,
+                chunk_size: 512,
+                ..Default::default()
+            },
+        ),
+        (
+            "Strict/Secure",
+            StreamingConfig {
+                security: SecurityConfig::strict(),
+                buffer_size: 32 * 1024,
+                chunk_size: 256,
+                ..Default::default()
+            },
+        ),
+        (
+            "Large Buffer",
+            StreamingConfig {
+                security: SecurityConfig::relaxed(),
+                buffer_size: 512 * 1024, // 512KB
+                chunk_size: 2048,        // 2MB chunks
+                ..Default::default()
+            },
+        ),
     ];
 
     for (name, config) in configs {
         let cursor = Cursor::new(test_xml.as_bytes());
-        let reader = BufReader::new(cursor);
+        let mut reader = BufReader::new(cursor);
         let mut parser = FastStreamingParser::new(config);
 
         let start = Instant::now();
-        let iterator = parser.parse_streaming(reader, None)?;
+        let iterator = parser.parse_streaming(&mut reader, None)?;
         let stats = iterator.stats();
         let elapsed = start.elapsed();
         let elements: Vec<_> = iterator.collect();
 
-        println!("   {:<15} | {:>6} elements | {:>6.0}ms | {:>6.2}MB/s | {:>8.0} elem/s",
+        println!(
+            "   {:<15} | {:>6} elements | {:>6.0}ms | {:>6.2}MB/s | {:>8.0} elem/s",
             name,
             elements.len(),
             elapsed.as_millis(),
@@ -240,7 +264,8 @@ fn example_performance_comparison() -> Result<(), Box<dyn std::error::Error>> {
 
 /// Generate sample DDEX XML for testing
 fn generate_sample_xml(num_releases: usize) -> String {
-    let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43">
     <ern:MessageHeader>
         <ern:MessageId>FAST_STREAMING_EXAMPLE</ern:MessageId>
@@ -252,10 +277,12 @@ fn generate_sample_xml(num_releases: usize) -> String {
         </ern:MessageRecipient>
         <ern:MessageCreatedDateTime>2024-01-15T10:30:00Z</ern:MessageCreatedDateTime>
     </ern:MessageHeader>
-    <ern:ReleaseList>"#);
+    <ern:ReleaseList>"#,
+    );
 
     for i in 0..num_releases {
-        xml.push_str(&format!(r#"
+        xml.push_str(&format!(
+            r#"
         <ern:Release>
             <ern:ReleaseId>REL{:06}</ern:ReleaseId>
             <ern:ReleaseReference>R{:06}</ern:ReleaseReference>
@@ -270,7 +297,9 @@ fn generate_sample_xml(num_releases: usize) -> String {
                 </ern:DisplayArtist>
                 <ern:ReleaseDate>2024-01-15</ern:ReleaseDate>
             </ern:ReleaseDetailsByTerritory>
-        </ern:Release>"#, i, i, i, i));
+        </ern:Release>"#,
+            i, i, i, i
+        ));
     }
 
     xml.push_str("</ern:ReleaseList></ern:NewReleaseMessage>");

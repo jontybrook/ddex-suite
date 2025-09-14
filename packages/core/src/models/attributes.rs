@@ -733,7 +733,7 @@ mod tests {
         let regular = QName::new("title");
         let prefixed = QName::from_str("ern:title").unwrap();
 
-        let mut qnames = vec![&regular, &prefixed, &xmlns_ern, &xmlns];
+        let mut qnames = [&regular, &prefixed, &xmlns_ern, &xmlns].to_vec();
         qnames.sort();
 
         // Namespace declarations should come first

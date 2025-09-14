@@ -3,12 +3,14 @@
 
 use crate::error::ParseError;
 use crate::parser::security::SecurityConfig;
-use ddex_core::models::graph::{Release, MessageHeader, MessageType, MessageSender, MessageRecipient, ReleaseType};
-use ddex_core::models::{LocalizedString, Identifier, IdentifierType};
+use ddex_core::models::graph::{
+    MessageHeader, MessageRecipient, MessageSender, MessageType, Release, ReleaseType,
+};
 use ddex_core::models::versions::ERNVersion;
-use quick_xml::{Reader, events::Event};
-use std::io::BufRead;
+use ddex_core::models::{Identifier, IdentifierType, LocalizedString};
+use quick_xml::{events::Event, Reader};
 use std::collections::HashMap;
+use std::io::BufRead;
 
 /// Enhanced multi-release parser with accurate counting and content extraction
 #[derive(Debug, Clone)]
@@ -55,6 +57,7 @@ pub struct MultiReleaseResult {
 
 /// Release parsing context
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct ReleaseContext {
     release: Release,
     depth: usize,
@@ -175,7 +178,10 @@ impl MultiReleaseParser {
     }
 
     /// Parse multiple releases with full content extraction
-    pub fn parse_releases<R: BufRead>(&mut self, reader: R) -> Result<MultiReleaseResult, ParseError> {
+    pub fn parse_releases<R: BufRead>(
+        &mut self,
+        reader: R,
+    ) -> Result<MultiReleaseResult, ParseError> {
         let start_time = std::time::Instant::now();
         let mut xml_reader = Reader::from_reader(reader);
         xml_reader.config_mut().trim_text(true);
@@ -209,12 +215,10 @@ impl MultiReleaseParser {
 
                     // Extract attributes
                     let mut attributes = HashMap::new();
-                    for attr_result in e.attributes() {
-                        if let Ok(attr) = attr_result {
-                            let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
-                            let value = String::from_utf8_lossy(&attr.value).to_string();
-                            attributes.insert(key, value);
-                        }
+                    for attr in e.attributes().flatten() {
+                        let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
+                        let value = String::from_utf8_lossy(&attr.value).to_string();
+                        attributes.insert(key, value);
                     }
 
                     match element_name.as_str() {
@@ -224,7 +228,8 @@ impl MultiReleaseParser {
                         }
                         "Release" | "ern:Release" if in_release_list => {
                             // Start new release
-                            let is_main = attributes.get("IsMainRelease")
+                            let is_main = attributes
+                                .get("IsMainRelease")
                                 .or_else(|| attributes.get("isMainRelease"))
                                 .map(|v| v.to_lowercase() == "true");
 
@@ -247,14 +252,21 @@ impl MultiReleaseParser {
                         "MessageHeader" | "ern:MessageHeader" if message_header.is_none() => {
                             // Parse message header if detailed parsing is enabled
                             if self.detailed_parsing {
-                                message_header = Some(self.parse_message_header(&mut xml_reader, &mut buf)?);
+                                message_header =
+                                    Some(self.parse_message_header(&mut xml_reader, &mut buf)?);
                             }
                         }
                         _ => {
                             // Handle elements within release context
                             if let Some(ref mut context) = current_context {
                                 context.current_element_path.push(element_name.clone());
-                                self.process_release_element(context, &element_name, &attributes, &mut xml_reader, &mut buf)?;
+                                self.process_release_element(
+                                    context,
+                                    &element_name,
+                                    &attributes,
+                                    &mut xml_reader,
+                                    &mut buf,
+                                )?;
                             }
                         }
                     }
@@ -270,7 +282,9 @@ impl MultiReleaseParser {
                         "Release" | "ern:Release" => {
                             if let Some(context) = current_context.take() {
                                 // Extract release reference if available
-                                if let Some(reference) = self.extract_release_reference(&context.release) {
+                                if let Some(reference) =
+                                    self.extract_release_reference(&context.release)
+                                {
                                     release_references.push(reference);
                                 }
 
@@ -295,17 +309,18 @@ impl MultiReleaseParser {
                     let element_name = self.extract_element_name(e.name().as_ref())?;
 
                     // Handle empty Release elements (rare but possible)
-                    if (element_name == "Release" || element_name.ends_with(":Release")) && in_release_list {
+                    if (element_name == "Release" || element_name.ends_with(":Release"))
+                        && in_release_list
+                    {
                         let mut attributes = HashMap::new();
-                        for attr_result in e.attributes() {
-                            if let Ok(attr) = attr_result {
-                                let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
-                                let value = String::from_utf8_lossy(&attr.value).to_string();
-                                attributes.insert(key, value);
-                            }
+                        for attr in e.attributes().flatten() {
+                            let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
+                            let value = String::from_utf8_lossy(&attr.value).to_string();
+                            attributes.insert(key, value);
                         }
 
-                        let is_main = attributes.get("IsMainRelease")
+                        let is_main = attributes
+                            .get("IsMainRelease")
                             .or_else(|| attributes.get("isMainRelease"))
                             .map(|v| v.to_lowercase() == "true");
 
@@ -330,7 +345,8 @@ impl MultiReleaseParser {
                         // Use utf8_utils for proper UTF-8 handling
                         let current_pos = xml_reader.buffer_position() as usize;
                         let text = crate::utf8_utils::handle_text_node(e, current_pos)?
-                            .trim().to_string();
+                            .trim()
+                            .to_string();
 
                         if !text.is_empty() {
                             self.process_release_text_content(context, &text)?;
@@ -400,7 +416,11 @@ impl MultiReleaseParser {
     }
 
     /// Parse message header
-    fn parse_message_header<R: BufRead>(&self, _reader: &mut Reader<R>, _buf: &mut Vec<u8>) -> Result<MessageHeader, ParseError> {
+    fn parse_message_header<R: BufRead>(
+        &self,
+        _reader: &mut Reader<R>,
+        _buf: &mut [u8],
+    ) -> Result<MessageHeader, ParseError> {
         // Simplified header creation for now
         Ok(MessageHeader {
             message_id: format!("MSG_{:?}", self.version),
@@ -437,7 +457,7 @@ impl MultiReleaseParser {
         element_name: &str,
         attributes: &HashMap<String, String>,
         _reader: &mut Reader<impl BufRead>,
-        _buf: &mut Vec<u8>
+        _buf: &mut [u8],
     ) -> Result<(), ParseError> {
         // Update the release based on the element
         match element_name {
@@ -463,14 +483,20 @@ impl MultiReleaseParser {
 
         // Store attributes for potential use
         for (key, value) in attributes {
-            context.attributes.insert(format!("{}:{}", element_name, key), value.clone());
+            context
+                .attributes
+                .insert(format!("{}:{}", element_name, key), value.clone());
         }
 
         Ok(())
     }
 
     /// Process text content within a release
-    fn process_release_text_content(&self, context: &mut ReleaseContext, text: &str) -> Result<(), ParseError> {
+    fn process_release_text_content(
+        &self,
+        context: &mut ReleaseContext,
+        text: &str,
+    ) -> Result<(), ParseError> {
         let current_path = context.current_element_path.join("/");
 
         if current_path.contains("ReleaseReference") {
@@ -487,10 +513,13 @@ impl MultiReleaseParser {
             if !context.release.release_title.is_empty() {
                 context.release.release_title[0] = LocalizedString::new(text.to_string());
             } else {
-                context.release.release_title.push(LocalizedString::new(text.to_string()));
+                context
+                    .release
+                    .release_title
+                    .push(LocalizedString::new(text.to_string()));
             }
         } else if current_path.contains("ReleaseType") {
-            context.release.release_type = Some(match &text as &str {
+            context.release.release_type = Some(match text {
                 "Album" => ReleaseType::Album,
                 "Single" => ReleaseType::Single,
                 "EP" => ReleaseType::EP,
@@ -551,7 +580,9 @@ mod tests {
         let cursor = Cursor::new(xml.as_bytes());
         let mut parser = MultiReleaseParser::new(ERNVersion::V4_3);
 
-        let count = parser.count_releases(cursor).expect("Should count releases");
+        let count = parser
+            .count_releases(cursor)
+            .expect("Should count releases");
 
         assert_eq!(count, 3);
         assert_eq!(parser.stats.total_releases_found, 3);
@@ -596,7 +627,9 @@ mod tests {
         let cursor = Cursor::new(xml.as_bytes());
         let mut parser = MultiReleaseParser::new(ERNVersion::V4_3).detailed_parsing(true);
 
-        let result = parser.parse_releases(cursor).expect("Should parse releases");
+        let result = parser
+            .parse_releases(cursor)
+            .expect("Should parse releases");
 
         assert_eq!(result.releases.len(), 2);
         assert_eq!(result.release_count, 2);
@@ -607,17 +640,27 @@ mod tests {
         let main_release = &result.releases[0];
         assert_eq!(main_release.release_reference, "MAIN_RELEASE_001");
         assert_eq!(main_release.release_title[0].text, "My Main Album");
-        assert_eq!(main_release.release_type.as_ref().unwrap(), &ReleaseType::Album);
+        assert_eq!(
+            main_release.release_type.as_ref().unwrap(),
+            &ReleaseType::Album
+        );
 
         let secondary_release = &result.releases[1];
         assert_eq!(secondary_release.release_reference, "SECONDARY_RELEASE_002");
         assert_eq!(secondary_release.release_title[0].text, "Bonus Tracks");
-        assert_eq!(secondary_release.release_type.as_ref().unwrap(), &ReleaseType::EP);
+        assert_eq!(
+            secondary_release.release_type.as_ref().unwrap(),
+            &ReleaseType::EP
+        );
 
         // Check references were extracted
         assert_eq!(result.release_references.len(), 2);
-        assert!(result.release_references.contains(&"MAIN_RELEASE_001".to_string()));
-        assert!(result.release_references.contains(&"SECONDARY_RELEASE_002".to_string()));
+        assert!(result
+            .release_references
+            .contains(&"MAIN_RELEASE_001".to_string()));
+        assert!(result
+            .release_references
+            .contains(&"SECONDARY_RELEASE_002".to_string()));
 
         println!("Multi-release parsing stats: {:#?}", result.stats);
     }
@@ -636,10 +679,11 @@ mod tests {
         </ern:NewReleaseMessage>"#;
 
         let cursor = Cursor::new(xml.as_bytes());
-        let mut parser = MultiReleaseParser::new(ERNVersion::V4_3)
-            .max_releases(3);
+        let mut parser = MultiReleaseParser::new(ERNVersion::V4_3).max_releases(3);
 
-        let result = parser.parse_releases(cursor).expect("Should parse with limit");
+        let result = parser
+            .parse_releases(cursor)
+            .expect("Should parse with limit");
 
         assert_eq!(result.releases.len(), 3);
         assert_eq!(result.release_count, 3);
@@ -662,7 +706,9 @@ mod tests {
         let cursor = Cursor::new(xml.as_bytes());
         let mut parser = MultiReleaseParser::new(ERNVersion::V4_3);
 
-        let result = parser.parse_releases(cursor).expect("Should parse empty releases");
+        let result = parser
+            .parse_releases(cursor)
+            .expect("Should parse empty releases");
 
         assert_eq!(result.releases.len(), 3);
         assert_eq!(result.stats.main_releases, 1);
@@ -672,18 +718,25 @@ mod tests {
     #[test]
     fn test_performance_with_many_releases() {
         // Generate XML with many releases
-        let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+        let mut xml = String::from(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
         <ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43">
-            <ern:ReleaseList>"#);
+            <ern:ReleaseList>"#,
+        );
 
         for i in 0..1000 {
-            xml.push_str(&format!(r#"
+            xml.push_str(&format!(
+                r#"
                 <ern:Release IsMainRelease="{}">
                     <ern:ReleaseReference>REL{:06}</ern:ReleaseReference>
                     <ern:ReferenceTitle>
                         <ern:TitleText>Release {}</ern:TitleText>
                     </ern:ReferenceTitle>
-                </ern:Release>"#, i == 0, i, i));
+                </ern:Release>"#,
+                i == 0,
+                i,
+                i
+            ));
         }
         xml.push_str("</ern:ReleaseList></ern:NewReleaseMessage>");
 
@@ -691,7 +744,9 @@ mod tests {
         let mut parser = MultiReleaseParser::new(ERNVersion::V4_3);
 
         let start = std::time::Instant::now();
-        let count = parser.count_releases(cursor).expect("Should count many releases");
+        let count = parser
+            .count_releases(cursor)
+            .expect("Should count many releases");
         let count_duration = start.elapsed();
 
         assert_eq!(count, 1000);
@@ -703,7 +758,9 @@ mod tests {
             .max_releases(100); // Limit for performance test
 
         let start2 = std::time::Instant::now();
-        let result = parser2.parse_releases(cursor2).expect("Should parse many releases");
+        let result = parser2
+            .parse_releases(cursor2)
+            .expect("Should parse many releases");
         let parse_duration = start2.elapsed();
 
         assert_eq!(result.releases.len(), 100);
@@ -713,7 +770,13 @@ mod tests {
         println!("Performance test results:");
         println!("  Count 1000 releases: {:?}", count_duration);
         println!("  Parse 100 releases: {:?}", parse_duration);
-        println!("  Count throughput: {:.0} releases/sec", 1000.0 / count_duration.as_secs_f64());
-        println!("  Parse throughput: {:.0} releases/sec", 100.0 / parse_duration.as_secs_f64());
+        println!(
+            "  Count throughput: {:.0} releases/sec",
+            1000.0 / count_duration.as_secs_f64()
+        );
+        println!(
+            "  Parse throughput: {:.0} releases/sec",
+            100.0 / parse_duration.as_secs_f64()
+        );
     }
 }

@@ -1,13 +1,13 @@
 //! # Determinism Configuration and Enforcement
-//! 
+//!
 //! This module provides the core determinism guarantees that make DDEX Builder
 //! unique in the market. By ensuring byte-perfect reproducible output, we enable
 //! supply chain integrity, reproducible builds, and cryptographic signing.
-//! 
+//!
 //! ## Core Principle
-//! 
+//!
 //! **Same Input = Identical Output, Always**
-//! 
+//!
 //! DDEX Builder guarantees that identical logical input will always produce
 //! byte-identical XML output, regardless of:
 //! - Build environment (dev, CI, production)
@@ -15,9 +15,9 @@
 //! - Hardware architecture (x86, ARM, M1/M2)
 //! - Rust version or compiler flags
 //! - Time of day or system locale
-//! 
+//!
 //! ## Why Determinism Matters
-//! 
+//!
 //! ```text
 //! Deterministic Benefits
 //! ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
@@ -33,37 +33,37 @@
 //!   │ • Detect    │       │ • Build Reprod  │    │ • Legal Proof   │
 //!   └─────────────┘       └─────────────────┘    └─────────────────┘
 //! ```
-//! 
+//!
 //! ## Implementation Strategy
-//! 
+//!
 //! **CRITICAL**: This module ensures deterministic output by using `IndexMap`
 //! everywhere instead of `HashMap`/`HashSet`. The clippy configuration enforces this.
-//! 
+//!
 //! ### Key Components
-//! 
+//!
 //! 1. **DB-C14N/1.0 Canonicalization**: Our custom canonicalization spec
 //! 2. **Deterministic Data Structures**: IndexMap for stable iteration order
 //! 3. **Fixed Randomness Sources**: Locked namespace prefixes and IDs
 //! 4. **Normalized Formatting**: Consistent whitespace, encoding, line endings
 //! 5. **Time Zone Handling**: UTC normalization for timestamps
-//! 
+//!
 //! ## Configuration Example
-//! 
+//!
 //! ```rust
 //! use ddex_builder::determinism::*;
 //! use indexmap::IndexMap;
-//! 
+//!
 //! let mut config = DeterminismConfig::default();
-//! 
+//!
 //! // Enable strict determinism verification
 //! config.verify_determinism = Some(5); // Test with 5 iterations
-//! 
+//!
 //! // Lock namespace prefixes
 //! config.locked_prefixes.insert(
 //!     "http://ddex.net/xml/ern/43".to_string(),
 //!     "ern".to_string()
 //! );
-//! 
+//!
 //! // Use custom element ordering
 //! let mut release_order = IndexMap::new();
 //! release_order.insert("Release".to_string(), vec![
@@ -72,40 +72,40 @@
 //!     "ReferenceTitle".to_string(),
 //! ]);
 //! config.custom_sort_order = Some(release_order);
-//! 
+//!
 //! // Apply configuration to builder
 //! let mut builder = Builder::new();
 //! builder.set_determinism_config(config);
 //! ```
-//! 
+//!
 //! ## Verification Process
-//! 
+//!
 //! The determinism verification process works by:
-//! 
+//!
 //! 1. **Build XML** using the same input multiple times
 //! 2. **Compare Bytes** - every byte must be identical
 //! 3. **Hash Verification** - SHA-256 hashes must match
 //! 4. **Failure Detection** - any variance triggers detailed diff analysis
-//! 
+//!
 //! ```rust
 //! // Automatic verification during build
 //! let config = DeterminismConfig {
 //!     verify_determinism: Some(3), // 3 verification rounds
 //!     ..Default::default()
 //! };
-//! 
+//!
 //! let result = builder.build_with_verification(&request, &config)?;
 //! // If determinism fails, build returns detailed error with diff
 //! ```
-//! 
+//!
 //! ## Performance Impact
-//! 
+//!
 //! Determinism adds minimal overhead:
 //! - **+0.1-0.5ms** for IndexMap vs HashMap
 //! - **+1-3ms** for verification when enabled  
 //! - **+5-10%** memory for deterministic data structures
 //! - **Zero impact** on functionality or correctness
-//! 
+//!
 //! The performance cost is negligible compared to the benefits of supply chain
 //! integrity and reproducible builds.
 
@@ -117,19 +117,19 @@ use serde::{Deserialize, Serialize};
 pub struct DeterminismConfig {
     /// Canonicalization mode
     pub canon_mode: CanonMode,
-    
+
     /// Element ordering strategy
     pub sort_strategy: SortStrategy,
-    
+
     /// Custom sort order (uses IndexMap for determinism)
     pub custom_sort_order: Option<IndexMap<String, Vec<String>>>,
-    
+
     /// Namespace handling
     pub namespace_strategy: NamespaceStrategy,
-    
+
     /// Locked namespace prefixes (uses IndexMap for determinism)
     pub locked_prefixes: IndexMap<String, String>,
-    
+
     /// Formatting options
     pub output_mode: OutputMode,
     /// Line ending style for output
@@ -187,7 +187,10 @@ impl DeterminismConfig {
         prefixes.insert("http://ddex.net/xml/ern/42".to_string(), "ern".to_string());
         prefixes.insert("http://ddex.net/xml/ern/382".to_string(), "ern".to_string());
         prefixes.insert("http://ddex.net/xml/avs".to_string(), "avs".to_string());
-        prefixes.insert("http://www.w3.org/2001/XMLSchema-instance".to_string(), "xsi".to_string());
+        prefixes.insert(
+            "http://www.w3.org/2001/XMLSchema-instance".to_string(),
+            "xsi".to_string(),
+        );
         prefixes
     }
 }
@@ -465,7 +468,7 @@ impl DeterminismVerifier {
             // Calculate both SHA-256 and BLAKE3 hashes
             let sha256_hash = self.calculate_sha256(&result.xml);
             let blake3_hash = self.calculate_blake3(&result.xml);
-            
+
             results.push(result.xml);
             hashes.push((sha256_hash, blake3_hash));
         }
@@ -506,7 +509,11 @@ impl DeterminismVerifier {
             0.0
         };
 
-        let outputs = if self.include_outputs { results } else { vec![] };
+        let outputs = if self.include_outputs {
+            results
+        } else {
+            vec![]
+        };
         let final_hashes = hashes.into_iter().map(|(sha256, _)| sha256).collect();
 
         Ok(DeterminismResult {
@@ -543,7 +550,7 @@ impl DeterminismVerifier {
         iterations: usize,
     ) -> Result<DeterminismResult, super::error::BuildError> {
         use std::collections::HashMap;
-        
+
         // Force different HashMap iteration orders by inserting dummy data
         // in different orders to trigger different hash states
         for i in 0..iterations {
@@ -565,8 +572,8 @@ impl DeterminismVerifier {
         iterations: usize,
     ) -> Result<DeterminismResult, super::error::BuildError> {
         use std::sync::Arc;
-        use std::thread;
         use std::sync::Mutex;
+        use std::thread;
 
         let results = Arc::new(Mutex::new(Vec::new()));
         let mut handles = vec![];
@@ -596,7 +603,7 @@ impl DeterminismVerifier {
     }
 
     fn calculate_sha256(&self, data: &str) -> String {
-        use sha2::{Sha256, Digest};
+        use sha2::{Digest, Sha256};
         let mut hasher = Sha256::new();
         hasher.update(data.as_bytes());
         format!("{:x}", hasher.finalize())
@@ -617,10 +624,9 @@ impl DeterminismVerifier {
         iter2: usize,
     ) -> DeterminismDifference {
         let first_diff_byte = self.find_first_difference(output1, output2);
-        
-        let context = first_diff_byte.map(|pos| {
-            self.create_difference_context(output1, output2, pos)
-        });
+
+        let context =
+            first_diff_byte.map(|pos| self.create_difference_context(output1, output2, pos));
 
         DeterminismDifference {
             iteration1: iter1,
@@ -642,7 +648,9 @@ impl DeterminismVerifier {
     }
 
     fn find_first_difference(&self, a: &str, b: &str) -> Option<usize> {
-        a.bytes().zip(b.bytes()).position(|(x, y)| x != y)
+        a.bytes()
+            .zip(b.bytes())
+            .position(|(x, y)| x != y)
             .or_else(|| {
                 if a.len() != b.len() {
                     Some(std::cmp::min(a.len(), b.len()))
@@ -652,7 +660,12 @@ impl DeterminismVerifier {
             })
     }
 
-    fn create_difference_context(&self, output1: &str, output2: &str, pos: usize) -> DifferenceContext {
+    fn create_difference_context(
+        &self,
+        output1: &str,
+        output2: &str,
+        pos: usize,
+    ) -> DifferenceContext {
         let start = pos.saturating_sub(self.context_chars / 2);
         let end1 = std::cmp::min(pos + self.context_chars / 2, output1.len());
         let end2 = std::cmp::min(pos + self.context_chars / 2, output2.len());

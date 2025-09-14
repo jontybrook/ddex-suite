@@ -3,9 +3,10 @@
 //! This implementation uses rayon for parallel processing of DDEX elements
 //! across multiple CPU cores to reach the target 280+ MB/s throughput.
 
+#[allow(dead_code)] // Experimental parallel streaming parser
 use crate::error::ParseError;
-use crate::streaming::{WorkingStreamingElement, WorkingStreamingStats};
 use crate::streaming::fast_zero_copy::FastZeroCopyParser;
+use crate::streaming::{WorkingStreamingElement, WorkingStreamingStats};
 use ddex_core::models::versions::ERNVersion;
 use std::io::BufRead;
 use std::sync::{Arc, Mutex};
@@ -26,7 +27,7 @@ impl ParallelStreamingParser {
     pub fn new() -> Self {
         Self {
             worker_threads: num_cpus::get().max(2), // Use at least 2 threads
-            chunk_size: 1024 * 1024, // 1MB chunks for parallel processing
+            chunk_size: 1024 * 1024,                // 1MB chunks for parallel processing
             start_time: Instant::now(),
             total_bytes_processed: Arc::new(Mutex::new(0)),
             total_elements_found: Arc::new(Mutex::new(0)),
@@ -52,7 +53,10 @@ impl ParallelStreamingParser {
     }
 
     /// Single-threaded fallback for small files
-    fn parse_single_threaded(&self, data: &[u8]) -> Result<Vec<WorkingStreamingElement>, ParseError> {
+    fn parse_single_threaded(
+        &self,
+        data: &[u8],
+    ) -> Result<Vec<WorkingStreamingElement>, ParseError> {
         let mut parser = FastZeroCopyParser::new();
         let mut elements = parser.parse_chunk(data)?;
 
@@ -133,8 +137,9 @@ impl ParallelStreamingParser {
         while let Some(first_byte_pos) = memchr::memchr(pattern[0], &data[pos..]) {
             let abs_pos = pos + first_byte_pos;
 
-            if abs_pos + pattern.len() <= data.len() &&
-               &data[abs_pos..abs_pos + pattern.len()] == pattern {
+            if abs_pos + pattern.len() <= data.len()
+                && &data[abs_pos..abs_pos + pattern.len()] == pattern
+            {
                 return Some(abs_pos);
             }
 
@@ -166,6 +171,12 @@ impl ParallelStreamingParser {
             elapsed_time: elapsed,
             throughput_mb_per_sec: throughput,
         }
+    }
+}
+
+impl Default for ParallelStreamingParser {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -279,7 +290,8 @@ impl ParallelBenchmark {
 
                 let speedup = single_time.as_secs_f64() / parallel_time.as_secs_f64();
                 let efficiency = (speedup / threads as f64) * 100.0;
-                let throughput = (data.len() as f64 / (1024.0 * 1024.0)) / parallel_time.as_secs_f64();
+                let throughput =
+                    (data.len() as f64 / (1024.0 * 1024.0)) / parallel_time.as_secs_f64();
 
                 thread_results.push(ThreadResult {
                     threads,
@@ -290,20 +302,35 @@ impl ParallelBenchmark {
                     elements_found: parallel_elements.len(),
                 });
 
-                println!("  {} threads: {:.3}s, {:.1}x speedup, {:.1}% efficiency, {:.1} MB/s",
-                        threads, parallel_time.as_secs_f64(), speedup, efficiency, throughput);
+                println!(
+                    "  {} threads: {:.3}s, {:.1}x speedup, {:.1}% efficiency, {:.1} MB/s",
+                    threads,
+                    parallel_time.as_secs_f64(),
+                    speedup,
+                    efficiency,
+                    throughput
+                );
 
                 // Verify element count consistency
-                assert_eq!(single_elements.len(), parallel_elements.len(),
-                          "Element count mismatch: single={}, parallel={}",
-                          single_elements.len(), parallel_elements.len());
+                assert_eq!(
+                    single_elements.len(),
+                    parallel_elements.len(),
+                    "Element count mismatch: single={}, parallel={}",
+                    single_elements.len(),
+                    parallel_elements.len()
+                );
             }
         }
 
         let single_throughput = (data.len() as f64 / (1024.0 * 1024.0)) / single_time.as_secs_f64();
 
-        let best_result = thread_results.iter()
-            .max_by(|a, b| a.throughput_mb_per_sec.partial_cmp(&b.throughput_mb_per_sec).unwrap())
+        let best_result = thread_results
+            .iter()
+            .max_by(|a, b| {
+                a.throughput_mb_per_sec
+                    .partial_cmp(&b.throughput_mb_per_sec)
+                    .unwrap()
+            })
             .unwrap();
 
         let best_speedup = best_result.speedup;
@@ -321,9 +348,22 @@ impl ParallelBenchmark {
         };
 
         println!("\n📊 PARALLEL PERFORMANCE SUMMARY");
-        println!("Single-threaded: {:.1} MB/s", result.single_threaded_throughput);
-        println!("Best parallel: {:.1} MB/s ({:.1}x speedup)", result.best_throughput, result.best_speedup);
-        println!("Target (280 MB/s): {}", if result.target_achieved { "✅ ACHIEVED!" } else { "❌ Not achieved" });
+        println!(
+            "Single-threaded: {:.1} MB/s",
+            result.single_threaded_throughput
+        );
+        println!(
+            "Best parallel: {:.1} MB/s ({:.1}x speedup)",
+            result.best_throughput, result.best_speedup
+        );
+        println!(
+            "Target (280 MB/s): {}",
+            if result.target_achieved {
+                "✅ ACHIEVED!"
+            } else {
+                "❌ Not achieved"
+            }
+        );
 
         if result.target_achieved {
             println!("🎉 SUCCESS: 480x performance improvement target achieved with parallel processing!");
@@ -360,20 +400,23 @@ mod tests {
     use std::io::Cursor;
 
     fn generate_large_ddex_data(target_mb: usize) -> Vec<u8> {
-        let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+        let mut xml = String::from(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
 <ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43">
     <MessageHeader>
         <MessageId>PARALLEL-BENCH-MSG</MessageId>
         <CreatedDateTime>2024-01-01T00:00:00Z</CreatedDateTime>
     </MessageHeader>
-"#);
+"#,
+        );
 
         let target_bytes = target_mb * 1024 * 1024;
         let single_release_size = 1200; // Estimated bytes per release
         let num_releases = (target_bytes / single_release_size).max(1000);
 
         for i in 0..num_releases {
-            xml.push_str(&format!(r#"
+            xml.push_str(&format!(
+                r#"
     <Release ReleaseReference="PAR-REL-{:08}">
         <ReferenceTitle>
             <TitleText>Parallel Benchmark Release #{}</TitleText>
@@ -389,11 +432,16 @@ mod tests {
         </PLine>
         <ReleaseLabelReference>PAR-LBL-{:03}</ReleaseLabelReference>
     </Release>
-"#, i, i, i % 100));
+"#,
+                i,
+                i,
+                i % 100
+            ));
 
             // Add sound recordings for more realistic data
             for j in 0..4 {
-                xml.push_str(&format!(r#"
+                xml.push_str(&format!(
+                    r#"
     <SoundRecording ResourceReference="PAR-RES-{:08}-{:02}">
         <ResourceId>
             <ISRC>PARLL{:08}</ISRC>
@@ -410,7 +458,17 @@ mod tests {
             <ContributorRole>MainArtist</ContributorRole>
         </ResourceContributor>
     </SoundRecording>
-"#, i, j, i * 10 + j, j + 1, i, (j + 3) % 8, (i + j + 30) % 60, i, i % 1000));
+"#,
+                    i,
+                    j,
+                    i * 10 + j,
+                    j + 1,
+                    i,
+                    (j + 3) % 8,
+                    (i + j + 30) % 60,
+                    i,
+                    i % 1000
+                ));
             }
 
             if i % 1000 == 0 && i > 0 {
@@ -451,8 +509,12 @@ mod tests {
         let elements = elements.unwrap();
         assert!(!elements.is_empty(), "Should find elements");
 
-        let has_header = elements.iter().any(|e| matches!(e, WorkingStreamingElement::MessageHeader { .. }));
-        let has_release = elements.iter().any(|e| matches!(e, WorkingStreamingElement::Release { .. }));
+        let has_header = elements
+            .iter()
+            .any(|e| matches!(e, WorkingStreamingElement::MessageHeader { .. }));
+        let has_release = elements
+            .iter()
+            .any(|e| matches!(e, WorkingStreamingElement::Release { .. }));
 
         assert!(has_header, "Should find message header");
         assert!(has_release, "Should find release");
@@ -470,13 +532,19 @@ mod tests {
 
         // Verify we got some speedup
         assert!(result.best_speedup > 1.0, "Should have some speedup");
-        assert!(result.best_throughput > result.single_threaded_throughput, "Parallel should be faster");
+        assert!(
+            result.best_throughput > result.single_threaded_throughput,
+            "Parallel should be faster"
+        );
 
         // Check if we achieved our target
         if result.target_achieved {
             println!("🎉 TARGET ACHIEVED: {} MB/s", result.best_throughput);
         } else {
-            println!("⚠️ Target not achieved: {} MB/s (need 280 MB/s)", result.best_throughput);
+            println!(
+                "⚠️ Target not achieved: {} MB/s (need 280 MB/s)",
+                result.best_throughput
+            );
         }
     }
 
@@ -490,7 +558,11 @@ mod tests {
 
         assert!(boundaries.len() >= 2, "Should find boundaries");
         assert_eq!(boundaries[0], 0, "Should start at 0");
-        assert_eq!(boundaries[boundaries.len() - 1], xml.len(), "Should end at data length");
+        assert_eq!(
+            boundaries[boundaries.len() - 1],
+            xml.len(),
+            "Should end at data length"
+        );
     }
 
     #[test]
@@ -513,7 +585,12 @@ mod tests {
 
                 let throughput = (data.len() as f64 / (1024.0 * 1024.0)) / elapsed.as_secs_f64();
 
-                println!("  {} threads: {:.1} MB/s ({} elements)", threads, throughput, elements.len());
+                println!(
+                    "  {} threads: {:.1} MB/s ({} elements)",
+                    threads,
+                    throughput,
+                    elements.len()
+                );
             }
         }
     }

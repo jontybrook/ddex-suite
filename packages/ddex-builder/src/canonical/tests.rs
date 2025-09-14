@@ -22,7 +22,7 @@ mod tests {
         let canonicalizer = create_test_canonicalizer();
         let input = r#"<?xml version="1.0" encoding="UTF-8"?>
 <root>test</root>"#;
-        
+
         let result = canonicalizer.canonicalize(input).unwrap();
         assert!(result.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"));
     }
@@ -32,7 +32,7 @@ mod tests {
         let canonicalizer = create_test_canonicalizer();
         let input = r#"<?xml version="1.0" encoding="UTF-8"?>
 <root z="z" a="a" m="m">test</root>"#;
-        
+
         let result = canonicalizer.canonicalize(input).unwrap();
         // Attributes should be sorted alphabetically
         assert!(result.contains(r#"<root a="a" m="m" z="z">"#));
@@ -47,7 +47,7 @@ mod tests {
     test content   
     
 </root>"#;
-        
+
         let result = canonicalizer.canonicalize(input).unwrap();
         // Should normalize whitespace to single space
         assert!(result.contains("test content"));
@@ -58,10 +58,10 @@ mod tests {
         let canonicalizer = create_test_canonicalizer();
         let input = r#"<?xml version="1.0" encoding="UTF-8"?>
 <root><child>content</child></root>"#;
-        
+
         let result = canonicalizer.canonicalize(input).unwrap();
         let lines: Vec<&str> = result.lines().collect();
-        
+
         // Should have 2-space indentation
         assert!(lines.iter().any(|line| line.starts_with("  <child>")));
     }
@@ -73,26 +73,41 @@ mod tests {
 <root>
   <child>content</child>
 </root>"#;
-        
+
         let result = canonicalizer.canonicalize(input).unwrap();
         // No line should end with whitespace
         for line in result.lines() {
-            assert_eq!(line, line.trim_end(), "Line has trailing whitespace: '{}'", line);
+            assert_eq!(
+                line,
+                line.trim_end(),
+                "Line has trailing whitespace: '{}'",
+                line
+            );
         }
     }
 
     #[test]
     fn test_ern_version_detection() {
         let canonicalizer = create_test_canonicalizer();
-        
+
         // Test ERN 3.8.2 detection
-        assert_eq!(canonicalizer.detect_version(r#"<root xmlns="http://ddex.net/xml/ern/382">test</root>"#), "3.8.2");
-        
+        assert_eq!(
+            canonicalizer
+                .detect_version(r#"<root xmlns="http://ddex.net/xml/ern/382">test</root>"#),
+            "3.8.2"
+        );
+
         // Test ERN 4.2 detection
-        assert_eq!(canonicalizer.detect_version(r#"<root xmlns="http://ddex.net/xml/ern/42">test</root>"#), "4.2");
-        
+        assert_eq!(
+            canonicalizer.detect_version(r#"<root xmlns="http://ddex.net/xml/ern/42">test</root>"#),
+            "4.2"
+        );
+
         // Test ERN 4.3 detection
-        assert_eq!(canonicalizer.detect_version(r#"<root xmlns="http://ddex.net/xml/ern/43">test</root>"#), "4.3");
+        assert_eq!(
+            canonicalizer.detect_version(r#"<root xmlns="http://ddex.net/xml/ern/43">test</root>"#),
+            "4.3"
+        );
     }
 
     #[test]
@@ -102,7 +117,7 @@ mod tests {
 <root xmlns:ddex="http://ddex.net/xml/ern/43" xmlns:avs="http://ddex.net/xml/avs">
   <ddex:Release>test</ddex:Release>
 </root>"#;
-        
+
         let result = canonicalizer.canonicalize(input).unwrap();
         // Should use locked prefix 'ern' instead of 'ddex'
         assert!(result.contains(r#"xmlns:ern="http://ddex.net/xml/ern/43""#));
@@ -117,15 +132,24 @@ mod tests {
   <MessageId>id</MessageId>
   <MessageType>type</MessageType>
 </MessageHeader>"#;
-        
+
         let result = canonicalizer.canonicalize(input).unwrap();
         let lines: Vec<&str> = result.lines().collect();
-        
+
         // Find positions of elements
-        let id_pos = lines.iter().position(|l| l.contains("<MessageId>")).unwrap();
-        let type_pos = lines.iter().position(|l| l.contains("<MessageType>")).unwrap();
-        let sender_pos = lines.iter().position(|l| l.contains("<MessageSender>")).unwrap();
-        
+        let id_pos = lines
+            .iter()
+            .position(|l| l.contains("<MessageId>"))
+            .unwrap();
+        let type_pos = lines
+            .iter()
+            .position(|l| l.contains("<MessageType>"))
+            .unwrap();
+        let sender_pos = lines
+            .iter()
+            .position(|l| l.contains("<MessageSender>"))
+            .unwrap();
+
         // Should be in canonical order: Id, Type, Sender
         assert!(id_pos < type_pos);
         assert!(type_pos < sender_pos);
@@ -139,12 +163,12 @@ mod tests {
   <child2>content2</child2>
   <child1>content1</child1>
 </root>"#;
-        
+
         // Run canonicalization multiple times
         let result1 = canonicalizer.canonicalize(input).unwrap();
         let result2 = canonicalizer.canonicalize(input).unwrap();
         let result3 = canonicalizer.canonicalize(input).unwrap();
-        
+
         // Should be byte-identical
         assert_eq!(result1, result2);
         assert_eq!(result2, result3);
@@ -155,11 +179,11 @@ mod tests {
         let canonicalizer = create_test_canonicalizer();
         let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <root>test</root>"#;
-        
+
         let canonical = canonicalizer.canonicalize(xml).unwrap();
         let hash1 = canonicalizer.canonical_hash(&canonical).unwrap();
         let hash2 = canonicalizer.canonical_hash(&canonical).unwrap();
-        
+
         // Same content should produce same hash
         assert_eq!(hash1, hash2);
         assert_eq!(hash1.len(), 64); // SHA-256 hex string
@@ -173,7 +197,7 @@ mod tests {
   <empty/>
   <also-empty></also-empty>
 </root>"#;
-        
+
         let result = canonicalizer.canonicalize(input).unwrap();
         // Should handle empty elements correctly
         assert!(result.contains("<empty/>") || result.contains("<empty></empty>"));
@@ -187,7 +211,7 @@ mod tests {
   <!-- This is a comment -->
   <child>content</child>
 </root>"#;
-        
+
         let result = canonicalizer.canonicalize(input).unwrap();
         // Comments should be preserved
         assert!(result.contains("<!-- This is a comment -->"));
@@ -215,14 +239,14 @@ mod tests {
     </Release>
   </ReleaseList>
 </ern:NewReleaseMessage>"#;
-        
+
         let result = canonicalizer.canonicalize(input).unwrap();
-        
+
         // Should maintain structure and apply canonicalization
         assert!(result.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"));
         assert!(result.contains("<MessageHeader>"));
         assert!(result.contains("<Release>"));
-        
+
         // Should have proper indentation
         assert!(result.contains("  <MessageHeader>"));
         assert!(result.contains("    <MessageId>"));
@@ -235,13 +259,13 @@ mod tests {
 <root attr="value">
   <child>content</child>
 </root>"#;
-        
+
         // Canonicalize once
         let canonical1 = canonicalizer.canonicalize(input).unwrap();
-        
+
         // Canonicalize the result again
         let canonical2 = canonicalizer.canonicalize(&canonical1).unwrap();
-        
+
         // Should be identical (idempotent)
         assert_eq!(canonical1, canonical2);
     }
@@ -249,21 +273,21 @@ mod tests {
     #[test]
     fn test_line_ending_normalization() {
         let canonicalizer = create_test_canonicalizer();
-        
+
         // Test different line ending types
         let input_crlf = "<root>\r\n  <child>content</child>\r\n</root>";
         let input_cr = "<root>\r  <child>content</child>\r</root>";
         let input_lf = "<root>\n  <child>content</child>\n</root>";
-        
+
         let result_crlf = canonicalizer.canonicalize(input_crlf).unwrap();
         let result_cr = canonicalizer.canonicalize(input_cr).unwrap();
         let result_lf = canonicalizer.canonicalize(input_lf).unwrap();
-        
+
         // All should normalize to LF
         assert!(!result_crlf.contains("\r\n"));
         assert!(!result_cr.contains("\r"));
         assert!(result_lf.contains("\n"));
-        
+
         // Results should be structurally identical
         assert_eq!(result_crlf, result_lf);
         assert_eq!(result_cr, result_lf);
@@ -276,9 +300,9 @@ mod tests {
 <root attr="&quot;quoted&quot; &amp; escaped">
   <child>&lt;content&gt;</child>
 </root>"#;
-        
+
         let result = canonicalizer.canonicalize(input).unwrap();
-        
+
         // Should properly escape/unescape content
         assert!(result.contains("&quot;") || result.contains("\""));
         assert!(result.contains("&amp;") || result.contains("&"));
@@ -320,7 +344,7 @@ mod integration_tests {
     </Release>
   </ReleaseList>
 </ern:NewReleaseMessage>"#;
-        
+
         let result = canonicalizer.canonicalize(input).unwrap();
         assert_snapshot!(result);
     }
@@ -333,15 +357,18 @@ mod integration_tests {
   <z:element>content</z:element>
   <a:element>content</a:element>
 </test>"#;
-        
+
         let result1 = canonicalizer.canonicalize(input).unwrap();
         let result2 = canonicalizer.canonicalize(input).unwrap();
-        
+
         // Convert to bytes for exact comparison
         let bytes1 = result1.as_bytes();
         let bytes2 = result2.as_bytes();
-        
-        assert_eq!(bytes1, bytes2, "Canonicalization must be deterministic at byte level");
+
+        assert_eq!(
+            bytes1, bytes2,
+            "Canonicalization must be deterministic at byte level"
+        );
     }
 
     /// Regression test for text content preservation bug
@@ -349,18 +376,18 @@ mod integration_tests {
     #[test]
     fn test_text_content_preservation_regression() {
         let canonicalizer = create_test_canonicalizer();
-        
+
         // Test various text content scenarios
         let test_cases = vec![
             // Simple text content
             (
                 r#"<?xml version="1.0"?><root>Hello World</root>"#,
-                "Hello World"
+                "Hello World",
             ),
             // Text with whitespace that should be normalized but preserved
             (
                 r#"<?xml version="1.0"?><root>  Multiple   spaces  </root>"#,
-                "Multiple   spaces"
+                "Multiple   spaces",
             ),
             // Text with newlines that should be normalized
             (
@@ -369,34 +396,46 @@ mod integration_tests {
   Line 1
   Line 2
 </root>"#,
-                "Line 1 Line 2"
+                "Line 1 Line 2",
             ),
         ];
-        
+
         for (input, expected_text) in test_cases {
             let result = canonicalizer.canonicalize(input).unwrap();
-            
+
             // Parse the result to check that text content is preserved
-            assert!(result.contains(expected_text), 
-                "Text content '{}' not found in canonicalized output: {}", 
-                expected_text, result);
+            assert!(
+                result.contains(expected_text),
+                "Text content '{}' not found in canonicalized output: {}",
+                expected_text,
+                result
+            );
         }
-        
+
         // Special test for mixed content - check that text nodes exist separately
         let mixed_input = r#"<?xml version="1.0"?><root>Before<child>nested</child>After</root>"#;
         let mixed_result = canonicalizer.canonicalize(mixed_input).unwrap();
-        
+
         // For mixed content, we should find both text portions and the nested element
-        assert!(mixed_result.contains("Before"), "Mixed content 'Before' text not preserved");
-        assert!(mixed_result.contains("After"), "Mixed content 'After' text not preserved");
-        assert!(mixed_result.contains("<child>nested</child>"), "Mixed content child element not preserved");
+        assert!(
+            mixed_result.contains("Before"),
+            "Mixed content 'Before' text not preserved"
+        );
+        assert!(
+            mixed_result.contains("After"),
+            "Mixed content 'After' text not preserved"
+        );
+        assert!(
+            mixed_result.contains("<child>nested</child>"),
+            "Mixed content child element not preserved"
+        );
     }
 
     /// Regression test for mixed content preservation
     #[test]
     fn test_mixed_content_preservation_regression() {
         let canonicalizer = create_test_canonicalizer();
-        
+
         let input = r#"<?xml version="1.0" encoding="UTF-8"?>
 <root>
   <!-- Comment before -->
@@ -407,16 +446,31 @@ mod integration_tests {
   More text after
   <!-- Comment after -->
 </root>"#;
-        
+
         let result = canonicalizer.canonicalize(input).unwrap();
-        
+
         // Verify all components are preserved
-        assert!(result.contains("<!-- Comment before -->"), "Comment before not preserved");
-        assert!(result.contains("<!-- Comment middle -->"), "Comment middle not preserved"); 
-        assert!(result.contains("<!-- Comment after -->"), "Comment after not preserved");
+        assert!(
+            result.contains("<!-- Comment before -->"),
+            "Comment before not preserved"
+        );
+        assert!(
+            result.contains("<!-- Comment middle -->"),
+            "Comment middle not preserved"
+        );
+        assert!(
+            result.contains("<!-- Comment after -->"),
+            "Comment after not preserved"
+        );
         assert!(result.contains("Text 1"), "Element text 1 not preserved");
         assert!(result.contains("Text 2"), "Element text 2 not preserved");
-        assert!(result.contains("Some text between elements"), "Interstitial text not preserved");
-        assert!(result.contains("More text after"), "Trailing text not preserved");
+        assert!(
+            result.contains("Some text between elements"),
+            "Interstitial text not preserved"
+        );
+        assert!(
+            result.contains("More text after"),
+            "Trailing text not preserved"
+        );
     }
 }

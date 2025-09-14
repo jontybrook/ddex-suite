@@ -2,10 +2,9 @@
 //! Fast selective parsing for extracting specific fields like ISRCs
 
 use crate::error::ParseError;
-use quick_xml::{Reader, events::Event};
-use std::io::BufRead;
-use memchr::memchr;
+use quick_xml::{events::Event, Reader};
 use std::collections::HashSet;
+use std::io::BufRead;
 
 /// High-performance selective parser for extracting specific fields
 #[derive(Debug, Clone)]
@@ -109,7 +108,8 @@ impl SelectiveParser {
         let mut xml_reader = Reader::from_reader(reader);
         xml_reader.config_mut().trim_text(true);
 
-        let mut values: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+        let mut values: std::collections::HashMap<String, Vec<String>> =
+            std::collections::HashMap::new();
         let mut buf = Vec::new();
         let mut current_field = None::<String>;
         let mut depth = 0;
@@ -200,19 +200,24 @@ impl SelectiveParser {
     }
 
     /// Ultra-fast ISRC extraction using pattern matching (10x+ faster than XML parsing)
-    pub fn extract_isrcs_fast<R: BufRead>(&mut self, mut reader: R) -> Result<Vec<String>, ParseError> {
+    pub fn extract_isrcs_fast<R: BufRead>(
+        &mut self,
+        mut reader: R,
+    ) -> Result<Vec<String>, ParseError> {
         let mut isrcs = Vec::new();
         let mut buffer = Vec::new();
 
         // Read entire content for fast scanning
-        reader.read_to_end(&mut buffer).map_err(|e| ParseError::Io {
-            message: format!("Failed to read input: {}", e),
-        })?;
+        reader
+            .read_to_end(&mut buffer)
+            .map_err(|e| ParseError::Io {
+                message: format!("Failed to read input: {}", e),
+            })?;
 
         // Convert to string for faster pattern matching
         let content = std::str::from_utf8(&buffer).map_err(|e| ParseError::InvalidUtf8 {
             position: 0,
-            error: e.to_string()
+            error: e.to_string(),
         })?;
 
         // Ultra-fast pattern matching for ISRC tags
@@ -267,7 +272,8 @@ impl SelectiveParser {
         for &pattern in &patterns {
             if let Some(found_pos) = search_slice.find(pattern) {
                 let absolute_pos = start_pos + found_pos;
-                min_pos = Some(min_pos.map_or(absolute_pos, |current: usize| current.min(absolute_pos)));
+                min_pos =
+                    Some(min_pos.map_or(absolute_pos, |current: usize| current.min(absolute_pos)));
             }
         }
 
@@ -287,13 +293,17 @@ impl SelectiveParser {
         }
 
         // Handle SoundRecordingId with Namespace="ISRC"
-        if remaining.starts_with("<SoundRecordingId") || remaining.starts_with("<ern:SoundRecordingId") {
+        if remaining.starts_with("<SoundRecordingId")
+            || remaining.starts_with("<ern:SoundRecordingId")
+        {
             // Find the closing > of the opening tag
             if let Some(tag_end) = remaining.find('>') {
                 let opening_tag = &remaining[..=tag_end];
 
                 // Check if this has Namespace="ISRC"
-                if opening_tag.contains("Namespace=\"ISRC\"") || opening_tag.contains("Namespace='ISRC'") {
+                if opening_tag.contains("Namespace=\"ISRC\"")
+                    || opening_tag.contains("Namespace='ISRC'")
+                {
                     let content_start = pos + tag_end + 1;
 
                     // Find the closing tag
@@ -316,7 +326,13 @@ impl SelectiveParser {
     }
 
     /// Extract content between opening and closing tags
-    fn extract_between_tags(&self, content: &str, pos: usize, open_tag: &str, close_tag: &str) -> Option<(String, usize)> {
+    fn extract_between_tags(
+        &self,
+        content: &str,
+        pos: usize,
+        open_tag: &str,
+        close_tag: &str,
+    ) -> Option<(String, usize)> {
         let content_start = pos + open_tag.len();
 
         if let Some(content_end_rel) = content[content_start..].find(close_tag) {
@@ -328,76 +344,14 @@ impl SelectiveParser {
         }
     }
 
-    /// Find ISRC tag position in buffer
-    fn find_isrc_tag(&self, buffer: &[u8]) -> Option<usize> {
-        // Look for common ISRC element patterns
-        let patterns: &[&[u8]] = &[
-            b"<ISRC",
-            b"<ern:ISRC",
-            b"<SoundRecordingId",
-            b"<ern:SoundRecordingId",
-            b"<ResourceId",
-            b"<ern:ResourceId",
-        ];
-
-        let mut min_pos = None;
-        for &pattern in patterns {
-            if let Some(pos) = self.find_pattern(buffer, pattern) {
-                min_pos = Some(min_pos.map_or(pos, |current: usize| current.min(pos)));
-            }
-        }
-
-        min_pos
-    }
-
-    /// Find pattern in buffer using memchr for speed
-    fn find_pattern(&self, buffer: &[u8], pattern: &[u8]) -> Option<usize> {
-        if pattern.is_empty() {
-            return None;
-        }
-
-        let first_byte = pattern[0];
-        let mut pos = 0;
-
-        while let Some(candidate_pos) = memchr(first_byte, &buffer[pos..]) {
-            let absolute_pos = pos + candidate_pos;
-
-            if absolute_pos + pattern.len() <= buffer.len()
-                && &buffer[absolute_pos..absolute_pos + pattern.len()] == pattern {
-                return Some(absolute_pos);
-            }
-
-            pos = absolute_pos + 1;
-        }
-
-        None
-    }
-
-    /// Extract ISRC value from buffer starting at ISRC tag
-    fn extract_isrc_value(&self, buffer: &[u8]) -> Option<String> {
-        // Find the opening >
-        let start = memchr(b'>', buffer)?;
-
-        // Find the closing <
-        let end = memchr(b'<', &buffer[start + 1..])?;
-
-        // Extract text content
-        let content = &buffer[start + 1..start + 1 + end];
-        let text = String::from_utf8_lossy(content).trim().to_string();
-
-        if text.is_empty() {
-            None
-        } else {
-            Some(text)
-        }
-    }
-
     /// Check if element name matches target fields
     fn is_target_field(&self, name: &str) -> bool {
         if self.case_sensitive {
             self.target_fields.contains(name)
         } else {
-            self.target_fields.iter().any(|field| field.eq_ignore_ascii_case(name))
+            self.target_fields
+                .iter()
+                .any(|field| field.eq_ignore_ascii_case(name))
         }
     }
 
@@ -418,9 +372,15 @@ impl SelectiveParser {
     }
 
     /// Add value to results, handling duplicates
-    fn add_value(&self, values: &mut std::collections::HashMap<String, Vec<String>>, field_name: &str, value: String) {
-        values.entry(field_name.to_string())
-            .or_insert_with(Vec::new)
+    fn add_value(
+        &self,
+        values: &mut std::collections::HashMap<String, Vec<String>>,
+        field_name: &str,
+        value: String,
+    ) {
+        values
+            .entry(field_name.to_string())
+            .or_default()
             .push(value);
     }
 
@@ -444,8 +404,8 @@ impl SelectiveParser {
         }
 
         // Check registrant code (chars 2-4 should be alphanumeric)
-        for i in 2..5 {
-            if !chars[i].is_ascii_alphanumeric() {
+        for &ch in &chars[2..5] {
+            if !ch.is_ascii_alphanumeric() {
                 return false;
             }
         }
@@ -456,8 +416,8 @@ impl SelectiveParser {
         }
 
         // Check designation code (chars 7-11 should be digits)
-        for i in 7..12 {
-            if !chars[i].is_ascii_digit() {
+        for &ch in &chars[7..12] {
+            if !ch.is_ascii_digit() {
                 return false;
             }
         }
@@ -532,7 +492,9 @@ mod tests {
         let cursor = Cursor::new(xml.as_bytes());
         let mut parser = SelectiveParser::for_isrcs();
 
-        let isrcs = parser.extract_isrcs_fast(cursor).expect("Should extract ISRCs");
+        let isrcs = parser
+            .extract_isrcs_fast(cursor)
+            .expect("Should extract ISRCs");
 
         assert_eq!(isrcs.len(), 1);
         assert_eq!(isrcs[0], "USRC17607839");
@@ -556,7 +518,9 @@ mod tests {
         let cursor = Cursor::new(xml.as_bytes());
         let mut parser = SelectiveParser::for_release_metadata();
 
-        let result = parser.extract_fields(cursor).expect("Should extract fields");
+        let result = parser
+            .extract_fields(cursor)
+            .expect("Should extract fields");
 
         assert!(result.values.contains_key("ReleaseId"));
         assert!(result.values.contains_key("ReleaseReference"));
@@ -572,18 +536,24 @@ mod tests {
     #[test]
     fn test_performance_comparison() {
         // Generate larger test data
-        let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+        let mut xml = String::from(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
         <ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43">
-            <ern:ResourceList>"#);
+            <ern:ResourceList>"#,
+        );
 
         for i in 0..1000 {
-            xml.push_str(&format!(r#"
+            xml.push_str(&format!(
+                r#"
                 <ern:SoundRecording>
                     <ern:SoundRecordingId Namespace="ISRC">USRC{:08}</ern:SoundRecordingId>
                     <ern:ReferenceTitle>
                         <ern:TitleText>Test Track {}</ern:TitleText>
                     </ern:ReferenceTitle>
-                </ern:SoundRecording>"#, 17600000 + i, i));
+                </ern:SoundRecording>"#,
+                17600000 + i,
+                i
+            ));
         }
 
         xml.push_str("</ern:ResourceList></ern:NewReleaseMessage>");
@@ -592,17 +562,25 @@ mod tests {
         let cursor1 = Cursor::new(xml.as_bytes());
         let mut parser1 = SelectiveParser::for_isrcs();
         let start1 = std::time::Instant::now();
-        let isrcs1 = parser1.extract_isrcs(cursor1).expect("Standard extraction should work");
+        let isrcs1 = parser1
+            .extract_isrcs(cursor1)
+            .expect("Standard extraction should work");
         let duration1 = start1.elapsed();
 
         // Test fast extraction
         let cursor2 = Cursor::new(xml.as_bytes());
         let mut parser2 = SelectiveParser::for_isrcs();
         let start2 = std::time::Instant::now();
-        let isrcs2 = parser2.extract_isrcs_fast(cursor2).expect("Fast extraction should work");
+        let isrcs2 = parser2
+            .extract_isrcs_fast(cursor2)
+            .expect("Fast extraction should work");
         let duration2 = start2.elapsed();
 
-        println!("Standard extraction: {} ISRCs in {:?}", isrcs1.len(), duration1);
+        println!(
+            "Standard extraction: {} ISRCs in {:?}",
+            isrcs1.len(),
+            duration1
+        );
         println!("Fast extraction: {} ISRCs in {:?}", isrcs2.len(), duration2);
 
         // Both methods should find the same ISRCs
@@ -610,6 +588,9 @@ mod tests {
         assert_eq!(isrcs2.len(), 1000);
 
         // Fast method should be faster (though results may vary in debug mode)
-        println!("Fast extraction speedup: {:.2}x", duration1.as_nanos() as f64 / duration2.as_nanos() as f64);
+        println!(
+            "Fast extraction speedup: {:.2}x",
+            duration1.as_nanos() as f64 / duration2.as_nanos() as f64
+        );
     }
 }

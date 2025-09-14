@@ -1,22 +1,22 @@
 //! # DDEX Configuration Presets
-//! 
+//!
 //! This module provides pre-configured settings for DDEX message generation.
 //! Presets are community-maintained configuration templates that help ensure
 //! DDEX compliance and reduce configuration complexity.
-//! 
+//!
 //! ## Available Presets
-//! 
+//!
 //! ### Generic Industry-Standard Presets
 //! - **audio_album**: DDEX-compliant audio album configuration
 //! - **audio_single**: DDEX-compliant single track configuration  
 //! - **video_single**: DDEX-compliant video release configuration
 //! - **compilation**: DDEX-compliant compilation album configuration
-//! 
+//!
 //! ### Platform Presets (Based on Public Documentation)
 //! - **YouTube Music**: Audio and video releases (based on public Partner docs)
-//! 
+//!
 //! ## Architecture
-//! 
+//!
 //! ```text
 //! Preset System
 //! ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
@@ -32,35 +32,35 @@
 //!    │ • Defaults  │      │ • Quality       │    │ • Overrides     │
 //!    └─────────────┘      └─────────────────┘    └─────────────────┘
 //! ```
-//! 
+//!
 //! ## Usage Example
-//! 
+//!
 //! ```rust
 //! use ddex_builder::presets::*;
 //! use ddex_builder::Builder;
-//! 
+//!
 //! // Use generic audio album preset
 //! let mut builder = Builder::new();
 //! builder.apply_preset(&generic::audio_album())?;
-//! 
+//!
 //! // Use YouTube preset for video content
 //! builder.apply_preset(&youtube::youtube_video())?;
-//! 
+//!
 //! // Load by name
 //! let presets = all_presets();
 //! let audio_album = &presets["audio_album"];
 //! builder.apply_partner_preset(audio_album)?;
-//! 
+//!
 //! // List available presets
 //! for (name, preset) in all_presets() {
 //!     println!("{}: {}", name, preset.description);
 //! }
 //! ```
-//! 
+//!
 //! ## Preset Features
-//! 
+//!
 //! Each preset includes:
-//! 
+//!
 //! - **Schema Version**: DDEX ERN version (3.8.2, 4.2, 4.3)
 //! - **Message Profile**: Audio, Video, or Mixed content
 //! - **Required Fields**: Mandatory metadata fields
@@ -68,34 +68,34 @@
 //! - **Default Values**: Common field defaults
 //! - **Territory Codes**: Allowed distribution territories
 //! - **Quality Standards**: Audio/video quality minimums
-//! 
+//!
 //! ## Custom Presets
-//! 
+//!
 //! Create your own preset for internal standards:
-//! 
+//!
 //! ```rust
 //! use ddex_builder::presets::*;
 //! use indexmap::IndexMap;
-//! 
+//!
 //! // Start with a generic preset as base
 //! let mut custom_preset = generic::audio_album();
 //! custom_preset.name = "my_label_preset".to_string();
 //! custom_preset.description = "My Record Label Requirements".to_string();
-//! 
+//!
 //! // Add custom validation rules
 //! custom_preset.validation_rules.insert(
-//!     "Genre".to_string(), 
+//!     "Genre".to_string(),
 //!     ValidationRule::OneOf(vec!["Rock".to_string(), "Pop".to_string()])
 //! );
-//! 
+//!
 //! // Add custom territory restrictions
 //! custom_preset.config.territory_codes = vec!["US".to_string(), "CA".to_string()];
 //! ```
-//! 
+//!
 //! ## Validation Rules
-//! 
+//!
 //! Presets support comprehensive validation:
-//! 
+//!
 //! - **Required**: Field must be present
 //! - **MinLength/MaxLength**: String length constraints
 //! - **Pattern**: Regex pattern matching
@@ -171,12 +171,12 @@ pub enum ValidationRule {
         /// Minimum bit depth in bits
         min_bit_depth: u8,
         /// Minimum sample rate in Hz
-        min_sample_rate: u32
+        min_sample_rate: u32,
     },
     /// Territory code restrictions
     TerritoryCode {
         /// List of allowed territory codes
-        allowed: Vec<String>
+        allowed: Vec<String>,
     },
     /// Custom validation rule
     Custom(String),
@@ -261,21 +261,19 @@ pub struct PresetDefaults {
     pub distribution_channel: Vec<String>,
 }
 
-
-
 /// Get all built-in presets
-/// 
+///
 /// Returns a collection of community-maintained DDEX configuration presets.
 /// These presets provide baseline DDEX-compliant configurations and platform-specific
 /// templates based on publicly available documentation.
 pub fn all_presets() -> IndexMap<String, PartnerPreset> {
     let mut presets = IndexMap::new();
-    
+
     // Generic industry-standard presets
     presets.extend(generic::all_generic_presets());
-    
+
     // Platform presets (based on public documentation)
     presets.extend(youtube::all_youtube_presets());
-    
+
     presets
 }

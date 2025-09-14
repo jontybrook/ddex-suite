@@ -9,9 +9,9 @@
 use crate::error::ParseError;
 use crate::streaming::{WorkingStreamingElement, WorkingStreamingStats};
 use ddex_core::models::versions::ERNVersion;
+use std::collections::HashMap;
 use std::io::BufRead;
 use std::time::Instant;
-use std::collections::HashMap;
 
 /// Fast zero-copy streaming parser
 pub struct FastZeroCopyParser {
@@ -51,7 +51,10 @@ impl FastZeroCopyParser {
     }
 
     /// Fast element extraction using memchr for initial scanning
-    pub fn parse_chunk(&mut self, chunk: &[u8]) -> Result<Vec<WorkingStreamingElement>, ParseError> {
+    pub fn parse_chunk(
+        &mut self,
+        chunk: &[u8],
+    ) -> Result<Vec<WorkingStreamingElement>, ParseError> {
         self.bytes_processed += chunk.len() as u64;
         let mut results = Vec::new();
 
@@ -116,8 +119,9 @@ impl FastZeroCopyParser {
         while let Some(first_byte_pos) = memchr::memchr(pattern[0], &data[pos..]) {
             let abs_pos = pos + first_byte_pos;
 
-            if abs_pos + pattern.len() <= data.len() &&
-               &data[abs_pos..abs_pos + pattern.len()] == pattern {
+            if abs_pos + pattern.len() <= data.len()
+                && &data[abs_pos..abs_pos + pattern.len()] == pattern
+            {
                 return Some(abs_pos);
             }
 
@@ -128,7 +132,11 @@ impl FastZeroCopyParser {
     }
 
     /// Fast message header extraction
-    fn extract_message_header_fast(&mut self, data: &[u8], start: usize) -> Result<Option<WorkingStreamingElement>, ParseError> {
+    fn extract_message_header_fast(
+        &mut self,
+        data: &[u8],
+        start: usize,
+    ) -> Result<Option<WorkingStreamingElement>, ParseError> {
         // Find closing tag
         if let Some(end) = self.find_pattern(&data[start..], b"</MessageHeader>") {
             let header_data = &data[start..start + end + 16]; // Include closing tag
@@ -141,11 +149,12 @@ impl FastZeroCopyParser {
             };
 
             // Extract CreatedDateTime
-            let created_date_time = if let Some(dt) = self.extract_tag_content(header_data, b"CreatedDateTime") {
-                self.intern_string(dt)
-            } else {
-                chrono::Utc::now().to_rfc3339()
-            };
+            let created_date_time =
+                if let Some(dt) = self.extract_tag_content(header_data, b"CreatedDateTime") {
+                    self.intern_string(dt)
+                } else {
+                    chrono::Utc::now().to_rfc3339()
+                };
 
             return Ok(Some(WorkingStreamingElement::MessageHeader {
                 message_id,
@@ -158,24 +167,31 @@ impl FastZeroCopyParser {
     }
 
     /// Fast release extraction
-    fn extract_release_fast(&mut self, data: &[u8], start: usize) -> Result<Option<WorkingStreamingElement>, ParseError> {
+    fn extract_release_fast(
+        &mut self,
+        data: &[u8],
+        start: usize,
+    ) -> Result<Option<WorkingStreamingElement>, ParseError> {
         // Find closing tag
         if let Some(end) = self.find_pattern(&data[start..], b"</Release>") {
             let release_data = &data[start..start + end + 10]; // Include closing tag
 
             // Extract ReleaseReference attribute from opening tag
-            let reference = if let Some(attr) = self.extract_attribute_fast(release_data, b"ReleaseReference") {
+            let reference = if let Some(attr) =
+                self.extract_attribute_fast(release_data, b"ReleaseReference")
+            {
                 self.intern_string(attr)
             } else {
                 format!("REL-{}", self.elements_found)
             };
 
             // Extract title from TitleText nested in ReferenceTitle
-            let title = if let Some(title_data) = self.extract_tag_content(release_data, b"TitleText") {
-                self.intern_string(title_data)
-            } else {
-                "Untitled Release".to_string()
-            };
+            let title =
+                if let Some(title_data) = self.extract_tag_content(release_data, b"TitleText") {
+                    self.intern_string(title_data)
+                } else {
+                    "Untitled Release".to_string()
+                };
 
             // Extract resource references (simplified)
             let resource_references = self.extract_resource_references_fast(release_data);
@@ -191,26 +207,35 @@ impl FastZeroCopyParser {
     }
 
     /// Fast sound recording extraction
-    fn extract_sound_recording_fast(&mut self, data: &[u8], start: usize) -> Result<Option<WorkingStreamingElement>, ParseError> {
+    fn extract_sound_recording_fast(
+        &mut self,
+        data: &[u8],
+        start: usize,
+    ) -> Result<Option<WorkingStreamingElement>, ParseError> {
         if let Some(end) = self.find_pattern(&data[start..], b"</SoundRecording>") {
             let recording_data = &data[start..start + end + 17]; // Include closing tag
 
-            let reference = if let Some(attr) = self.extract_attribute_fast(recording_data, b"ResourceReference") {
+            let reference = if let Some(attr) =
+                self.extract_attribute_fast(recording_data, b"ResourceReference")
+            {
                 self.intern_string(attr)
             } else {
                 format!("RES-{}", self.elements_found)
             };
 
-            let title = if let Some(title_data) = self.extract_tag_content(recording_data, b"TitleText") {
-                self.intern_string(title_data)
-            } else {
-                "Untitled Track".to_string()
-            };
+            let title =
+                if let Some(title_data) = self.extract_tag_content(recording_data, b"TitleText") {
+                    self.intern_string(title_data)
+                } else {
+                    "Untitled Track".to_string()
+                };
 
-            let duration = self.extract_tag_content(recording_data, b"Duration")
+            let duration = self
+                .extract_tag_content(recording_data, b"Duration")
                 .map(|d| self.intern_string(d));
 
-            let isrc = self.extract_tag_content(recording_data, b"ISRC")
+            let isrc = self
+                .extract_tag_content(recording_data, b"ISRC")
                 .map(|i| self.intern_string(i));
 
             return Ok(Some(WorkingStreamingElement::SoundRecording {
@@ -266,7 +291,9 @@ impl FastZeroCopyParser {
         // Look for ResourceReference tags
         while let Some(start) = self.find_pattern(&data[pos..], b"<ResourceReference>") {
             let abs_start = pos + start;
-            if let Some(content) = self.extract_tag_content(&data[abs_start..], b"ResourceReference") {
+            if let Some(content) =
+                self.extract_tag_content(&data[abs_start..], b"ResourceReference")
+            {
                 refs.push(self.intern_string(content));
             }
             pos = abs_start + 19; // Skip past "<ResourceReference>"
@@ -294,6 +321,12 @@ impl FastZeroCopyParser {
             elapsed_time: elapsed,
             throughput_mb_per_sec: throughput,
         }
+    }
+}
+
+impl Default for FastZeroCopyParser {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -403,9 +436,15 @@ mod tests {
         assert!(!elements.is_empty(), "Should find elements");
 
         // Verify elements
-        let has_header = elements.iter().any(|e| matches!(e, WorkingStreamingElement::MessageHeader { .. }));
-        let has_release = elements.iter().any(|e| matches!(e, WorkingStreamingElement::Release { .. }));
-        let has_end_stream = elements.iter().any(|e| matches!(e, WorkingStreamingElement::EndOfStream { .. }));
+        let has_header = elements
+            .iter()
+            .any(|e| matches!(e, WorkingStreamingElement::MessageHeader { .. }));
+        let has_release = elements
+            .iter()
+            .any(|e| matches!(e, WorkingStreamingElement::Release { .. }));
+        let has_end_stream = elements
+            .iter()
+            .any(|e| matches!(e, WorkingStreamingElement::EndOfStream { .. }));
 
         assert!(has_header, "Should find message header");
         assert!(has_release, "Should find release");
@@ -439,7 +478,9 @@ mod tests {
         let parser = FastZeroCopyParser::new();
         let data = b"<Release ReleaseReference=\"REL-123\">";
 
-        let attr_value = parser.extract_attribute_fast(data, b"ReleaseReference").unwrap();
+        let attr_value = parser
+            .extract_attribute_fast(data, b"ReleaseReference")
+            .unwrap();
         assert_eq!(attr_value, b"REL-123");
     }
 }

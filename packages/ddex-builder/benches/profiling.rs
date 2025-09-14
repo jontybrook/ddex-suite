@@ -1,10 +1,9 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion, profiler::PProfProfiler};
-use ddex_builder::{DDEXBuilder, BuildRequest, BuildOptions};
+use criterion::{black_box, criterion_group, criterion_main, profiler::PProfProfiler, Criterion};
 use ddex_builder::builder::{
-    MessageHeaderRequest, PartyRequest, LocalizedStringRequest, 
-    ReleaseRequest, SoundRecordingRequest, ResourceRequest, 
-    DisplayArtistRequest, ContributorRequest
+    ContributorRequest, DisplayArtistRequest, LocalizedStringRequest, MessageHeaderRequest,
+    PartyRequest, ReleaseRequest, ResourceRequest, SoundRecordingRequest,
 };
+use ddex_builder::{BuildOptions, BuildRequest, DDEXBuilder};
 use std::time::Duration;
 
 #[cfg(feature = "dhat-heap")]
@@ -23,11 +22,11 @@ fn benchmark_with_profiler(c: &mut Criterion) {
     group.bench_function("profile_12_track_album", |b| {
         let builder = DDEXBuilder::new();
         let request = create_realistic_album_request();
-        
+
         b.iter(|| {
             let result = builder.build(
                 black_box(request.clone()),
-                black_box(BuildOptions::default())
+                black_box(BuildOptions::default()),
             );
             black_box(result)
         });
@@ -38,18 +37,32 @@ fn benchmark_with_profiler(c: &mut Criterion) {
 
 fn create_realistic_album_request() -> BuildRequest {
     let mut sound_recordings = vec![];
-    
+
     // Create 12 tracks with realistic data
     let track_titles = [
-        "Opening Theme", "Midnight Drive", "Lost in Translation", "Electric Dreams",
-        "Analog Heart", "Digital Soul", "Neon Lights", "City Rain",
-        "Memory Lane", "Future Past", "Closing Time", "After Hours"
+        "Opening Theme",
+        "Midnight Drive",
+        "Lost in Translation",
+        "Electric Dreams",
+        "Analog Heart",
+        "Digital Soul",
+        "Neon Lights",
+        "City Rain",
+        "Memory Lane",
+        "Future Past",
+        "Closing Time",
+        "After Hours",
     ];
-    
-    let artists = ["Main Artist", "Featured Artist", "Main Artist", "Main Artist"];
+
+    let artists = [
+        "Main Artist",
+        "Featured Artist",
+        "Main Artist",
+        "Main Artist",
+    ];
     let contributors = ["Producer A", "Producer B", "Engineer"];
     let genres = ["Electronic", "Pop", "Ambient"];
-    
+
     for (i, title) in track_titles.iter().enumerate() {
         sound_recordings.push(SoundRecordingRequest {
             sound_recording_id: format!("ISRC-TEST-{:02}-{:05}", 24, i + 1),
@@ -72,11 +85,15 @@ fn create_realistic_album_request() -> BuildRequest {
                     contributor_name: "Sound Engineer".to_string(),
                     contributor_role: "Engineer".to_string(),
                     party_id: Some("ENG_001".to_string()),
-                }
+                },
             ],
             resources: vec![ResourceRequest {
                 resource_id: format!("RES_{:03}", i + 1),
-                resource_reference: format!("{:02}_{}.mp3", i + 1, title.replace(" ", "_").to_lowercase()),
+                resource_reference: format!(
+                    "{:02}_{}.mp3",
+                    i + 1,
+                    title.replace(" ", "_").to_lowercase()
+                ),
                 resource_type: "SoundRecording".to_string(),
             }],
             duration: Some(format!("PT{}M{}S", 3 + (i % 3), 15 + (i * 7) % 45)),
@@ -87,7 +104,7 @@ fn create_realistic_album_request() -> BuildRequest {
             }],
         });
     }
-    
+
     BuildRequest {
         header: MessageHeaderRequest {
             message_id: Some("TEST_ALBUM_PROFILE_2024_001".to_string()),

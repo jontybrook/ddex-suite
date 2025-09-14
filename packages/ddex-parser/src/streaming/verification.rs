@@ -1,8 +1,8 @@
 //! Verification script for model-aligned comprehensive streaming parser
 
-use std::io::Cursor;
-use ddex_core::models::versions::ERNVersion;
 use crate::streaming::comprehensive::{ComprehensiveStreamIterator, StreamingElement};
+use ddex_core::models::versions::ERNVersion;
+use std::io::Cursor;
 
 pub fn verify_comprehensive_parser() {
     let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -47,7 +47,10 @@ pub fn verify_comprehensive_parser() {
                         release_found = true;
                     }
                     StreamingElement::Resource(resource) => {
-                        println!("✅ Parsed Resource: reference={}", resource.resource_reference);
+                        println!(
+                            "✅ Parsed Resource: reference={}",
+                            resource.resource_reference
+                        );
                         println!("   Titles: {}", resource.reference_title.len());
                         if let Some(duration) = resource.duration {
                             println!("   Duration: {}s", duration.as_secs());

@@ -15,7 +15,7 @@ impl DdexParser {
     pub fn new() -> Self {
         DdexParser { _private: () }
     }
-    
+
     #[napi]
     pub fn detect_version(&self, xml: String) -> String {
         if xml.contains("ern/43") || xml.contains("xml/ern/43") {
@@ -28,7 +28,7 @@ impl DdexParser {
             "Unknown".to_string()
         }
     }
-    
+
     #[napi]
     pub fn parse_sync(&self, xml: String, _options: Option<ParseOptions>) -> Result<ParsedMessage> {
         // Basic XML validation
@@ -38,31 +38,33 @@ impl DdexParser {
                 "Invalid XML: missing angle brackets",
             ));
         }
-        
+
         // Check for valid DDEX
-        if !xml.contains("NewReleaseMessage") && 
-           !xml.contains("UpdateReleaseMessage") && 
-           !xml.contains("TakedownMessage") {
+        if !xml.contains("NewReleaseMessage")
+            && !xml.contains("UpdateReleaseMessage")
+            && !xml.contains("TakedownMessage")
+        {
             return Err(Error::new(
                 Status::InvalidArg,
                 "Invalid DDEX: not a valid DDEX message type",
             ));
         }
-        
+
         // Check for unclosed tags
         let open_count = xml.matches('<').count();
         let close_count = xml.matches('>').count();
         if open_count != close_count {
-            return Err(Error::new(
-                Status::InvalidArg,
-                "Invalid XML: unclosed tags",
-            ));
+            return Err(Error::new(Status::InvalidArg, "Invalid XML: unclosed tags"));
         }
-        
+
         let version = self.detect_version(xml.clone());
-        
+
         // Generate statistics if requested
-        let statistics = if _options.as_ref().and_then(|o| o.collect_statistics).unwrap_or(false) {
+        let statistics = if _options
+            .as_ref()
+            .and_then(|o| o.collect_statistics)
+            .unwrap_or(false)
+        {
             Some(ParseStatistics {
                 parse_time_ms: 5.0,
                 memory_used_bytes: xml.len() as u32 * 2,
@@ -76,15 +78,23 @@ impl DdexParser {
         } else {
             None
         };
-        
+
         // Generate fidelity info based on options
         let fidelity_info = if let Some(ref opts) = _options {
             Some(FidelityInfo {
-                fidelity_level: opts.fidelity_level.clone().unwrap_or_else(|| "balanced".to_string()),
-                canonicalization_algorithm: opts.canonicalization.clone().unwrap_or_else(|| "db_c14n".to_string()),
+                fidelity_level: opts
+                    .fidelity_level
+                    .clone()
+                    .unwrap_or_else(|| "balanced".to_string()),
+                canonicalization_algorithm: opts
+                    .canonicalization
+                    .clone()
+                    .unwrap_or_else(|| "db_c14n".to_string()),
                 comments_preserved: opts.preserve_comments.unwrap_or(false),
                 extensions_preserved: opts.preserve_extensions.unwrap_or(true),
-                processing_instructions_preserved: opts.preserve_processing_instructions.unwrap_or(false),
+                processing_instructions_preserved: opts
+                    .preserve_processing_instructions
+                    .unwrap_or(false),
                 attribute_order_preserved: opts.preserve_attribute_order.unwrap_or(true),
                 namespace_prefixes_preserved: opts.preserve_namespace_prefixes.unwrap_or(true),
             })
@@ -111,37 +121,38 @@ impl DdexParser {
             fidelity_info,
         })
     }
-    
+
     #[napi]
     pub async fn parse(&self, xml: String, options: Option<ParseOptions>) -> Result<ParsedMessage> {
         // For async, just call sync version for now
         self.parse_sync(xml, options)
     }
-    
+
     #[napi]
     pub async fn sanity_check(&self, xml: String) -> Result<SanityCheckResult> {
         let mut errors = Vec::new();
         let warnings = Vec::new(); // Fixed: removed mut
-        
+
         // Basic validation
         if !xml.contains('<') || !xml.contains('>') {
             errors.push("Invalid XML structure".to_string());
         }
-        
-        if !xml.contains("NewReleaseMessage") && 
-           !xml.contains("UpdateReleaseMessage") && 
-           !xml.contains("TakedownMessage") {
+
+        if !xml.contains("NewReleaseMessage")
+            && !xml.contains("UpdateReleaseMessage")
+            && !xml.contains("TakedownMessage")
+        {
             errors.push("Not a valid DDEX message".to_string());
         }
-        
+
         let open_count = xml.matches('<').count();
         let close_count = xml.matches('>').count();
         if open_count != close_count {
             errors.push("Unclosed XML tags".to_string());
         }
-        
+
         let version = self.detect_version(xml);
-        
+
         Ok(SanityCheckResult {
             is_valid: errors.is_empty(),
             version,
@@ -149,7 +160,7 @@ impl DdexParser {
             warnings,
         })
     }
-    
+
     #[napi]
     pub fn stream(&self, _xml: String, _options: Option<StreamOptions>) -> Result<ReleaseStream> {
         Ok(ReleaseStream::new())
@@ -168,7 +179,7 @@ pub struct ParseOptions {
     pub timeout_ms: Option<u32>,
     pub allow_blocking: Option<bool>,
     pub chunk_size: Option<u32>,
-    
+
     // Perfect Fidelity Engine options
     pub fidelity_level: Option<String>, // "fast", "balanced", "perfect"
     pub preserve_comments: Option<bool>,
@@ -210,7 +221,7 @@ pub struct ParsedMessage {
     pub deal_count: u32,
     pub resource_count: u32,
     pub total_duration_seconds: f64,
-    
+
     // Perfect Fidelity Engine results
     pub statistics: Option<ParseStatistics>,
     pub fidelity_info: Option<FidelityInfo>,
@@ -285,7 +296,7 @@ impl ReleaseStream {
             Ok(None)
         }
     }
-    
+
     #[napi]
     pub async fn progress(&self) -> Result<ProgressInfo> {
         Ok(ProgressInfo {

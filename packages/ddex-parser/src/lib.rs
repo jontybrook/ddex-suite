@@ -2,17 +2,16 @@
 /// DDEX Parser Core Library
 pub mod error;
 pub mod parser;
-pub mod transform;
 pub mod streaming;
+pub mod transform;
 pub mod utf8_utils;
 
 // Re-export commonly used types
 pub use ddex_core::models::versions::ERNVersion;
 
-use serde::{Deserialize, Serialize};
 use parser::security::SecurityConfig;
-use streaming::{WorkingStreamIterator, StreamingConfig};
-use chrono;
+use serde::{Deserialize, Serialize};
+use streaming::{StreamingConfig, WorkingStreamIterator};
 
 #[cfg(feature = "zero-copy")]
 use streaming::fast_zero_copy::FastZeroCopyIterator;
@@ -38,12 +37,12 @@ impl DDEXParser {
             config: SecurityConfig::default(),
         }
     }
-    
+
     /// Create parser with custom security configuration
     pub fn with_config(config: SecurityConfig) -> Self {
         Self { config }
     }
-    
+
     /// Parse DDEX XML from a reader
     pub fn parse<R: std::io::BufRead + std::io::Seek>(
         &mut self,
@@ -57,7 +56,7 @@ impl DDEXParser {
         // Otherwise use standard path
         self.parse_with_options(reader, Default::default())
     }
-    
+
     /// Parse with options
     pub fn parse_with_options<R: std::io::BufRead + std::io::Seek>(
         &mut self,
@@ -74,12 +73,9 @@ impl DDEXParser {
 
         parser::parse(reader, options, &self.config)
     }
-    
+
     /// Stream parse for large files using new streaming implementation
-    pub fn stream<R: std::io::BufRead>(
-        &self,
-        reader: R,
-    ) -> WorkingStreamIterator<R> {
+    pub fn stream<R: std::io::BufRead>(&self, reader: R) -> WorkingStreamIterator<R> {
         // For streaming, we can't detect version from reader without consuming it
         // So we default to V4_3
         let version = ddex_core::models::versions::ERNVersion::V4_3;
@@ -101,10 +97,7 @@ impl DDEXParser {
 
     /// High-performance zero-copy streaming parser (280+ MB/s)
     #[cfg(feature = "zero-copy")]
-    pub fn stream_zero_copy<R: std::io::BufRead>(
-        &self,
-        reader: R,
-    ) -> FastZeroCopyIterator<R> {
+    pub fn stream_zero_copy<R: std::io::BufRead>(&self, reader: R) -> FastZeroCopyIterator<R> {
         let version = ddex_core::models::versions::ERNVersion::V4_3;
         FastZeroCopyIterator::new(reader, version)
     }
@@ -122,10 +115,7 @@ impl DDEXParser {
     }
 
     /// Multi-core parallel streaming parser for maximum throughput (target: 280+ MB/s)
-    pub fn stream_parallel<R: std::io::BufRead>(
-        &self,
-        reader: R,
-    ) -> ParallelStreamingIterator<R> {
+    pub fn stream_parallel<R: std::io::BufRead>(&self, reader: R) -> ParallelStreamingIterator<R> {
         let version = ddex_core::models::versions::ERNVersion::V4_3;
         ParallelStreamingIterator::new(reader, version)
     }
@@ -154,17 +144,17 @@ impl DDEXParser {
     /// Parse using the fast streaming parser for maximum performance
     pub fn parse_fast_streaming<R: std::io::BufRead>(
         &mut self,
-        mut reader: R
+        mut reader: R,
     ) -> Result<ddex_core::models::flat::ParsedERNMessage, error::ParseError> {
-        use crate::streaming::fast_streaming_parser::{FastStreamingParser, FastElementType};
+        use crate::streaming::fast_streaming_parser::{FastElementType, FastStreamingParser};
 
         // Create streaming config from security config
         let streaming_config = StreamingConfig {
             security: self.config.clone(),
-            buffer_size: 64 * 1024, // 64KB buffer
+            buffer_size: 64 * 1024,        // 64KB buffer
             max_memory: 200 * 1024 * 1024, // 200MB memory limit
-            chunk_size: 512, // 512KB chunks
-            enable_progress: false, // Disable for max speed
+            chunk_size: 512,               // 512KB chunks
+            enable_progress: false,        // Disable for max speed
             progress_interval: 0,
         };
 
@@ -176,28 +166,31 @@ impl DDEXParser {
 
         // Count elements from the fast iterator
         let mut release_count = 0;
-        let mut resource_count = 0;
-        let mut total_elements = 0;
+        let mut _resource_count = 0;
 
-        for element in iterator {
-            total_elements += 1;
+        for (_total_elements, element) in iterator.enumerate() {
             match element.element_type {
                 FastElementType::Release => {
                     release_count += 1;
                 }
                 FastElementType::Resource => {
-                    resource_count += 1;
+                    _resource_count += 1;
                 }
                 _ => {} // Handle other types as needed
             }
         }
 
         // Create a minimal ParsedERNMessage with the parsed data
-        use ddex_core::models::flat::{ParsedERNMessage, FlattenedMessage, Organization, MessageStats};
-        use ddex_core::models::graph::{ERNMessage, MessageHeader, MessageSender, MessageRecipient, MessageType, MessageControlType};
         use ddex_core::models::common::{Identifier, IdentifierType, LocalizedString};
+        use ddex_core::models::flat::{
+            FlattenedMessage, MessageStats, Organization, ParsedERNMessage,
+        };
+        use ddex_core::models::graph::{
+            ERNMessage, MessageControlType, MessageHeader, MessageRecipient, MessageSender,
+            MessageType,
+        };
         use ddex_core::models::versions::ERNVersion;
-        use std::collections::HashMap;
+        use indexmap::IndexMap;
 
         // Create minimal flattened message
         let flat_message = FlattenedMessage {
@@ -215,9 +208,9 @@ impl DDEXParser {
                 extensions: None,
             },
             releases: Vec::new(), // TODO: Convert FastStreamingElements to ParsedReleases
-            resources: HashMap::new(), // TODO: Convert FastStreamingElements to ParsedResources
+            resources: IndexMap::new(), // TODO: Convert FastStreamingElements to ParsedResources
             deals: Vec::new(),
-            parties: HashMap::new(),
+            parties: IndexMap::new(),
             version: "4.3".to_string(),
             profile: None,
             stats: MessageStats {
@@ -302,7 +295,7 @@ impl DDEXParser {
     ) -> Result<ddex_core::models::versions::ERNVersion, error::ParseError> {
         parser::detector::VersionDetector::detect(reader)
     }
-    
+
     /// Perform sanity check on DDEX XML
     pub fn sanity_check<R: std::io::BufRead>(
         &self,

@@ -106,7 +106,10 @@ fn performance_comparison() -> Result<(), Box<dyn std::error::Error>> {
 
     let sizes = vec![100, 500, 1000, 2000];
 
-    println!("   {:<6} | {:<12} | {:<12} | {:<10}", "Size", "Standard", "Fast", "Speedup");
+    println!(
+        "   {:<6} | {:<12} | {:<12} | {:<10}",
+        "Size", "Standard", "Fast", "Speedup"
+    );
     println!("   {:-<6}-+-{:-<12}-+-{:-<12}-+-{:-<10}", "", "", "", "");
 
     for size in sizes {
@@ -132,7 +135,8 @@ fn performance_comparison() -> Result<(), Box<dyn std::error::Error>> {
             0.0
         };
 
-        println!("   {:<6} | {:>9.2}ms | {:>9.2}ms | {:>7.1}x",
+        println!(
+            "   {:<6} | {:>9.2}ms | {:>9.2}ms | {:>7.1}x",
             size,
             duration1.as_millis(),
             duration2.as_millis(),
@@ -140,7 +144,12 @@ fn performance_comparison() -> Result<(), Box<dyn std::error::Error>> {
         );
 
         // Verify both methods find the same ISRCs
-        assert_eq!(isrcs1.len(), isrcs2.len(), "ISRC count mismatch for size {}", size);
+        assert_eq!(
+            isrcs1.len(),
+            isrcs2.len(),
+            "ISRC count mismatch for size {}",
+            size
+        );
     }
 
     println!();
@@ -152,7 +161,8 @@ fn performance_comparison() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn generate_sample_ddex_with_isrcs(num_tracks: usize) -> String {
-    let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43">
     <ern:MessageHeader>
         <ern:MessageId>ISRC_EXTRACTION_TEST</ern:MessageId>
@@ -164,7 +174,8 @@ fn generate_sample_ddex_with_isrcs(num_tracks: usize) -> String {
         </ern:MessageRecipient>
         <ern:MessageCreatedDateTime>2024-01-15T10:30:00Z</ern:MessageCreatedDateTime>
     </ern:MessageHeader>
-    <ern:ResourceList>"#);
+    <ern:ResourceList>"#,
+    );
 
     for i in 0..num_tracks {
         // Generate valid ISRC (12 characters: CCXXXYYNNNNN)
@@ -179,7 +190,8 @@ fn generate_sample_ddex_with_isrcs(num_tracks: usize) -> String {
         let designation = format!("{:05}", i % 100000);
         let isrc = format!("{}{}{}{}", country_code, registrant, year, designation);
 
-        xml.push_str(&format!(r#"
+        xml.push_str(&format!(
+            r#"
         <ern:SoundRecording>
             <ern:SoundRecordingId Namespace="ISRC">{}</ern:SoundRecordingId>
             <ern:ReferenceTitle>
@@ -195,7 +207,13 @@ fn generate_sample_ddex_with_isrcs(num_tracks: usize) -> String {
                 <ern:LabelName>Fast Parser Records</ern:LabelName>
                 <ern:RightsAgreementId>RA_{:06}</ern:RightsAgreementId>
             </ern:SoundRecordingDetailsByTerritory>
-        </ern:SoundRecording>"#, isrc, i, (i % 60), i, i));
+        </ern:SoundRecording>"#,
+            isrc,
+            i,
+            (i % 60),
+            i,
+            i
+        ));
     }
 
     xml.push_str("</ern:ResourceList></ern:NewReleaseMessage>");

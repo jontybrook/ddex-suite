@@ -1,7 +1,7 @@
 //! Error types for DDEX Builder
 
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use serde::{Serialize, Deserialize};
 
 /// Build error types
 #[derive(Error, Debug, Clone, Serialize, Deserialize)]
@@ -14,47 +14,47 @@ pub enum BuildError {
         /// Error message describing the issue
         message: String,
     },
-    
+
     /// Missing required field
     #[error("Missing required field: {field}")]
     MissingRequired {
         /// Field that failed validation
         field: String,
     },
-    
+
     /// Invalid reference
     #[error("Invalid reference: {reference}")]
     InvalidReference {
         /// Reference that could not be resolved
         reference: String,
     },
-    
+
     /// Validation failed
     #[error("Validation failed: {}", errors.join(", "))]
     ValidationFailed {
         /// List of validation errors
         errors: Vec<String>,
     },
-    
+
     /// IO error
     #[error("IO error: {0}")]
     Io(String),
-    
+
     /// Serialization error
     #[error("Serialization error: {0}")]
     Serialization(String),
-    
+
     /// XML generation error
     #[error("XML generation error: {0}")]
     XmlGeneration(String),
-    
+
     /// Determinism verification failed
     #[error("Determinism verification failed: {message}")]
     DeterminismFailed {
         /// General error message
         message: String,
     },
-    
+
     /// Determinism guarantee violation
     #[error("Determinism guarantee violated: {guarantee} - {details}")]
     DeterminismGuaranteeViolated {
@@ -63,23 +63,23 @@ pub enum BuildError {
         /// Details about the failure
         details: String,
     },
-    
+
     /// Validation error
     #[error("Validation error: {0}")]
     Validation(String),
-    
+
     /// Parallel processing error
     #[error("Parallel processing error: {0}")]
     Parallel(String),
-    
+
     /// Security violation
     #[error("Security violation: {0}")]
     Security(String),
-    
+
     /// Input sanitization failed
     #[error("Input sanitization failed: {0}")]
     InputSanitization(String),
-    
+
     /// Other error
     #[error("{0}")]
     Other(String),

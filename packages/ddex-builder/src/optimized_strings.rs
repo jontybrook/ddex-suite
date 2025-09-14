@@ -1,15 +1,15 @@
 //! Optimized string handling for DDEX Builder performance
-//! 
+//!
 //! This module provides string interning, Cow optimization, and memory-efficient
 //! string operations to reduce allocations and improve build performance.
 
-use std::borrow::Cow;
 use indexmap::IndexMap;
-use std::sync::Arc;
-use once_cell::sync::Lazy;
-use smartstring::{SmartString, LazyCompact};
-use string_cache::DefaultAtom;
 use indexmap::IndexSet;
+use once_cell::sync::Lazy;
+use smartstring::{LazyCompact, SmartString};
+use std::borrow::Cow;
+use std::sync::Arc;
+use string_cache::DefaultAtom;
 
 /// High-performance string type for small strings
 pub type FastString = SmartString<LazyCompact>;
@@ -17,17 +17,17 @@ pub type FastString = SmartString<LazyCompact>;
 /// Static string cache for common DDEX values
 static COMMON_STRINGS: Lazy<IndexMap<&'static str, &'static str>> = Lazy::new(|| {
     let mut map = IndexMap::new();
-    
+
     // Common DDEX versions
     map.insert("4.3", "4.3");
     map.insert("4.2", "4.2");
     map.insert("4.1", "4.1");
-    
+
     // Common message types
     map.insert("NewReleaseMessage", "NewReleaseMessage");
     map.insert("PurgeReleaseMessage", "PurgeReleaseMessage");
     map.insert("LiveMessage", "LiveMessage");
-    
+
     // Common roles
     map.insert("MainArtist", "MainArtist");
     map.insert("FeaturedArtist", "FeaturedArtist");
@@ -36,19 +36,19 @@ static COMMON_STRINGS: Lazy<IndexMap<&'static str, &'static str>> = Lazy::new(||
     map.insert("Performer", "Performer");
     map.insert("Engineer", "Engineer");
     map.insert("Mixer", "Mixer");
-    
+
     // Common resource types
     map.insert("SoundRecording", "SoundRecording");
     map.insert("Video", "Video");
     map.insert("Image", "Image");
     map.insert("Text", "Text");
-    
+
     // Common release types
     map.insert("Single", "Single");
     map.insert("Album", "Album");
     map.insert("EP", "EP");
     map.insert("Compilation", "Compilation");
-    
+
     // Common genres
     map.insert("Rock", "Rock");
     map.insert("Pop", "Pop");
@@ -60,7 +60,7 @@ static COMMON_STRINGS: Lazy<IndexMap<&'static str, &'static str>> = Lazy::new(||
     map.insert("R&B", "R&B");
     map.insert("Folk", "Folk");
     map.insert("Alternative", "Alternative");
-    
+
     // Common language codes
     map.insert("en", "en");
     map.insert("es", "es");
@@ -71,7 +71,7 @@ static COMMON_STRINGS: Lazy<IndexMap<&'static str, &'static str>> = Lazy::new(||
     map.insert("ja", "ja");
     map.insert("ko", "ko");
     map.insert("zh", "zh");
-    
+
     // Common territory codes
     map.insert("US", "US");
     map.insert("GB", "GB");
@@ -81,17 +81,17 @@ static COMMON_STRINGS: Lazy<IndexMap<&'static str, &'static str>> = Lazy::new(||
     map.insert("FR", "FR");
     map.insert("JP", "JP");
     map.insert("KR", "KR");
-    
+
     // Common commercial models
     map.insert("SubscriptionModel", "SubscriptionModel");
     map.insert("PermanentDownload", "PermanentDownload");
     map.insert("AdSupportedModel", "AdSupportedModel");
     map.insert("ConditionalDownload", "ConditionalDownload");
-    
+
     // Common prefixes for copyright
     map.insert("℗ ", "℗ ");
     map.insert("© ", "© ");
-    
+
     map
 });
 
@@ -112,44 +112,45 @@ impl StringInterner {
             atoms: IndexMap::new(),
         }
     }
-    
+
     /// Intern a string, returning a reference to the interned version
     pub fn intern(&mut self, s: &str) -> Arc<str> {
         // Check static cache first
         if let Some(&static_str) = COMMON_STRINGS.get(s) {
             return Arc::from(static_str);
         }
-        
+
         // Check if already interned
         if let Some(existing) = self.strings.get(s) {
             return existing.clone();
         }
-        
+
         // Intern new string
         let arc_str: Arc<str> = Arc::from(s);
         self.strings.insert(arc_str.clone());
         arc_str
     }
-    
+
     /// Intern as an atom for even better performance on repeated lookups
     pub fn intern_atom(&mut self, s: String) -> DefaultAtom {
         if let Some(atom) = self.atoms.get(&s) {
             return atom.clone();
         }
-        
+
         let atom = DefaultAtom::from(s.as_str());
         self.atoms.insert(s, atom.clone());
         atom
     }
-    
+
     /// Get memory usage statistics
     pub fn memory_usage(&self) -> usize {
-        self.strings.iter()
+        self.strings
+            .iter()
             .map(|s| s.len() + std::mem::size_of::<Arc<str>>())
             .sum::<usize>()
             + self.atoms.len() * std::mem::size_of::<DefaultAtom>()
     }
-    
+
     /// Clear the interner (useful for long-running processes)
     pub fn clear(&mut self) {
         self.strings.clear();
@@ -177,26 +178,27 @@ impl OptimizedString {
         if let Some(&static_str) = COMMON_STRINGS.get(s) {
             return OptimizedString::Static(static_str);
         }
-        
+
         // Use small string optimization for short strings
-        if s.len() <= 23 {  // SmartString threshold
+        if s.len() <= 23 {
+            // SmartString threshold
             OptimizedString::Small(FastString::from(s))
         } else {
             // For longer strings, we'll need interning context
             OptimizedString::Small(FastString::from(s))
         }
     }
-    
+
     /// Create from an interned string
     pub fn interned(s: Arc<str>) -> Self {
         OptimizedString::Interned(s)
     }
-    
+
     /// Create from an atom
     pub fn atom(atom: DefaultAtom) -> Self {
         OptimizedString::Atom(atom)
     }
-    
+
     /// Get the string value
     pub fn as_str(&self) -> &str {
         match self {
@@ -206,7 +208,7 @@ impl OptimizedString {
             OptimizedString::Atom(atom) => atom,
         }
     }
-    
+
     /// Get memory footprint in bytes
     pub fn memory_footprint(&self) -> usize {
         match self {
@@ -250,11 +252,13 @@ impl OptimizedLocalizedString {
             language_code: language_code.map(OptimizedString::new),
         }
     }
-    
+
     /// Memory footprint of this localized string
     pub fn memory_footprint(&self) -> usize {
-        self.text.memory_footprint() 
-            + self.language_code.as_ref()
+        self.text.memory_footprint()
+            + self
+                .language_code
+                .as_ref()
                 .map(|lc| lc.memory_footprint())
                 .unwrap_or(0)
     }
@@ -275,7 +279,7 @@ impl BufferPool {
             current_size: 0,
         }
     }
-    
+
     /// Get a buffer from the pool, or create one if none available
     pub fn get_buffer(&mut self, estimated_size: usize) -> String {
         match self.buffers.pop() {
@@ -292,21 +296,20 @@ impl BufferPool {
             }
         }
     }
-    
+
     /// Return a buffer to the pool
     pub fn return_buffer(&mut self, buffer: String) {
-        if buffer.capacity() <= 8192 {  // Don't keep huge buffers
+        if buffer.capacity() <= 8192 {
+            // Don't keep huge buffers
             self.buffers.push(buffer);
         }
     }
-    
+
     /// Get current memory usage
     pub fn memory_usage(&self) -> usize {
-        self.current_size + self.buffers.iter()
-            .map(|b| b.capacity())
-            .sum::<usize>()
+        self.current_size + self.buffers.iter().map(|b| b.capacity()).sum::<usize>()
     }
-    
+
     /// Clear the pool
     pub fn clear(&mut self) {
         self.buffers.clear();
@@ -334,19 +337,20 @@ impl BuildContext {
             stats: BuildStats::default(),
         }
     }
-    
+
     /// Optimize a string using the context's interner
     pub fn optimize_string(&mut self, s: &str) -> OptimizedString {
         self.stats.strings_processed += 1;
-        
+
         // Track if we use static cache
         if COMMON_STRINGS.contains_key(s) {
             self.stats.static_cache_hits += 1;
             return OptimizedString::new(s);
         }
-        
+
         // Check if worth interning (repeated strings)
-        if s.len() > 23 {  // Beyond small string optimization
+        if s.len() > 23 {
+            // Beyond small string optimization
             let interned = self.interner.intern(s);
             self.stats.interned_strings += 1;
             OptimizedString::interned(interned)
@@ -354,18 +358,18 @@ impl BuildContext {
             OptimizedString::new(s)
         }
     }
-    
+
     /// Get a buffer for XML generation
     pub fn get_xml_buffer(&mut self, estimated_size: usize) -> String {
         self.stats.buffers_requested += 1;
         self.buffer_pool.get_buffer(estimated_size)
     }
-    
+
     /// Return a buffer to the pool
     pub fn return_xml_buffer(&mut self, buffer: String) {
         self.buffer_pool.return_buffer(buffer);
     }
-    
+
     /// Get memory usage statistics
     pub fn memory_usage(&self) -> MemoryUsage {
         MemoryUsage {
@@ -374,14 +378,14 @@ impl BuildContext {
             total_bytes: self.interner.memory_usage() + self.buffer_pool.memory_usage(),
         }
     }
-    
+
     /// Reset context for next build (keeps caches)
     pub fn reset_for_next_build(&mut self) {
         // Don't clear interner - strings likely to be reused
         self.buffer_pool.clear();
         self.stats = BuildStats::default();
     }
-    
+
     /// Full reset including caches
     pub fn full_reset(&mut self) {
         self.interner.clear();
@@ -417,15 +421,15 @@ pub struct MemoryUsage {
 /// Memory size constants for planning
 pub mod buffer_sizes {
     /// Estimated XML output sizes
-    pub const SINGLE_TRACK_XML: usize = 8_192;      // ~8KB
+    pub const SINGLE_TRACK_XML: usize = 8_192; // ~8KB
     /// Typical size of 12-track album XML (~64KB)
-    pub const ALBUM_12_TRACKS_XML: usize = 65_536;  // ~64KB
+    pub const ALBUM_12_TRACKS_XML: usize = 65_536; // ~64KB
     /// Typical size of 100-track compilation XML (~512KB)
     pub const COMPILATION_100_TRACKS_XML: usize = 524_288; // ~512KB
-    
+
     /// Buffer overhead factors
     pub const BUFFER_OVERHEAD_FACTOR: f32 = 1.2; // 20% overhead for safety
-    
+
     /// Calculate estimated buffer size for track count
     pub fn estimated_xml_size(track_count: usize) -> usize {
         let base_size = match track_count {
@@ -433,14 +437,14 @@ pub mod buffer_sizes {
             2..=20 => ALBUM_12_TRACKS_XML,
             _ => COMPILATION_100_TRACKS_XML,
         };
-        
+
         // Scale linearly for track count
         let scaled = if track_count <= 20 {
             (base_size * track_count / 12).max(SINGLE_TRACK_XML)
         } else {
             COMPILATION_100_TRACKS_XML * track_count / 100
         };
-        
+
         (scaled as f32 * BUFFER_OVERHEAD_FACTOR) as usize
     }
 }
@@ -448,7 +452,7 @@ pub mod buffer_sizes {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_optimized_string_static_cache() {
         let s = OptimizedString::new("MainArtist");
@@ -456,46 +460,51 @@ mod tests {
             OptimizedString::Static(val) => assert_eq!(val, "MainArtist"),
             _ => panic!("Expected static string"),
         }
-        
+
         // Should be zero allocation
         assert_eq!(s.memory_footprint(), 0);
     }
-    
+
     #[test]
     fn test_string_interner() {
         let mut interner = StringInterner::new();
-        
+
         let s1 = interner.intern("Custom Artist Name");
         let s2 = interner.intern("Custom Artist Name");
-        
+
         // Should be same Arc
         assert_eq!(s1.as_ptr(), s2.as_ptr());
     }
-    
+
     #[test]
     fn test_buffer_pool() {
         let mut pool = BufferPool::new();
-        
+
         let mut buffer = pool.get_buffer(1024);
         buffer.push_str("test content");
-        
+
         assert!(buffer.capacity() >= 1024);
-        
+
         pool.return_buffer(buffer);
-        
+
         let buffer2 = pool.get_buffer(512);
         assert!(buffer2.is_empty());
         assert!(buffer2.capacity() >= 1024); // Reused larger buffer
     }
-    
+
     #[test]
     fn test_buffer_size_estimation() {
-        assert_eq!(buffer_sizes::estimated_xml_size(1), 
-                   (buffer_sizes::SINGLE_TRACK_XML as f32 * buffer_sizes::BUFFER_OVERHEAD_FACTOR) as usize);
-        
-        assert_eq!(buffer_sizes::estimated_xml_size(12),
-                   (buffer_sizes::ALBUM_12_TRACKS_XML as f32 * buffer_sizes::BUFFER_OVERHEAD_FACTOR) as usize);
-        
+        assert_eq!(
+            buffer_sizes::estimated_xml_size(1),
+            (buffer_sizes::SINGLE_TRACK_XML as f32 * buffer_sizes::BUFFER_OVERHEAD_FACTOR) as usize
+        );
+
+        assert_eq!(
+            buffer_sizes::estimated_xml_size(12),
+            (buffer_sizes::ALBUM_12_TRACKS_XML as f32 * buffer_sizes::BUFFER_OVERHEAD_FACTOR)
+                as usize
+        );
+
         // Large compilation should scale
         let size_100 = buffer_sizes::estimated_xml_size(100);
         let size_200 = buffer_sizes::estimated_xml_size(200);

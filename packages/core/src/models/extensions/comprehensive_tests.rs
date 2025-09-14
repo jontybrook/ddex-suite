@@ -325,7 +325,7 @@ mod extension_tests {
 
         // Test pattern matching (simplified for this test)
         let message_matches = extensions.get_fragments_matching("message/");
-        assert!(message_matches.len() >= 1); // Implementation dependent
+        assert!(!message_matches.is_empty()); // Implementation dependent
     }
 
     #[test]

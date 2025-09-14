@@ -1,8 +1,8 @@
 // Integration test demonstrating fixed type conversions
 
-use ddex_core::models::{Identifier, LocalizedString, IdentifierType};
-use ddex_core::models::graph::{MessageSender, Genre, TechnicalDetails, ResourceType};
 use ddex_core::error::ErrorLocation;
+use ddex_core::models::graph::{Genre, MessageSender, ResourceType, TechnicalDetails};
+use ddex_core::models::{Identifier, IdentifierType, LocalizedString};
 
 #[test]
 fn test_fixed_localized_string_creation() {
@@ -125,26 +125,30 @@ fn test_type_conversion_patterns() {
 
     // String vector to LocalizedString vector conversion
     let input_strings = vec!["Title 1".to_string(), "Title 2".to_string()];
-    let localized_strings: Vec<LocalizedString> = input_strings.into_iter()
+    let localized_strings: Vec<LocalizedString> = input_strings
+        .into_iter()
         .map(|s| LocalizedString {
             text: s,
             language_code: None,
             script: None,
-        }).collect();
+        })
+        .collect();
 
     assert_eq!(localized_strings.len(), 2);
     assert_eq!(localized_strings[0].text, "Title 1");
 
     // String vector to Genre vector conversion
     let input_genres = vec!["Rock".to_string(), "Pop".to_string()];
-    let genres: Vec<Genre> = input_genres.into_iter()
+    let genres: Vec<Genre> = input_genres
+        .into_iter()
         .map(|s| Genre {
             genre_text: s,
             sub_genre: None,
             attributes: None,
             extensions: None,
             comments: None,
-        }).collect();
+        })
+        .collect();
 
     assert_eq!(genres.len(), 2);
     assert_eq!(genres[0].genre_text, "Rock");

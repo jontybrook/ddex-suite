@@ -4,7 +4,7 @@
 //! ensuring that generated XML meets fidelity requirements and can successfully
 //! round-trip through the parser.
 
-use crate::{error::BuildError, FidelityOptions, CanonicalizationAlgorithm};
+use crate::{error::BuildError, CanonicalizationAlgorithm, FidelityOptions};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
@@ -28,7 +28,7 @@ impl BuildVerifier {
     ) -> Result<VerificationResult, BuildError> {
         let start_time = Instant::now();
         let mut issues = Vec::new();
-        
+
         // Track verification results
         let mut round_trip_success = true;
         let mut canonicalization_success = true;
@@ -43,7 +43,7 @@ impl BuildVerifier {
                         round_trip_success = false;
                         issues.extend(result.issues);
                     }
-                },
+                }
                 Err(e) => {
                     round_trip_success = false;
                     issues.push(VerificationIssue {
@@ -65,7 +65,7 @@ impl BuildVerifier {
                         canonicalization_success = false;
                         issues.extend(result.issues);
                     }
-                },
+                }
                 Err(e) => {
                     canonicalization_success = false;
                     issues.push(VerificationIssue {
@@ -87,7 +87,7 @@ impl BuildVerifier {
                         schema_validation_success = false;
                         issues.extend(result.issues);
                     }
-                },
+                }
                 Err(e) => {
                     schema_validation_success = false;
                     issues.push(VerificationIssue {
@@ -109,7 +109,7 @@ impl BuildVerifier {
                         determinism_success = false;
                         issues.extend(result.issues);
                     }
-                },
+                }
                 Err(e) => {
                     determinism_success = false;
                     issues.push(VerificationIssue {
@@ -124,9 +124,9 @@ impl BuildVerifier {
         }
 
         let verification_time = start_time.elapsed();
-        let overall_success = round_trip_success 
-            && canonicalization_success 
-            && schema_validation_success 
+        let overall_success = round_trip_success
+            && canonicalization_success
+            && schema_validation_success
             && determinism_success;
 
         Ok(VerificationResult {
@@ -149,7 +149,7 @@ impl BuildVerifier {
         // This would integrate with the ddex-parser to test round-trip
         // For now, we'll simulate the verification
         let issues = Vec::new();
-        
+
         // TODO: Integrate with ddex-parser when available
         // let parser = ddex_parser::DDEXParser::new();
         // let parsed = parser.parse(xml_output)?;
@@ -186,13 +186,13 @@ impl BuildVerifier {
                         suggestion: Some("Check XML syntax".to_string()),
                     });
                 }
-            },
-            CanonicalizationAlgorithm::C14N | 
-            CanonicalizationAlgorithm::C14N11 | 
-            CanonicalizationAlgorithm::DbC14N => {
+            }
+            CanonicalizationAlgorithm::C14N
+            | CanonicalizationAlgorithm::C14N11
+            | CanonicalizationAlgorithm::DbC14N => {
                 // Verify that multiple canonicalizations produce the same result
                 let mut canonicalized_versions = Vec::new();
-                
+
                 for _ in 0..3 {
                     match self.canonicalize_xml(xml_output, &fidelity_options.canonicalization) {
                         Ok(canonical) => canonicalized_versions.push(canonical),
@@ -203,7 +203,9 @@ impl BuildVerifier {
                                 category: "canonicalization".to_string(),
                                 message: format!("Canonicalization failed: {}", e),
                                 path: None,
-                                suggestion: Some("Check canonicalization algorithm settings".to_string()),
+                                suggestion: Some(
+                                    "Check canonicalization algorithm settings".to_string(),
+                                ),
                             });
                             break;
                         }
@@ -218,14 +220,20 @@ impl BuildVerifier {
                             issues.push(VerificationIssue {
                                 severity: VerificationSeverity::Error,
                                 category: "canonicalization-consistency".to_string(),
-                                message: format!("Canonicalization is not deterministic: iteration {} differs", i + 1),
+                                message: format!(
+                                    "Canonicalization is not deterministic: iteration {} differs",
+                                    i + 1
+                                ),
                                 path: None,
-                                suggestion: Some("Check for non-deterministic elements in canonicalization".to_string()),
+                                suggestion: Some(
+                                    "Check for non-deterministic elements in canonicalization"
+                                        .to_string(),
+                                ),
                             });
                         }
                     }
                 }
-            },
+            }
             CanonicalizationAlgorithm::Custom(_rules) => {
                 // Verify custom canonicalization rules
                 // TODO: Implement custom canonicalization verification
@@ -236,13 +244,10 @@ impl BuildVerifier {
                     path: None,
                     suggestion: None,
                 });
-            },
+            }
         }
 
-        Ok(CanonicalizationVerificationResult {
-            success,
-            issues,
-        })
+        Ok(CanonicalizationVerificationResult { success, issues })
     }
 
     /// Verify against DDEX schema
@@ -275,10 +280,7 @@ impl BuildVerifier {
         // This would require integrating with a schema validation library
         // and loading the appropriate DDEX schemas
 
-        Ok(SchemaVerificationResult {
-            success,
-            issues,
-        })
+        Ok(SchemaVerificationResult { success, issues })
     }
 
     /// Verify deterministic output
@@ -292,8 +294,14 @@ impl BuildVerifier {
 
         // Check for non-deterministic elements
         let non_deterministic_patterns = [
-            (r#"\btimestamp\s*=\s*['"][^'"]*['"]"#, "timestamp attributes"),
-            (r#"\bcreated\s*=\s*['"][^'"]*['"]"#, "creation time attributes"),
+            (
+                r#"\btimestamp\s*=\s*['"][^'"]*['"]"#,
+                "timestamp attributes",
+            ),
+            (
+                r#"\bcreated\s*=\s*['"][^'"]*['"]"#,
+                "creation time attributes",
+            ),
             (r#"\buuid\s*=\s*['"][^'"]*['"]"#, "UUID attributes"),
             (r#"\bid\s*=\s*['"]uuid:[^'"]*['"]"#, "UUID-based IDs"),
         ];
@@ -304,9 +312,14 @@ impl BuildVerifier {
                     issues.push(VerificationIssue {
                         severity: VerificationSeverity::Warning,
                         category: "determinism".to_string(),
-                        message: format!("Potentially non-deterministic element detected: {}", description),
+                        message: format!(
+                            "Potentially non-deterministic element detected: {}",
+                            description
+                        ),
                         path: None,
-                        suggestion: Some("Use content-based IDs instead of random values".to_string()),
+                        suggestion: Some(
+                            "Use content-based IDs instead of random values".to_string(),
+                        ),
                     });
                 }
             }
@@ -332,10 +345,7 @@ impl BuildVerifier {
             }
         }
 
-        Ok(DeterminismVerificationResult {
-            success,
-            issues,
-        })
+        Ok(DeterminismVerificationResult { success, issues })
     }
 
     /// Check if attributes in an element are in deterministic order
@@ -346,10 +356,10 @@ impl BuildVerifier {
                 .captures_iter(element_str)
                 .filter_map(|cap| cap.get(1).map(|m| m.as_str()))
                 .collect();
-            
+
             let original_order = attributes.clone();
             attributes.sort();
-            
+
             original_order == attributes
         } else {
             // If regex fails, assume deterministic
@@ -368,19 +378,19 @@ impl BuildVerifier {
             CanonicalizationAlgorithm::C14N => {
                 // TODO: Implement C14N canonicalization
                 Ok(xml.to_string()) // Placeholder
-            },
+            }
             CanonicalizationAlgorithm::C14N11 => {
                 // TODO: Implement C14N11 canonicalization
                 Ok(xml.to_string()) // Placeholder
-            },
+            }
             CanonicalizationAlgorithm::DbC14N => {
                 // TODO: Implement DB-C14N canonicalization
                 Ok(xml.to_string()) // Placeholder
-            },
+            }
             CanonicalizationAlgorithm::Custom(_rules) => {
                 // TODO: Implement custom canonicalization
                 Ok(xml.to_string()) // Placeholder
-            },
+            }
         }
     }
 }
@@ -539,7 +549,6 @@ impl Default for VerificationStatistics {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
 
     #[test]
     fn test_verification_config_default() {
@@ -561,10 +570,10 @@ mod tests {
     #[test]
     fn test_attribute_order_determinism() {
         let verifier = BuildVerifier::new(VerificationConfig::default());
-        
+
         // Deterministic (alphabetically ordered)
         assert!(verifier.is_attribute_order_deterministic(r#"<element a="1" b="2" c="3">"#));
-        
+
         // Non-deterministic
         assert!(!verifier.is_attribute_order_deterministic(r#"<element c="3" a="1" b="2">"#));
     }
@@ -578,7 +587,7 @@ mod tests {
             path: Some("/test/path".to_string()),
             suggestion: Some("Fix the test".to_string()),
         };
-        
+
         assert_eq!(issue.severity, VerificationSeverity::Error);
         assert_eq!(issue.category, "test");
         assert_eq!(issue.message, "Test issue");

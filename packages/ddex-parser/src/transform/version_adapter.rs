@@ -3,8 +3,8 @@
 
 use crate::error::ParseError;
 use ddex_core::models::graph::ERNMessage;
-use ddex_core::models::versions::VersionDifferences;
 use ddex_core::models::versions::ERNVersion;
+use ddex_core::models::versions::VersionDifferences;
 
 pub struct VersionAdapter {
     _version: ERNVersion,
@@ -18,12 +18,17 @@ impl VersionAdapter {
             _differences: VersionDifferences::for_version(version),
         }
     }
-    
+
     /// Transform version-specific MessageHeader to common model
-    pub fn adapt_message_header(&self, _xml_data: &[u8]) -> Result<ddex_core::models::graph::MessageHeader, ParseError> {
+    pub fn adapt_message_header(
+        &self,
+        _xml_data: &[u8],
+    ) -> Result<ddex_core::models::graph::MessageHeader, ParseError> {
         // Placeholder implementation
-        use ddex_core::models::graph::{MessageHeader, MessageType, MessageSender, MessageRecipient};
-        
+        use ddex_core::models::graph::{
+            MessageHeader, MessageRecipient, MessageSender, MessageType,
+        };
+
         Ok(MessageHeader {
             message_id: "PLACEHOLDER".to_string(),
             message_type: MessageType::NewReleaseMessage,
@@ -51,12 +56,15 @@ impl VersionAdapter {
             comments: None,
         })
     }
-    
+
     /// Adapt DealTerms based on version
-    pub fn adapt_deal_terms(&self, _xml_data: &[u8]) -> Result<ddex_core::models::graph::DealTerms, ParseError> {
+    pub fn adapt_deal_terms(
+        &self,
+        _xml_data: &[u8],
+    ) -> Result<ddex_core::models::graph::DealTerms, ParseError> {
         // Placeholder implementation
         use ddex_core::models::graph::DealTerms;
-        
+
         Ok(DealTerms {
             validity_period: None,
             start_date: None,
@@ -86,7 +94,7 @@ impl VersionMigrator {
     pub fn migrate_382_to_42(message: &ERNMessage) -> Result<ERNMessage, ParseError> {
         let mut migrated = message.clone();
         migrated.version = ERNVersion::V4_2;
-        
+
         // Add empty audit trail if not present
         if migrated.message_audit_trail.is_none() {
             migrated.message_audit_trail = Some(ddex_core::models::graph::MessageAuditTrail {
@@ -96,29 +104,31 @@ impl VersionMigrator {
                 comments: None,
             });
         }
-        
+
         Ok(migrated)
     }
-    
+
     /// Migrate from 4.2 to 4.3
     pub fn migrate_42_to_43(message: &ERNMessage) -> Result<ERNMessage, ParseError> {
         let mut migrated = message.clone();
         migrated.version = ERNVersion::V4_3;
         Ok(migrated)
     }
-    
+
     /// Downgrade from 4.3 to 4.2 (with data loss warnings)
-    pub fn downgrade_43_to_42(message: &ERNMessage) -> Result<(ERNMessage, Vec<String>), ParseError> {
+    pub fn downgrade_43_to_42(
+        message: &ERNMessage,
+    ) -> Result<(ERNMessage, Vec<String>), ParseError> {
         let mut downgraded = message.clone();
         downgraded.version = ERNVersion::V4_2;
-        
+
         let mut warnings = Vec::new();
-        
+
         if downgraded.profile.is_some() {
             warnings.push("Profile information will be lost in 4.2".to_string());
             downgraded.profile = None;
         }
-        
+
         Ok((downgraded, warnings))
     }
 }

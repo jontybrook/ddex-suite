@@ -1,19 +1,20 @@
 // src/streaming/comprehensive.rs
 //! Comprehensive streaming DDEX parser using model-aligned types
 
-use crate::error::{ParseError, ErrorLocation};
-use ddex_core::models::{graph::*, versions::ERNVersion};
+#[allow(dead_code)] // Experimental streaming parser implementation
+use crate::error::{ErrorLocation, ParseError};
 use ddex_core::models::streaming_types::*;
 use ddex_core::models::LocalizedString;
-use quick_xml::{Reader, events::Event};
+use ddex_core::models::{graph::*, versions::ERNVersion};
+use quick_xml::{events::Event, Reader};
+use std::collections::HashMap;
 use std::io::BufRead;
 use std::time::Instant;
-use std::collections::HashMap;
 
 /// Comprehensive streaming element types using model-aligned builders
 #[derive(Debug, Clone)]
 pub enum StreamingElement {
-    Header(MessageHeader),
+    Header(Box<MessageHeader>),
     Release(Release),
     Resource(Resource),
     Party(Party),
@@ -24,10 +25,10 @@ pub enum StreamingElement {
 #[derive(Debug, Clone)]
 enum ParserState {
     Initial,
-    InHeader(MessageHeaderBuilder),
-    InRelease(ReleaseBuilder),
-    InResource(ResourceBuilder),
-    InParty(PartyBuilder),
+    InHeader(Box<MessageHeaderBuilder>),
+    InRelease(Box<ReleaseBuilder>),
+    InResource(Box<ResourceBuilder>),
+    InParty(Box<PartyBuilder>),
     Complete,
 }
 
@@ -92,22 +93,29 @@ impl<R: BufRead> ComprehensiveStreamingParser<R> {
                     // State transitions using builders
                     match (&self.state, name) {
                         (ParserState::Initial, "MessageHeader") => {
-                            self.state = ParserState::InHeader(MessageHeaderBuilder::new());
+                            self.state =
+                                ParserState::InHeader(Box::new(MessageHeaderBuilder::new()));
                         }
                         (ParserState::Initial, "Release") => {
-                            let reference = self.attributes.get("ReleaseReference")
-                                .unwrap_or(&"default".to_string()).clone();
+                            let reference = self
+                                .attributes
+                                .get("ReleaseReference")
+                                .unwrap_or(&"default".to_string())
+                                .clone();
                             let release = ReleaseBuilder::new(reference);
-                            self.state = ParserState::InRelease(release);
+                            self.state = ParserState::InRelease(Box::new(release));
                         }
                         (ParserState::Initial, "Resource") => {
-                            let reference = self.attributes.get("ResourceReference")
-                                .unwrap_or(&"default".to_string()).clone();
+                            let reference = self
+                                .attributes
+                                .get("ResourceReference")
+                                .unwrap_or(&"default".to_string())
+                                .clone();
                             let resource = ResourceBuilder::new(reference);
-                            self.state = ParserState::InResource(resource);
+                            self.state = ParserState::InResource(Box::new(resource));
                         }
                         (ParserState::Initial, "Party") => {
-                            self.state = ParserState::InParty(PartyBuilder::new(None));
+                            self.state = ParserState::InParty(Box::new(PartyBuilder::new(None)));
                         }
                         _ => {
                             // Continue in current state
@@ -147,7 +155,7 @@ impl<R: BufRead> ComprehensiveStreamingParser<R> {
                                         }
                                     })?;
                                     self.state = ParserState::Initial;
-                                    Some(StreamingElement::Header(core_header))
+                                    Some(StreamingElement::Header(Box::new(core_header)))
                                 }
                                 _ => None,
                             }
@@ -203,12 +211,16 @@ impl<R: BufRead> ComprehensiveStreamingParser<R> {
                                 }
                                 "Resource" => {
                                     // Complete resource - convert using ToCore trait
-                                    let core_resource = resource.clone().to_core().map_err(|e| {
-                                        ParseError::ConversionError {
-                                            message: format!("Failed to convert resource: {:?}", e),
-                                            location: location.clone(),
-                                        }
-                                    })?;
+                                    let core_resource =
+                                        resource.clone().to_core().map_err(|e| {
+                                            ParseError::ConversionError {
+                                                message: format!(
+                                                    "Failed to convert resource: {:?}",
+                                                    e
+                                                ),
+                                                location: location.clone(),
+                                            }
+                                        })?;
                                     self.state = ParserState::Initial;
                                     Some(StreamingElement::Resource(core_resource))
                                 }
@@ -398,10 +410,18 @@ mod tests {
         assert!(elements.len() >= 3); // Header, Release, Resource, EndOfStream
 
         // Check we got the expected elements
-        let has_header = elements.iter().any(|e| matches!(e, StreamingElement::Header(_)));
-        let has_release = elements.iter().any(|e| matches!(e, StreamingElement::Release(_)));
-        let has_resource = elements.iter().any(|e| matches!(e, StreamingElement::Resource(_)));
-        let has_end_stream = elements.iter().any(|e| matches!(e, StreamingElement::EndOfStream));
+        let has_header = elements
+            .iter()
+            .any(|e| matches!(e, StreamingElement::Header(_)));
+        let has_release = elements
+            .iter()
+            .any(|e| matches!(e, StreamingElement::Release(_)));
+        let has_resource = elements
+            .iter()
+            .any(|e| matches!(e, StreamingElement::Resource(_)));
+        let has_end_stream = elements
+            .iter()
+            .any(|e| matches!(e, StreamingElement::EndOfStream));
 
         assert!(has_header, "Should parse message header");
         assert!(has_release, "Should parse release");

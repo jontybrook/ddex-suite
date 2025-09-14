@@ -1,6 +1,6 @@
 use ddex_parser::DDEXParser;
-use std::time::Instant;
 use std::io::Cursor;
+use std::time::Instant;
 
 #[test]
 fn test_fast_streaming_performance() {
@@ -17,7 +17,7 @@ fn test_fast_streaming_performance() {
 </NewReleaseMessage>"#;
 
     println!("Test 1: Small file (2 releases)");
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(small_xml.as_bytes());
     match parser.parse(cursor) {
         Ok(_) => println!("  ✅ Parsed successfully"),
@@ -26,17 +26,19 @@ fn test_fast_streaming_performance() {
 
     // Test 2: Medium file (100 releases - should work)
     println!("\nTest 2: Medium file (100 releases)");
-    let mut medium_xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut medium_xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <NewReleaseMessage xmlns="http://ddex.net/xml/ern/43">
     <MessageHeader><MessageId>MSG123</MessageId></MessageHeader>
-    <ReleaseList>"#);
+    <ReleaseList>"#,
+    );
 
     for i in 0..100 {
         medium_xml.push_str(&format!("<Release><ReleaseId>R{}</ReleaseId></Release>", i));
     }
     medium_xml.push_str("</ReleaseList></NewReleaseMessage>");
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(medium_xml.as_bytes());
     let start = Instant::now();
 
@@ -69,17 +71,19 @@ fn test_fast_streaming_performance() {
 
     // Test 3: Large file (1000 releases - may hit depth limit bug)
     println!("\nTest 3: Large file (1000 releases)");
-    let mut large_xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut large_xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <NewReleaseMessage xmlns="http://ddex.net/xml/ern/43">
     <MessageHeader><MessageId>MSG123</MessageId></MessageHeader>
-    <ReleaseList>"#);
+    <ReleaseList>"#,
+    );
 
     for i in 0..1000 {
         large_xml.push_str(&format!("<Release><ReleaseId>R{}</ReleaseId></Release>", i));
     }
     large_xml.push_str("</ReleaseList></NewReleaseMessage>");
 
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let cursor = Cursor::new(large_xml.as_bytes());
     let start = Instant::now();
 

@@ -3,16 +3,17 @@
 //! This implementation targets 280+ MB/s throughput using:
 //! - Zero-copy string handling
 //! - SIMD-accelerated pattern matching
-//! - Streaming-native parsing (no DOM)
-//! - Memory-efficient buffer management
-//! - Specialized DDEX parsing optimizations
 
+#[allow(dead_code)] // Experimental zero-copy streaming parser
+// - Streaming-native parsing (no DOM)
+// - Memory-efficient buffer management
+// - Specialized DDEX parsing optimizations
 use crate::error::ParseError;
 use crate::streaming::{WorkingStreamingElement, WorkingStreamingStats};
 use ddex_core::models::versions::ERNVersion;
-use std::time::Instant;
 use std::collections::HashMap;
 use std::io::BufRead;
+use std::time::Instant;
 
 /// Zero-copy high-performance streaming parser
 pub struct ZeroCopyParser {
@@ -69,8 +70,13 @@ impl StringCache {
 enum ParserState {
     Initial,
     InMessageHeader,
-    InRelease { reference: String },
-    InResource { resource_type: String, reference: String },
+    InRelease {
+        reference: String,
+    },
+    InResource {
+        resource_type: String,
+        reference: String,
+    },
     Done,
 }
 
@@ -212,7 +218,8 @@ impl ZeroCopyParser {
         // Update statistics
         self.stats.parse_time = start_time.elapsed();
         self.stats.string_cache_hit_rate = self.string_cache.hit_rate();
-        self.stats.throughput_mb_per_sec = (data.len() as f64 / (1024.0 * 1024.0)) / self.stats.parse_time.as_secs_f64();
+        self.stats.throughput_mb_per_sec =
+            (data.len() as f64 / (1024.0 * 1024.0)) / self.stats.parse_time.as_secs_f64();
         self.stats.memory_used_bytes = self.estimate_memory_usage();
 
         Ok(results)
@@ -259,8 +266,9 @@ impl ZeroCopyParser {
                         let pos = i + bit_pos;
 
                         // Verify the full pattern matches
-                        if pos + pattern.len() <= data.len() &&
-                           data[pos..pos + pattern.len()] == *pattern {
+                        if pos + pattern.len() <= data.len()
+                            && data[pos..pos + pattern.len()] == *pattern
+                        {
                             positions.push(pos);
                         }
                     }
@@ -287,7 +295,11 @@ impl ZeroCopyParser {
         self.find_elements_fallback(data, pattern)
     }
 
-    fn find_elements_fallback(&self, data: &[u8], pattern: &[u8]) -> Result<Vec<usize>, ParseError> {
+    fn find_elements_fallback(
+        &self,
+        data: &[u8],
+        pattern: &[u8],
+    ) -> Result<Vec<usize>, ParseError> {
         let mut positions = Vec::new();
         let mut start = 0;
 
@@ -298,8 +310,9 @@ impl ZeroCopyParser {
             let abs_pos = start + pos;
 
             // Check if full pattern matches
-            if abs_pos + pattern.len() <= data.len() &&
-               data[abs_pos..abs_pos + pattern.len()] == *pattern {
+            if abs_pos + pattern.len() <= data.len()
+                && data[abs_pos..abs_pos + pattern.len()] == *pattern
+            {
                 positions.push(abs_pos);
             }
 
@@ -310,20 +323,27 @@ impl ZeroCopyParser {
     }
 
     /// Zero-copy message header extraction
-    fn extract_message_header(&mut self, data: &[u8], start: usize) -> Result<Option<ZeroCopyElement>, ParseError> {
+    fn extract_message_header(
+        &mut self,
+        data: &[u8],
+        start: usize,
+    ) -> Result<Option<ZeroCopyElement>, ParseError> {
         // Find the end of MessageHeader element
         if let Some(end_pos) = self.find_closing_tag(data, start, b"MessageHeader") {
             let header_data = &data[start..end_pos];
 
             // Extract MessageId with zero-copy
-            let message_id = if let Some(id_data) = self.extract_field_zero_copy(header_data, b"MessageId") {
-                self.string_cache.intern(id_data)
-            } else {
-                "unknown".to_string()
-            };
+            let message_id =
+                if let Some(id_data) = self.extract_field_zero_copy(header_data, b"MessageId") {
+                    self.string_cache.intern(id_data)
+                } else {
+                    "unknown".to_string()
+                };
 
             // Extract CreatedDateTime
-            let created_date_time = if let Some(dt_data) = self.extract_field_zero_copy(header_data, b"CreatedDateTime") {
+            let created_date_time = if let Some(dt_data) =
+                self.extract_field_zero_copy(header_data, b"CreatedDateTime")
+            {
                 self.string_cache.intern(dt_data)
             } else {
                 chrono::Utc::now().to_rfc3339()
@@ -340,19 +360,27 @@ impl ZeroCopyParser {
     }
 
     /// Zero-copy release extraction
-    fn extract_release_zero_copy(&mut self, data: &[u8], start: usize) -> Result<Option<ZeroCopyElement>, ParseError> {
+    fn extract_release_zero_copy(
+        &mut self,
+        data: &[u8],
+        start: usize,
+    ) -> Result<Option<ZeroCopyElement>, ParseError> {
         if let Some(end_pos) = self.find_closing_tag(data, start, b"Release") {
             let release_data = &data[start..end_pos];
 
             // Extract ReleaseReference attribute
-            let reference = if let Some(ref_data) = self.extract_attribute_zero_copy(release_data, b"ReleaseReference") {
+            let reference = if let Some(ref_data) =
+                self.extract_attribute_zero_copy(release_data, b"ReleaseReference")
+            {
                 self.string_cache.intern(ref_data)
             } else {
                 format!("REL-{}", self.stats.elements_found)
             };
 
             // Extract title with nested TitleText handling
-            let title = if let Some(title_data) = self.extract_nested_field_zero_copy(release_data, b"TitleText") {
+            let title = if let Some(title_data) =
+                self.extract_nested_field_zero_copy(release_data, b"TitleText")
+            {
                 self.string_cache.intern(title_data)
             } else if let Some(title_data) = self.extract_field_zero_copy(release_data, b"Title") {
                 self.string_cache.intern(title_data)
@@ -361,7 +389,8 @@ impl ZeroCopyParser {
             };
 
             // Extract genre
-            let genre = self.extract_nested_field_zero_copy(release_data, b"GenreText")
+            let genre = self
+                .extract_nested_field_zero_copy(release_data, b"GenreText")
                 .map(|g| self.string_cache.intern(g));
 
             // Extract resource references (simplified)
@@ -379,29 +408,40 @@ impl ZeroCopyParser {
     }
 
     /// Zero-copy sound recording extraction
-    fn extract_sound_recording_zero_copy(&mut self, data: &[u8], start: usize) -> Result<Option<ZeroCopyElement>, ParseError> {
+    fn extract_sound_recording_zero_copy(
+        &mut self,
+        data: &[u8],
+        start: usize,
+    ) -> Result<Option<ZeroCopyElement>, ParseError> {
         if let Some(end_pos) = self.find_closing_tag(data, start, b"SoundRecording") {
             let recording_data = &data[start..end_pos];
 
-            let reference = if let Some(ref_data) = self.extract_attribute_zero_copy(recording_data, b"ResourceReference") {
+            let reference = if let Some(ref_data) =
+                self.extract_attribute_zero_copy(recording_data, b"ResourceReference")
+            {
                 self.string_cache.intern(ref_data)
             } else {
                 format!("RES-{}", self.stats.elements_found)
             };
 
-            let title = if let Some(title_data) = self.extract_nested_field_zero_copy(recording_data, b"TitleText") {
+            let title = if let Some(title_data) =
+                self.extract_nested_field_zero_copy(recording_data, b"TitleText")
+            {
                 self.string_cache.intern(title_data)
             } else {
                 "Untitled Track".to_string()
             };
 
-            let duration = self.extract_field_zero_copy(recording_data, b"Duration")
+            let duration = self
+                .extract_field_zero_copy(recording_data, b"Duration")
                 .map(|d| self.string_cache.intern(d));
 
-            let isrc = self.extract_field_zero_copy(recording_data, b"ISRC")
+            let isrc = self
+                .extract_field_zero_copy(recording_data, b"ISRC")
                 .map(|i| self.string_cache.intern(i));
 
-            let creation_date = self.extract_field_zero_copy(recording_data, b"CreationDate")
+            let creation_date = self
+                .extract_field_zero_copy(recording_data, b"CreationDate")
                 .map(|cd| self.string_cache.intern(cd));
 
             return Ok(Some(ZeroCopyElement::SoundRecording {
@@ -417,26 +457,36 @@ impl ZeroCopyParser {
     }
 
     /// Zero-copy video extraction
-    fn extract_video_zero_copy(&mut self, data: &[u8], start: usize) -> Result<Option<ZeroCopyElement>, ParseError> {
+    fn extract_video_zero_copy(
+        &mut self,
+        data: &[u8],
+        start: usize,
+    ) -> Result<Option<ZeroCopyElement>, ParseError> {
         if let Some(end_pos) = self.find_closing_tag(data, start, b"Video") {
             let video_data = &data[start..end_pos];
 
-            let reference = if let Some(ref_data) = self.extract_attribute_zero_copy(video_data, b"ResourceReference") {
+            let reference = if let Some(ref_data) =
+                self.extract_attribute_zero_copy(video_data, b"ResourceReference")
+            {
                 self.string_cache.intern(ref_data)
             } else {
                 format!("VID-{}", self.stats.elements_found)
             };
 
-            let title = if let Some(title_data) = self.extract_nested_field_zero_copy(video_data, b"TitleText") {
+            let title = if let Some(title_data) =
+                self.extract_nested_field_zero_copy(video_data, b"TitleText")
+            {
                 self.string_cache.intern(title_data)
             } else {
                 "Untitled Video".to_string()
             };
 
-            let duration = self.extract_field_zero_copy(video_data, b"Duration")
+            let duration = self
+                .extract_field_zero_copy(video_data, b"Duration")
                 .map(|d| self.string_cache.intern(d));
 
-            let codec = self.extract_field_zero_copy(video_data, b"VideoCodecType")
+            let codec = self
+                .extract_field_zero_copy(video_data, b"VideoCodecType")
                 .map(|c| self.string_cache.intern(c));
 
             return Ok(Some(ZeroCopyElement::Video {
@@ -451,29 +501,40 @@ impl ZeroCopyParser {
     }
 
     /// Zero-copy image extraction
-    fn extract_image_zero_copy(&mut self, data: &[u8], start: usize) -> Result<Option<ZeroCopyElement>, ParseError> {
+    fn extract_image_zero_copy(
+        &mut self,
+        data: &[u8],
+        start: usize,
+    ) -> Result<Option<ZeroCopyElement>, ParseError> {
         if let Some(end_pos) = self.find_closing_tag(data, start, b"Image") {
             let image_data = &data[start..end_pos];
 
-            let reference = if let Some(ref_data) = self.extract_attribute_zero_copy(image_data, b"ResourceReference") {
+            let reference = if let Some(ref_data) =
+                self.extract_attribute_zero_copy(image_data, b"ResourceReference")
+            {
                 self.string_cache.intern(ref_data)
             } else {
                 format!("IMG-{}", self.stats.elements_found)
             };
 
-            let title = if let Some(title_data) = self.extract_nested_field_zero_copy(image_data, b"TitleText") {
+            let title = if let Some(title_data) =
+                self.extract_nested_field_zero_copy(image_data, b"TitleText")
+            {
                 self.string_cache.intern(title_data)
             } else {
                 "Untitled Image".to_string()
             };
 
-            let width = self.extract_field_zero_copy(image_data, b"Width")
+            let width = self
+                .extract_field_zero_copy(image_data, b"Width")
                 .and_then(|w| String::from_utf8_lossy(w).parse().ok());
 
-            let height = self.extract_field_zero_copy(image_data, b"Height")
+            let height = self
+                .extract_field_zero_copy(image_data, b"Height")
                 .and_then(|h| String::from_utf8_lossy(h).parse().ok());
 
-            let format = self.extract_field_zero_copy(image_data, b"ImageCodecType")
+            let format = self
+                .extract_field_zero_copy(image_data, b"ImageCodecType")
                 .map(|f| self.string_cache.intern(f));
 
             return Ok(Some(ZeroCopyElement::Image {
@@ -489,23 +550,32 @@ impl ZeroCopyParser {
     }
 
     /// Zero-copy text resource extraction
-    fn extract_text_zero_copy(&mut self, data: &[u8], start: usize) -> Result<Option<ZeroCopyElement>, ParseError> {
+    fn extract_text_zero_copy(
+        &mut self,
+        data: &[u8],
+        start: usize,
+    ) -> Result<Option<ZeroCopyElement>, ParseError> {
         if let Some(end_pos) = self.find_closing_tag(data, start, b"Text") {
             let text_data = &data[start..end_pos];
 
-            let reference = if let Some(ref_data) = self.extract_attribute_zero_copy(text_data, b"ResourceReference") {
+            let reference = if let Some(ref_data) =
+                self.extract_attribute_zero_copy(text_data, b"ResourceReference")
+            {
                 self.string_cache.intern(ref_data)
             } else {
                 format!("TXT-{}", self.stats.elements_found)
             };
 
-            let title = if let Some(title_data) = self.extract_nested_field_zero_copy(text_data, b"TitleText") {
+            let title = if let Some(title_data) =
+                self.extract_nested_field_zero_copy(text_data, b"TitleText")
+            {
                 self.string_cache.intern(title_data)
             } else {
                 "Untitled Text".to_string()
             };
 
-            let language = self.extract_field_zero_copy(text_data, b"LanguageOfPerformance")
+            let language = self
+                .extract_field_zero_copy(text_data, b"LanguageOfPerformance")
                 .or_else(|| self.extract_field_zero_copy(text_data, b"LanguageCode"))
                 .map(|l| self.string_cache.intern(l));
 
@@ -525,7 +595,8 @@ impl ZeroCopyParser {
 
         // Start search after the opening tag
         let search_start = start + tag_name.len();
-        if let Ok(positions) = self.find_elements_fallback(&data[search_start..], &closing_pattern) {
+        if let Ok(positions) = self.find_elements_fallback(&data[search_start..], &closing_pattern)
+        {
             if let Some(pos) = positions.first() {
                 return Some(search_start + pos + closing_pattern.len());
             }
@@ -543,7 +614,9 @@ impl ZeroCopyParser {
             if let Some(&start_pos) = start_positions.first() {
                 let content_start = start_pos + opening.len();
 
-                if let Ok(end_positions) = self.find_elements_fallback(&data[content_start..], &closing) {
+                if let Ok(end_positions) =
+                    self.find_elements_fallback(&data[content_start..], &closing)
+                {
                     if let Some(&end_pos) = end_positions.first() {
                         let content_end = content_start + end_pos;
                         return Some(&data[content_start..content_end]);
@@ -556,7 +629,11 @@ impl ZeroCopyParser {
     }
 
     /// Extract nested field content (e.g., ReferenceTitle/TitleText)
-    fn extract_nested_field_zero_copy<'a>(&self, data: &'a [u8], inner_field: &[u8]) -> Option<&'a [u8]> {
+    fn extract_nested_field_zero_copy<'a>(
+        &self,
+        data: &'a [u8],
+        inner_field: &[u8],
+    ) -> Option<&'a [u8]> {
         // Look for the inner field directly first
         if let Some(content) = self.extract_field_zero_copy(data, inner_field) {
             return Some(content);
@@ -567,7 +644,9 @@ impl ZeroCopyParser {
 
         for parent in parent_tags {
             if let Some(parent_content) = self.extract_field_zero_copy(data, parent) {
-                if let Some(inner_content) = self.extract_field_zero_copy(parent_content, inner_field) {
+                if let Some(inner_content) =
+                    self.extract_field_zero_copy(parent_content, inner_field)
+                {
                     return Some(inner_content);
                 }
             }
@@ -577,7 +656,11 @@ impl ZeroCopyParser {
     }
 
     /// Extract attribute value with zero-copy
-    fn extract_attribute_zero_copy<'a>(&self, data: &'a [u8], attr_name: &[u8]) -> Option<&'a [u8]> {
+    fn extract_attribute_zero_copy<'a>(
+        &self,
+        data: &'a [u8],
+        attr_name: &[u8],
+    ) -> Option<&'a [u8]> {
         let pattern = [attr_name, b"=\""].concat();
 
         if let Ok(positions) = self.find_elements_fallback(data, &pattern) {
@@ -602,7 +685,9 @@ impl ZeroCopyParser {
         // Look for ResourceReference elements
         if let Ok(positions) = self.find_elements_fallback(data, b"<ResourceReference>") {
             for pos in positions {
-                if let Some(ref_data) = self.extract_field_zero_copy(&data[pos..], b"ResourceReference") {
+                if let Some(ref_data) =
+                    self.extract_field_zero_copy(&data[pos..], b"ResourceReference")
+                {
                     references.push(self.string_cache.intern(ref_data));
                 }
             }
@@ -678,50 +763,68 @@ impl<R: BufRead> ZeroCopyStreamIterator<R> {
 
     fn convert_to_working_element(element: ZeroCopyElement) -> WorkingStreamingElement {
         match element {
-            ZeroCopyElement::MessageHeader { message_id, created_date_time, version } => {
-                WorkingStreamingElement::MessageHeader {
-                    message_id,
-                    created_date_time,
-                    version
-                }
-            }
-            ZeroCopyElement::Release { reference, title, resource_references, .. } => {
-                WorkingStreamingElement::Release {
-                    reference,
-                    title,
-                    resource_references
-                }
-            }
-            ZeroCopyElement::SoundRecording { reference, title, duration, isrc, .. } => {
-                WorkingStreamingElement::SoundRecording {
-                    reference,
-                    title,
-                    duration,
-                    isrc,
-                }
-            }
-            ZeroCopyElement::Video { reference, title, duration, .. } => {
-                WorkingStreamingElement::Video {
-                    reference,
-                    title,
-                    duration,
-                }
-            }
-            ZeroCopyElement::Image { reference, title, width, height, .. } => {
-                WorkingStreamingElement::Image {
-                    reference,
-                    title,
-                    width,
-                    height,
-                }
-            }
-            ZeroCopyElement::Text { reference, title, language } => {
-                WorkingStreamingElement::Text {
-                    reference,
-                    title,
-                    language_code: language,
-                }
-            }
+            ZeroCopyElement::MessageHeader {
+                message_id,
+                created_date_time,
+                version,
+            } => WorkingStreamingElement::MessageHeader {
+                message_id,
+                created_date_time,
+                version,
+            },
+            ZeroCopyElement::Release {
+                reference,
+                title,
+                resource_references,
+                ..
+            } => WorkingStreamingElement::Release {
+                reference,
+                title,
+                resource_references,
+            },
+            ZeroCopyElement::SoundRecording {
+                reference,
+                title,
+                duration,
+                isrc,
+                ..
+            } => WorkingStreamingElement::SoundRecording {
+                reference,
+                title,
+                duration,
+                isrc,
+            },
+            ZeroCopyElement::Video {
+                reference,
+                title,
+                duration,
+                ..
+            } => WorkingStreamingElement::Video {
+                reference,
+                title,
+                duration,
+            },
+            ZeroCopyElement::Image {
+                reference,
+                title,
+                width,
+                height,
+                ..
+            } => WorkingStreamingElement::Image {
+                reference,
+                title,
+                width,
+                height,
+            },
+            ZeroCopyElement::Text {
+                reference,
+                title,
+                language,
+            } => WorkingStreamingElement::Text {
+                reference,
+                title,
+                language_code: language,
+            },
             ZeroCopyElement::EndOfStream { stats } => {
                 WorkingStreamingElement::EndOfStream {
                     stats: WorkingStreamingStats {
@@ -733,7 +836,7 @@ impl<R: BufRead> ZeroCopyStreamIterator<R> {
                         max_memory_used_bytes: stats.memory_used_bytes,
                         elapsed_time: stats.parse_time,
                         throughput_mb_per_sec: stats.throughput_mb_per_sec,
-                    }
+                    },
                 }
             }
         }
@@ -850,15 +953,22 @@ mod tests {
         println!("Zero-copy parsing found {} elements", elements.len());
 
         // Verify we found expected elements
-        let has_header = elements.iter().any(|e| matches!(e, ZeroCopyElement::MessageHeader { .. }));
-        let has_release = elements.iter().any(|e| matches!(e, ZeroCopyElement::Release { .. }));
+        let has_header = elements
+            .iter()
+            .any(|e| matches!(e, ZeroCopyElement::MessageHeader { .. }));
+        let has_release = elements
+            .iter()
+            .any(|e| matches!(e, ZeroCopyElement::Release { .. }));
 
         assert!(has_header, "Should find message header");
         assert!(has_release, "Should find release");
 
         let stats = parser.get_stats();
-        println!("Zero-copy stats: {:.2} MB/s, {}% cache hit rate",
-                stats.throughput_mb_per_sec, stats.string_cache_hit_rate * 100.0);
+        println!(
+            "Zero-copy stats: {:.2} MB/s, {}% cache hit rate",
+            stats.throughput_mb_per_sec,
+            stats.string_cache_hit_rate * 100.0
+        );
     }
 
     #[test]
@@ -885,7 +995,9 @@ mod tests {
         let data = b"<Release ReleaseReference=\"REL-123\">content</Release>";
         let parser = ZeroCopyParser::new(ERNVersion::V4_3);
 
-        let attr_value = parser.extract_attribute_zero_copy(data, b"ReleaseReference").unwrap();
+        let attr_value = parser
+            .extract_attribute_zero_copy(data, b"ReleaseReference")
+            .unwrap();
         assert_eq!(attr_value, b"REL-123");
     }
 }

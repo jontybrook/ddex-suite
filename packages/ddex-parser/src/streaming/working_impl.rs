@@ -8,7 +8,7 @@
 
 use crate::error::ParseError;
 use ddex_core::models::versions::ERNVersion;
-use quick_xml::{Reader, events::Event};
+use quick_xml::{events::Event, Reader};
 use std::io::BufRead;
 use std::time::Instant;
 
@@ -54,9 +54,7 @@ pub enum WorkingStreamingElement {
         language_code: Option<String>,
     },
     /// End of stream indicator
-    EndOfStream {
-        stats: WorkingStreamingStats,
-    },
+    EndOfStream { stats: WorkingStreamingStats },
 }
 
 /// Working streaming parser with real functionality
@@ -125,12 +123,16 @@ impl<R: BufRead> WorkingStreamingParser<R> {
     }
 
     /// Feed a chunk of data and parse next element
-    pub fn feed_chunk(&mut self, chunk: &[u8]) -> Result<Option<WorkingStreamingElement>, ParseError> {
+    pub fn feed_chunk(
+        &mut self,
+        chunk: &[u8],
+    ) -> Result<Option<WorkingStreamingElement>, ParseError> {
         self.bytes_processed += chunk.len() as u64;
         self.update_memory_usage();
 
         // Security check: prevent excessive memory usage
-        if self.current_memory > 100 * 1024 * 1024 { // 100MB limit
+        if self.current_memory > 100 * 1024 * 1024 {
+            // 100MB limit
             return Err(ParseError::SecurityViolation {
                 message: "Memory usage exceeds 100MB limit".to_string(),
             });
@@ -192,7 +194,11 @@ impl<R: BufRead> WorkingStreamingParser<R> {
     }
 
     /// Handle start element with pre-extracted attributes
-    fn handle_start_element_with_attrs(&mut self, name: &str, attributes: std::collections::HashMap<String, String>) -> Result<(), ParseError> {
+    fn handle_start_element_with_attrs(
+        &mut self,
+        name: &str,
+        attributes: std::collections::HashMap<String, String>,
+    ) -> Result<(), ParseError> {
         self.current_element.push(name.to_string());
         self.current_depth += 1;
 
@@ -234,7 +240,10 @@ impl<R: BufRead> WorkingStreamingParser<R> {
     }
 
     /// Handle end element
-    fn handle_end_element(&mut self, name: &str) -> Result<Option<WorkingStreamingElement>, ParseError> {
+    fn handle_end_element(
+        &mut self,
+        name: &str,
+    ) -> Result<Option<WorkingStreamingElement>, ParseError> {
         self.current_depth = self.current_depth.saturating_sub(1);
         self.current_element.pop();
 
@@ -249,22 +258,34 @@ impl<R: BufRead> WorkingStreamingParser<R> {
             "MessageHeader" => {
                 self.in_message_header = false;
                 Some(WorkingStreamingElement::MessageHeader {
-                    message_id: self.current_fields.get("MessageId")
-                        .unwrap_or(&"unknown".to_string()).clone(),
-                    created_date_time: self.current_fields.get("CreatedDateTime")
-                        .unwrap_or(&chrono::Utc::now().to_rfc3339()).clone(),
+                    message_id: self
+                        .current_fields
+                        .get("MessageId")
+                        .unwrap_or(&"unknown".to_string())
+                        .clone(),
+                    created_date_time: self
+                        .current_fields
+                        .get("CreatedDateTime")
+                        .unwrap_or(&chrono::Utc::now().to_rfc3339())
+                        .clone(),
                     version: self.version,
                 })
             }
             "Release" => {
                 self.in_release = false;
-                let reference = self.release_attributes.get("ReleaseReference")
+                let reference = self
+                    .release_attributes
+                    .get("ReleaseReference")
                     .or_else(|| self.current_fields.get("ReleaseReference"))
-                    .unwrap_or(&format!("REL-{}", self.elements_yielded)).clone();
-                let title = self.current_fields.get("TitleText")
+                    .unwrap_or(&format!("REL-{}", self.elements_yielded))
+                    .clone();
+                let title = self
+                    .current_fields
+                    .get("TitleText")
                     .or_else(|| self.current_fields.get("Title"))
                     .or_else(|| self.current_fields.get("ReferenceTitle"))
-                    .unwrap_or(&"Untitled Release".to_string()).clone();
+                    .unwrap_or(&"Untitled Release".to_string())
+                    .clone();
                 Some(WorkingStreamingElement::Release {
                     reference,
                     title,
@@ -281,7 +302,9 @@ impl<R: BufRead> WorkingStreamingParser<R> {
                         duration: self.current_fields.get("Duration").cloned(),
                         isrc: self.current_fields.get("ISRC").cloned(),
                     })
-                } else { None }
+                } else {
+                    None
+                }
             }
             "Video" => {
                 if self.in_resource {
@@ -292,7 +315,9 @@ impl<R: BufRead> WorkingStreamingParser<R> {
                         title: self.get_resource_title(),
                         duration: self.current_fields.get("Duration").cloned(),
                     })
-                } else { None }
+                } else {
+                    None
+                }
             }
             "Image" => {
                 if self.in_resource {
@@ -301,12 +326,18 @@ impl<R: BufRead> WorkingStreamingParser<R> {
                     Some(WorkingStreamingElement::Image {
                         reference: self.get_resource_reference(),
                         title: self.get_resource_title(),
-                        width: self.current_fields.get("Width")
+                        width: self
+                            .current_fields
+                            .get("Width")
                             .and_then(|w| w.parse().ok()),
-                        height: self.current_fields.get("Height")
+                        height: self
+                            .current_fields
+                            .get("Height")
                             .and_then(|h| h.parse().ok()),
                     })
-                } else { None }
+                } else {
+                    None
+                }
             }
             "Text" => {
                 if self.in_resource {
@@ -315,10 +346,15 @@ impl<R: BufRead> WorkingStreamingParser<R> {
                     Some(WorkingStreamingElement::Text {
                         reference: self.get_resource_reference(),
                         title: self.get_resource_title(),
-                        language_code: self.current_fields.get("LanguageOfPerformance")
-                            .or_else(|| self.current_fields.get("LanguageCode")).cloned(),
+                        language_code: self
+                            .current_fields
+                            .get("LanguageOfPerformance")
+                            .or_else(|| self.current_fields.get("LanguageCode"))
+                            .cloned(),
                     })
-                } else { None }
+                } else {
+                    None
+                }
             }
             _ => None,
         };
@@ -331,7 +367,8 @@ impl<R: BufRead> WorkingStreamingParser<R> {
 
     /// Get resource reference from current context
     fn get_resource_reference(&self) -> String {
-        self.resource_attributes.get("ResourceReference")
+        self.resource_attributes
+            .get("ResourceReference")
             .or_else(|| self.current_fields.get("ResourceReference"))
             .unwrap_or(&format!("RES-{}", self.elements_yielded))
             .clone()
@@ -339,7 +376,8 @@ impl<R: BufRead> WorkingStreamingParser<R> {
 
     /// Get resource title from current context
     fn get_resource_title(&self) -> String {
-        self.current_fields.get("TitleText")
+        self.current_fields
+            .get("TitleText")
             .or_else(|| self.current_fields.get("Title"))
             .or_else(|| self.current_fields.get("ReferenceTitle"))
             .unwrap_or(&"Untitled Resource".to_string())
@@ -355,15 +393,20 @@ impl<R: BufRead> WorkingStreamingParser<R> {
 
     /// Update memory usage tracking
     fn update_memory_usage(&mut self) {
-        let estimated_memory =
-            self.buffer.capacity() +
-            self.current_element.iter().map(|s| s.len()).sum::<usize>() +
-            self.text_buffer.capacity() +
-            self.current_attributes.iter()
-                .map(|(k, v)| k.len() + v.len()).sum::<usize>() +
-            self.current_fields.iter()
-                .map(|(k, v)| k.len() + v.len()).sum::<usize>() +
-            1024; // Base overhead
+        let estimated_memory = self.buffer.capacity()
+            + self.current_element.iter().map(|s| s.len()).sum::<usize>()
+            + self.text_buffer.capacity()
+            + self
+                .current_attributes
+                .iter()
+                .map(|(k, v)| k.len() + v.len())
+                .sum::<usize>()
+            + self
+                .current_fields
+                .iter()
+                .map(|(k, v)| k.len() + v.len())
+                .sum::<usize>()
+            + 1024; // Base overhead
 
         self.current_memory = estimated_memory;
         self.max_memory_used = self.max_memory_used.max(estimated_memory);
@@ -380,8 +423,11 @@ impl<R: BufRead> WorkingStreamingParser<R> {
             max_memory_used_bytes: self.max_memory_used,
             elapsed_time: self.start_time.elapsed(),
             throughput_mb_per_sec: if self.start_time.elapsed().as_secs_f64() > 0.0 {
-                (self.bytes_processed as f64 / (1024.0 * 1024.0)) / self.start_time.elapsed().as_secs_f64()
-            } else { 0.0 },
+                (self.bytes_processed as f64 / (1024.0 * 1024.0))
+                    / self.start_time.elapsed().as_secs_f64()
+            } else {
+                0.0
+            },
         }
     }
 }
@@ -408,9 +454,11 @@ impl WorkingStreamingStats {
     /// Get memory efficiency (MB processed per MB memory used)
     pub fn memory_efficiency(&self) -> f64 {
         if self.max_memory_used_bytes > 0 {
-            (self.bytes_processed as f64 / (1024.0 * 1024.0)) /
-            (self.max_memory_used_bytes as f64 / (1024.0 * 1024.0))
-        } else { 0.0 }
+            (self.bytes_processed as f64 / (1024.0 * 1024.0))
+                / (self.max_memory_used_bytes as f64 / (1024.0 * 1024.0))
+        } else {
+            0.0
+        }
     }
 }
 
@@ -496,12 +544,21 @@ mod tests {
         assert!(elements.is_ok(), "Parsing should succeed");
 
         let elements = elements.unwrap();
-        assert!(elements.len() >= 3, "Should find header, release, and sound recording");
+        assert!(
+            elements.len() >= 3,
+            "Should find header, release, and sound recording"
+        );
 
         // Check that we found the expected elements
-        let has_header = elements.iter().any(|e| matches!(e, WorkingStreamingElement::MessageHeader { .. }));
-        let has_release = elements.iter().any(|e| matches!(e, WorkingStreamingElement::Release { .. }));
-        let has_sound = elements.iter().any(|e| matches!(e, WorkingStreamingElement::SoundRecording { .. }));
+        let has_header = elements
+            .iter()
+            .any(|e| matches!(e, WorkingStreamingElement::MessageHeader { .. }));
+        let has_release = elements
+            .iter()
+            .any(|e| matches!(e, WorkingStreamingElement::Release { .. }));
+        let has_sound = elements
+            .iter()
+            .any(|e| matches!(e, WorkingStreamingElement::SoundRecording { .. }));
 
         assert!(has_header, "Should find MessageHeader");
         assert!(has_release, "Should find Release");
@@ -524,9 +581,11 @@ mod tests {
         let _: Vec<_> = iterator.by_ref().collect();
 
         let stats = iterator.stats();
-        assert!(stats.is_memory_bounded(),
+        assert!(
+            stats.is_memory_bounded(),
             "Memory usage should be bounded under 10MB, got {} bytes",
-            stats.max_memory_used_bytes);
+            stats.max_memory_used_bytes
+        );
     }
 
     #[test]

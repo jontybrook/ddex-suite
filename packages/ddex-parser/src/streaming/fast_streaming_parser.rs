@@ -1,6 +1,7 @@
 // src/streaming/fast_streaming_parser.rs
 //! Ultra-high-performance streaming DDEX parser targeting 280+ MB/s throughput
 
+#[allow(dead_code)] // Experimental high-performance streaming parser
 use crate::error::ParseError;
 use crate::parser::security::SecurityConfig;
 use crate::streaming::{StreamingConfig, StreamingProgress};
@@ -243,7 +244,9 @@ impl FastStreamingParser {
             peak_memory_mb: (buffer.capacity() as f64) / (1024.0 * 1024.0),
             avg_element_size: if !elements.is_empty() {
                 elements.iter().map(|e| e.size).sum::<usize>() as f64 / elements.len() as f64
-            } else { 0.0 },
+            } else {
+                0.0
+            },
         };
 
         Ok(FastStreamingIterator::new(elements, stats))
@@ -280,7 +283,8 @@ impl FastStreamingIterator {
             stats.elements_per_second = elements.len() as f64 / stats.elapsed.as_secs_f64();
         }
         if !elements.is_empty() {
-            stats.avg_element_size = elements.iter().map(|e| e.size).sum::<usize>() as f64 / elements.len() as f64;
+            stats.avg_element_size =
+                elements.iter().map(|e| e.size).sum::<usize>() as f64 / elements.len() as f64;
         }
 
         Self {
@@ -297,7 +301,10 @@ impl FastStreamingIterator {
 
     /// Get all elements of a specific type
     pub fn filter_by_type(&self, element_type: FastElementType) -> Vec<&FastStreamingElement> {
-        self.elements.iter().filter(|e| e.element_type == element_type).collect()
+        self.elements
+            .iter()
+            .filter(|e| e.element_type == element_type)
+            .collect()
     }
 
     /// Get total number of elements
@@ -337,10 +344,10 @@ impl ExactSizeIterator for FastStreamingIterator {}
 pub fn create_fast_parser() -> FastStreamingParser {
     let config = StreamingConfig {
         security: SecurityConfig::relaxed(), // Use relaxed for maximum performance
-        buffer_size: 64 * 1024, // 64KB buffer
-        max_memory: 200 * 1024 * 1024, // 200MB memory limit
-        chunk_size: 512, // 512KB chunks for optimal throughput
-        enable_progress: false, // Disable progress for max speed
+        buffer_size: 64 * 1024,              // 64KB buffer
+        max_memory: 200 * 1024 * 1024,       // 200MB memory limit
+        chunk_size: 512,                     // 512KB chunks for optimal throughput
+        enable_progress: false,              // Disable progress for max speed
         progress_interval: 0,
     };
 
@@ -350,7 +357,7 @@ pub fn create_fast_parser() -> FastStreamingParser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::{Cursor, BufReader};
+    use std::io::{BufReader, Cursor};
 
     #[test]
     fn test_fast_streaming_parser_creation() {
@@ -407,18 +414,21 @@ mod tests {
         let mut parser = create_fast_parser();
 
         // Generate a larger XML for more realistic performance testing
-        let mut test_xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+        let mut test_xml = String::from(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
         <ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43">
             <MessageHeader>
                 <MessageId>PERFORMANCE_TEST</MessageId>
                 <MessageThreadId>THREAD001</MessageThreadId>
                 <MessageCreatedDateTime>2024-01-01T12:00:00</MessageCreatedDateTime>
             </MessageHeader>
-            <ReleaseList>"#);
+            <ReleaseList>"#,
+        );
 
         // Add many releases for performance testing
         for i in 0..5000 {
-            test_xml.push_str(&format!(r#"
+            test_xml.push_str(&format!(
+                r#"
                 <Release>
                     <ReleaseId>REL{:08}</ReleaseId>
                     <ReleaseReference>R{:08}</ReleaseReference>
@@ -428,14 +438,20 @@ mod tests {
                     <DisplayArtist>Test Artist {}</DisplayArtist>
                     <ReleaseType>Album</ReleaseType>
                     <Genre>Electronic</Genre>
-                </Release>"#, i, i, i, i % 100));
+                </Release>"#,
+                i,
+                i,
+                i,
+                i % 100
+            ));
         }
 
         test_xml.push_str("</ReleaseList><ResourceList>");
 
         // Add resources
         for i in 0..3000 {
-            test_xml.push_str(&format!(r#"
+            test_xml.push_str(&format!(
+                r#"
                 <SoundRecording>
                     <ResourceReference>A{:08}</ResourceReference>
                     <Duration>PT3M{:02}S</Duration>
@@ -443,7 +459,11 @@ mod tests {
                     <AudioChannelConfiguration>Stereo</AudioChannelConfiguration>
                     <SampleRate>44100</SampleRate>
                     <BitsPerSample>16</BitsPerSample>
-                </SoundRecording>"#, i, i % 60, i));
+                </SoundRecording>"#,
+                i,
+                i % 60,
+                i
+            ));
         }
 
         test_xml.push_str("</ResourceList></ern:NewReleaseMessage>");
@@ -460,7 +480,10 @@ mod tests {
         let stats = iterator.stats();
 
         println!("SIMD Performance test results:");
-        println!("  Total bytes: {:.2} MB", stats.total_bytes as f64 / (1024.0 * 1024.0));
+        println!(
+            "  Total bytes: {:.2} MB",
+            stats.total_bytes as f64 / (1024.0 * 1024.0)
+        );
         println!("  Total elements: {}", stats.total_elements);
         println!("  Elapsed: {:?}", elapsed);
         println!("  Throughput: {:.2} MB/s", stats.throughput_mbps);
@@ -471,16 +494,26 @@ mod tests {
         // Performance targets
         let target_throughput = 50.0; // MB/s - conservative target for CI
         if stats.throughput_mbps >= target_throughput {
-            println!("✅ Performance target met: {:.2} MB/s >= {:.2} MB/s",
-                     stats.throughput_mbps, target_throughput);
+            println!(
+                "✅ Performance target met: {:.2} MB/s >= {:.2} MB/s",
+                stats.throughput_mbps, target_throughput
+            );
         } else {
-            println!("⚠️  Performance below target: {:.2} MB/s < {:.2} MB/s",
-                     stats.throughput_mbps, target_throughput);
+            println!(
+                "⚠️  Performance below target: {:.2} MB/s < {:.2} MB/s",
+                stats.throughput_mbps, target_throughput
+            );
         }
 
         // The parser should handle this efficiently
-        assert!(stats.total_elements > 8000, "Should have found many elements");
-        assert!(stats.total_bytes > 1024 * 1024, "Should have processed > 1MB");
+        assert!(
+            stats.total_elements > 8000,
+            "Should have found many elements"
+        );
+        assert!(
+            stats.total_bytes > 1024 * 1024,
+            "Should have processed > 1MB"
+        );
     }
 
     #[test]
@@ -506,11 +539,26 @@ mod tests {
         let elements: Vec<_> = iterator.collect();
 
         // Should find all different element types
-        let header_count = elements.iter().filter(|e| e.element_type == FastElementType::MessageHeader).count();
-        let release_count = elements.iter().filter(|e| e.element_type == FastElementType::Release).count();
-        let resource_count = elements.iter().filter(|e| e.element_type == FastElementType::Resource).count();
-        let party_count = elements.iter().filter(|e| e.element_type == FastElementType::Party).count();
-        let deal_count = elements.iter().filter(|e| e.element_type == FastElementType::Deal).count();
+        let header_count = elements
+            .iter()
+            .filter(|e| e.element_type == FastElementType::MessageHeader)
+            .count();
+        let release_count = elements
+            .iter()
+            .filter(|e| e.element_type == FastElementType::Release)
+            .count();
+        let resource_count = elements
+            .iter()
+            .filter(|e| e.element_type == FastElementType::Resource)
+            .count();
+        let party_count = elements
+            .iter()
+            .filter(|e| e.element_type == FastElementType::Party)
+            .count();
+        let deal_count = elements
+            .iter()
+            .filter(|e| e.element_type == FastElementType::Deal)
+            .count();
 
         println!("Element type counts:");
         println!("  Headers: {}", header_count);

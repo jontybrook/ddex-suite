@@ -1,14 +1,14 @@
 //! # XML Attribute Extraction and Processing
-//! 
+//!
 //! This module provides comprehensive attribute extraction from XML elements,
 //! handling namespace resolution, special attributes, and proper type conversion
 //! for both standard DDEX and custom/proprietary attributes.
 
-use ddex_core::models::{AttributeMap, AttributeValue, QName, AttributeType};
-use crate::parser::namespace_detector::NamespaceContext;
 use crate::error::ParseError;
+use crate::parser::namespace_detector::NamespaceContext;
+use ddex_core::models::{AttributeMap, AttributeType, AttributeValue, QName};
 use indexmap::IndexMap;
-use quick_xml::events::{BytesStart, attributes::Attribute};
+use quick_xml::events::{attributes::Attribute, BytesStart};
 use std::collections::HashMap;
 use tracing::{debug, warn};
 
@@ -97,7 +97,7 @@ impl AttributeExtractor {
             ddex_attribute_types: HashMap::new(),
             special_attributes: IndexMap::new(),
         };
-        
+
         extractor.initialize_ddex_attributes();
         extractor.initialize_special_handlers();
         extractor
@@ -106,46 +106,82 @@ impl AttributeExtractor {
     /// Initialize known DDEX attribute types
     fn initialize_ddex_attributes(&mut self) {
         // Language and territory attributes
-        self.ddex_attribute_types.insert("LanguageAndScriptCode".to_string(), AttributeType::Language);
-        self.ddex_attribute_types.insert("ApplicableTerritoryCode".to_string(), AttributeType::String);
-        
+        self.ddex_attribute_types
+            .insert("LanguageAndScriptCode".to_string(), AttributeType::Language);
+        self.ddex_attribute_types
+            .insert("ApplicableTerritoryCode".to_string(), AttributeType::String);
+
         // Boolean attributes
-        self.ddex_attribute_types.insert("IsDefault".to_string(), AttributeType::Boolean);
-        self.ddex_attribute_types.insert("IsMainArtist".to_string(), AttributeType::Boolean);
-        self.ddex_attribute_types.insert("HasChanged".to_string(), AttributeType::Boolean);
-        
+        self.ddex_attribute_types
+            .insert("IsDefault".to_string(), AttributeType::Boolean);
+        self.ddex_attribute_types
+            .insert("IsMainArtist".to_string(), AttributeType::Boolean);
+        self.ddex_attribute_types
+            .insert("HasChanged".to_string(), AttributeType::Boolean);
+
         // Numeric attributes
-        self.ddex_attribute_types.insert("SequenceNumber".to_string(), AttributeType::Integer);
-        self.ddex_attribute_types.insert("Duration".to_string(), AttributeType::String); // ISO 8601 duration
-        
+        self.ddex_attribute_types
+            .insert("SequenceNumber".to_string(), AttributeType::Integer);
+        self.ddex_attribute_types
+            .insert("Duration".to_string(), AttributeType::String); // ISO 8601 duration
+
         // URI attributes
-        self.ddex_attribute_types.insert("Namespace".to_string(), AttributeType::Uri);
-        
+        self.ddex_attribute_types
+            .insert("Namespace".to_string(), AttributeType::Uri);
+
         // Date/time attributes
-        self.ddex_attribute_types.insert("CreatedDateTime".to_string(), AttributeType::DateTime);
-        self.ddex_attribute_types.insert("UpdatedDateTime".to_string(), AttributeType::DateTime);
+        self.ddex_attribute_types
+            .insert("CreatedDateTime".to_string(), AttributeType::DateTime);
+        self.ddex_attribute_types
+            .insert("UpdatedDateTime".to_string(), AttributeType::DateTime);
     }
 
     /// Initialize special attribute handlers
     fn initialize_special_handlers(&mut self) {
         // XML Schema Instance attributes
-        self.special_attributes.insert("xsi:type".to_string(), SpecialAttributeHandler::XsiType);
-        self.special_attributes.insert("xsi:schemaLocation".to_string(), SpecialAttributeHandler::XsiSchemaLocation);
-        self.special_attributes.insert("xsi:noNamespaceSchemaLocation".to_string(), SpecialAttributeHandler::XsiNoNamespaceSchemaLocation);
-        self.special_attributes.insert("xsi:nil".to_string(), SpecialAttributeHandler::XsiNil);
-        
+        self.special_attributes
+            .insert("xsi:type".to_string(), SpecialAttributeHandler::XsiType);
+        self.special_attributes.insert(
+            "xsi:schemaLocation".to_string(),
+            SpecialAttributeHandler::XsiSchemaLocation,
+        );
+        self.special_attributes.insert(
+            "xsi:noNamespaceSchemaLocation".to_string(),
+            SpecialAttributeHandler::XsiNoNamespaceSchemaLocation,
+        );
+        self.special_attributes
+            .insert("xsi:nil".to_string(), SpecialAttributeHandler::XsiNil);
+
         // Namespace declarations
-        self.special_attributes.insert("xmlns".to_string(), SpecialAttributeHandler::NamespaceDeclaration);
+        self.special_attributes.insert(
+            "xmlns".to_string(),
+            SpecialAttributeHandler::NamespaceDeclaration,
+        );
         // Note: xmlns:* are handled dynamically
-        
+
         // DDEX specific
-        self.special_attributes.insert("LanguageAndScriptCode".to_string(), SpecialAttributeHandler::LanguageAndTerritory);
-        self.special_attributes.insert("ApplicableTerritoryCode".to_string(), SpecialAttributeHandler::LanguageAndTerritory);
-        self.special_attributes.insert("SequenceNumber".to_string(), SpecialAttributeHandler::SequenceNumber);
-        
+        self.special_attributes.insert(
+            "LanguageAndScriptCode".to_string(),
+            SpecialAttributeHandler::LanguageAndTerritory,
+        );
+        self.special_attributes.insert(
+            "ApplicableTerritoryCode".to_string(),
+            SpecialAttributeHandler::LanguageAndTerritory,
+        );
+        self.special_attributes.insert(
+            "SequenceNumber".to_string(),
+            SpecialAttributeHandler::SequenceNumber,
+        );
+
         // Boolean flags
-        self.special_attributes.insert("IsDefault".to_string(), SpecialAttributeHandler::BooleanFlag);
-        self.special_attributes.insert("IsMainArtist".to_string(), SpecialAttributeHandler::BooleanFlag);
+        self.special_attributes.insert(
+            "IsDefault".to_string(),
+            SpecialAttributeHandler::BooleanFlag,
+        );
+        self.special_attributes.insert(
+            "IsMainArtist".to_string(),
+            SpecialAttributeHandler::BooleanFlag,
+        );
     }
 
     /// Extract all attributes from an XML element
@@ -159,7 +195,10 @@ impl AttributeExtractor {
         let mut special_attributes = IndexMap::new();
         let warnings = Vec::new();
 
-        debug!("Extracting attributes from element: {}", String::from_utf8_lossy(element.name().as_ref()));
+        debug!(
+            "Extracting attributes from element: {}",
+            String::from_utf8_lossy(element.name().as_ref())
+        );
 
         // Process all attributes
         for attr_result in element.attributes() {
@@ -169,7 +208,7 @@ impl AttributeExtractor {
             })?;
 
             let (qname, attr_value) = self.process_attribute(&attr, namespace_context)?;
-            
+
             // Handle namespace declarations separately
             if qname.is_namespace_declaration() {
                 let prefix = if qname.local_name == "xmlns" {
@@ -178,11 +217,17 @@ impl AttributeExtractor {
                     qname.local_name.clone() // Prefixed namespace
                 };
                 namespace_declarations.insert(prefix, attr_value.to_xml_value());
-                debug!("Found namespace declaration: {}={}", qname.to_xml_name(), attr_value.to_xml_value());
+                debug!(
+                    "Found namespace declaration: {}={}",
+                    qname.to_xml_name(),
+                    attr_value.to_xml_value()
+                );
             }
 
             // Check for special attributes
-            if let Some(special_value) = self.process_special_attribute(&qname, &attr_value, namespace_context)? {
+            if let Some(special_value) =
+                self.process_special_attribute(&qname, &attr_value, namespace_context)?
+            {
                 special_attributes.insert(qname.clone(), special_value);
             }
 
@@ -194,8 +239,12 @@ impl AttributeExtractor {
         let standard_attributes = attributes.standard_attributes();
         let extension_attributes = attributes.extension_attributes();
 
-        debug!("Extracted {} total attributes ({} standard, {} extensions)", 
-               attributes.len(), standard_attributes.len(), extension_attributes.len());
+        debug!(
+            "Extracted {} total attributes ({} standard, {} extensions)",
+            attributes.len(),
+            standard_attributes.len(),
+            extension_attributes.len()
+        );
 
         Ok(AttributeExtractionResult {
             attributes,
@@ -220,14 +269,16 @@ impl AttributeExtractor {
 
         // Create QName with namespace resolution
         let qname = self.resolve_attribute_qname(&attr_name, namespace_context);
-        
+
         // Determine attribute type and parse value
         let parsed_value = if let Some(attr_type) = self.get_attribute_type(&qname) {
-            AttributeValue::parse_with_type(&attr_value, attr_type)
-                .unwrap_or_else(|e| {
-                    warn!("Failed to parse attribute {} as {:?}: {}", qname, attr_type, e);
-                    AttributeValue::Raw(attr_value.to_string())
-                })
+            AttributeValue::parse_with_type(&attr_value, attr_type).unwrap_or_else(|e| {
+                warn!(
+                    "Failed to parse attribute {} as {:?}: {}",
+                    qname, attr_type, e
+                );
+                AttributeValue::Raw(attr_value.to_string())
+            })
         } else {
             // Default to string for unknown attributes
             AttributeValue::String(attr_value.to_string())
@@ -237,7 +288,11 @@ impl AttributeExtractor {
     }
 
     /// Resolve attribute name to QName with namespace context
-    fn resolve_attribute_qname(&self, attr_name: &str, namespace_context: &NamespaceContext) -> QName {
+    fn resolve_attribute_qname(
+        &self,
+        attr_name: &str,
+        namespace_context: &NamespaceContext,
+    ) -> QName {
         if let Some((prefix, local_name)) = attr_name.split_once(':') {
             // Prefixed attribute
             if let Some(namespace_uri) = namespace_context.current_scope.resolve_prefix(prefix) {
@@ -268,7 +323,7 @@ impl AttributeExtractor {
         if let Some(attr_type) = self.ddex_attribute_types.get(&qname.to_xml_name()) {
             return Some(*attr_type);
         }
-        
+
         // Check by local name
         self.ddex_attribute_types.get(&qname.local_name).copied()
     }
@@ -281,34 +336,24 @@ impl AttributeExtractor {
         namespace_context: &NamespaceContext,
     ) -> Result<Option<SpecialAttributeValue>, ParseError> {
         let attr_name = qname.to_xml_name();
-        
+
         if let Some(handler) = self.special_attributes.get(&attr_name) {
             match handler {
-                SpecialAttributeHandler::XsiType => {
-                    self.process_xsi_type(value, namespace_context)
-                },
-                SpecialAttributeHandler::XsiSchemaLocation => {
-                    self.process_schema_location(value)
-                },
-                SpecialAttributeHandler::XsiNoNamespaceSchemaLocation => {
-                    Ok(Some(SpecialAttributeValue::NoNamespaceSchemaLocation(value.to_xml_value())))
-                },
-                SpecialAttributeHandler::XsiNil => {
-                    self.process_xsi_nil(value)
-                },
+                SpecialAttributeHandler::XsiType => self.process_xsi_type(value, namespace_context),
+                SpecialAttributeHandler::XsiSchemaLocation => self.process_schema_location(value),
+                SpecialAttributeHandler::XsiNoNamespaceSchemaLocation => Ok(Some(
+                    SpecialAttributeValue::NoNamespaceSchemaLocation(value.to_xml_value()),
+                )),
+                SpecialAttributeHandler::XsiNil => self.process_xsi_nil(value),
                 SpecialAttributeHandler::NamespaceDeclaration => {
                     // Already handled in main extraction
                     Ok(None)
-                },
+                }
                 SpecialAttributeHandler::LanguageAndTerritory => {
                     self.process_language_territory(value)
-                },
-                SpecialAttributeHandler::SequenceNumber => {
-                    self.process_sequence_number(value)
-                },
-                SpecialAttributeHandler::BooleanFlag => {
-                    self.process_boolean_flag(value)
-                },
+                }
+                SpecialAttributeHandler::SequenceNumber => self.process_sequence_number(value),
+                SpecialAttributeHandler::BooleanFlag => self.process_boolean_flag(value),
             }
         } else {
             Ok(None)
@@ -322,7 +367,7 @@ impl AttributeExtractor {
         namespace_context: &NamespaceContext,
     ) -> Result<Option<SpecialAttributeValue>, ParseError> {
         let type_value = value.to_xml_value();
-        
+
         if let Some((prefix, local_name)) = type_value.split_once(':') {
             // Prefixed type
             let namespace_uri = namespace_context.current_scope.resolve_prefix(prefix);
@@ -342,10 +387,13 @@ impl AttributeExtractor {
     }
 
     /// Process xsi:schemaLocation attribute
-    fn process_schema_location(&self, value: &AttributeValue) -> Result<Option<SpecialAttributeValue>, ParseError> {
+    fn process_schema_location(
+        &self,
+        value: &AttributeValue,
+    ) -> Result<Option<SpecialAttributeValue>, ParseError> {
         let location_value = value.to_xml_value();
         let mut locations = IndexMap::new();
-        
+
         // Schema locations are space-separated pairs: namespace_uri schema_url
         let tokens: Vec<&str> = location_value.split_whitespace().collect();
         for chunk in tokens.chunks(2) {
@@ -353,12 +401,15 @@ impl AttributeExtractor {
                 locations.insert(chunk[0].to_string(), chunk[1].to_string());
             }
         }
-        
+
         Ok(Some(SpecialAttributeValue::SchemaLocation { locations }))
     }
 
     /// Process xsi:nil attribute
-    fn process_xsi_nil(&self, value: &AttributeValue) -> Result<Option<SpecialAttributeValue>, ParseError> {
+    fn process_xsi_nil(
+        &self,
+        value: &AttributeValue,
+    ) -> Result<Option<SpecialAttributeValue>, ParseError> {
         match value {
             AttributeValue::Boolean(b) => Ok(Some(SpecialAttributeValue::Nil(*b))),
             _ => {
@@ -370,9 +421,12 @@ impl AttributeExtractor {
     }
 
     /// Process language and territory codes
-    fn process_language_territory(&self, value: &AttributeValue) -> Result<Option<SpecialAttributeValue>, ParseError> {
+    fn process_language_territory(
+        &self,
+        value: &AttributeValue,
+    ) -> Result<Option<SpecialAttributeValue>, ParseError> {
         let lang_value = value.to_xml_value();
-        
+
         // Parse RFC 5646 language tags (simplified)
         if lang_value.contains('-') {
             let parts: Vec<&str> = lang_value.split('-').collect();
@@ -382,7 +436,7 @@ impl AttributeExtractor {
             } else {
                 None
             };
-            
+
             Ok(Some(SpecialAttributeValue::Language {
                 language,
                 script: None, // Could be enhanced to parse script codes
@@ -390,7 +444,8 @@ impl AttributeExtractor {
             }))
         } else if lang_value.contains(' ') {
             // Space-separated territory codes
-            let territories: Vec<String> = lang_value.split_whitespace()
+            let territories: Vec<String> = lang_value
+                .split_whitespace()
                 .map(|s| s.to_string())
                 .collect();
             Ok(Some(SpecialAttributeValue::Territory(territories)))
@@ -404,7 +459,10 @@ impl AttributeExtractor {
     }
 
     /// Process sequence number
-    fn process_sequence_number(&self, value: &AttributeValue) -> Result<Option<SpecialAttributeValue>, ParseError> {
+    fn process_sequence_number(
+        &self,
+        value: &AttributeValue,
+    ) -> Result<Option<SpecialAttributeValue>, ParseError> {
         match value {
             AttributeValue::Integer(i) => Ok(Some(SpecialAttributeValue::Sequence(*i as u32))),
             _ => {
@@ -418,7 +476,10 @@ impl AttributeExtractor {
     }
 
     /// Process boolean flag
-    fn process_boolean_flag(&self, value: &AttributeValue) -> Result<Option<SpecialAttributeValue>, ParseError> {
+    fn process_boolean_flag(
+        &self,
+        value: &AttributeValue,
+    ) -> Result<Option<SpecialAttributeValue>, ParseError> {
         match value {
             AttributeValue::Boolean(b) => Ok(Some(SpecialAttributeValue::Flag(*b))),
             _ => {
@@ -442,13 +503,13 @@ impl AttributeExtractor {
     /// Validate extracted attributes
     pub fn validate_attributes(&self, attributes: &AttributeMap) -> Vec<String> {
         let mut errors = Vec::new();
-        
+
         for (qname, value) in attributes.iter() {
             if let Err(e) = value.validate() {
                 errors.push(format!("Invalid attribute {}: {}", qname, e));
             }
         }
-        
+
         errors
     }
 }
@@ -470,7 +531,7 @@ mod tests {
         let xml = r#"<Release title="Test Album" SequenceNumber="1" IsDefault="true" />"#;
         let mut reader = Reader::from_reader(Cursor::new(xml.as_bytes()));
         let mut buf = Vec::new();
-        
+
         if let Ok(quick_xml::events::Event::Empty(start)) = reader.read_event_into(&mut buf) {
             let extractor = AttributeExtractor::new();
             let namespace_context = NamespaceContext {
@@ -479,22 +540,44 @@ mod tests {
                 default_namespace: None,
                 ern_version: None,
             };
-            
-            let result = extractor.extract_attributes(&start, &namespace_context).unwrap();
-            
+
+            let result = extractor
+                .extract_attributes(&start, &namespace_context)
+                .unwrap();
+
             assert_eq!(result.attributes.len(), 3);
-            assert_eq!(result.attributes.get_str("title").unwrap().to_xml_value(), "Test Album");
-            assert_eq!(result.attributes.get_str("SequenceNumber").unwrap().to_xml_value(), "1");
-            assert_eq!(result.attributes.get_str("IsDefault").unwrap().to_xml_value(), "true");
-            
+            assert_eq!(
+                result.attributes.get_str("title").unwrap().to_xml_value(),
+                "Test Album"
+            );
+            assert_eq!(
+                result
+                    .attributes
+                    .get_str("SequenceNumber")
+                    .unwrap()
+                    .to_xml_value(),
+                "1"
+            );
+            assert_eq!(
+                result
+                    .attributes
+                    .get_str("IsDefault")
+                    .unwrap()
+                    .to_xml_value(),
+                "true"
+            );
+
             // Check type parsing
-            if let Some(AttributeValue::Integer(seq)) = result.attributes.get_str("SequenceNumber") {
+            if let Some(AttributeValue::Integer(seq)) = result.attributes.get_str("SequenceNumber")
+            {
                 assert_eq!(*seq, 1);
             } else {
                 panic!("SequenceNumber should be parsed as integer");
             }
-            
-            if let Some(AttributeValue::Boolean(is_default)) = result.attributes.get_str("IsDefault") {
+
+            if let Some(AttributeValue::Boolean(is_default)) =
+                result.attributes.get_str("IsDefault")
+            {
                 assert_eq!(*is_default, true);
             } else {
                 panic!("IsDefault should be parsed as boolean");
@@ -509,7 +592,7 @@ mod tests {
                                   ern:title="Test" />"#;
         let mut reader = Reader::from_reader(Cursor::new(xml.as_bytes()));
         let mut buf = Vec::new();
-        
+
         if let Ok(quick_xml::events::Event::Empty(start)) = reader.read_event_into(&mut buf) {
             let extractor = AttributeExtractor::new();
             let namespace_context = NamespaceContext {
@@ -518,9 +601,11 @@ mod tests {
                 default_namespace: None,
                 ern_version: None,
             };
-            
-            let result = extractor.extract_attributes(&start, &namespace_context).unwrap();
-            
+
+            let result = extractor
+                .extract_attributes(&start, &namespace_context)
+                .unwrap();
+
             assert_eq!(result.namespace_declarations.len(), 2);
             assert!(result.namespace_declarations.contains_key("ern"));
             assert!(result.namespace_declarations.contains_key("avs"));
@@ -535,7 +620,7 @@ mod tests {
                               xmlns:xs="http://www.w3.org/2001/XMLSchema" />"#;
         let mut reader = Reader::from_reader(Cursor::new(xml.as_bytes()));
         let mut buf = Vec::new();
-        
+
         if let Ok(quick_xml::events::Event::Empty(start)) = reader.read_event_into(&mut buf) {
             let extractor = AttributeExtractor::new();
             let namespace_context = NamespaceContext {
@@ -544,18 +629,22 @@ mod tests {
                 default_namespace: None,
                 ern_version: None,
             };
-            
-            let result = extractor.extract_attributes(&start, &namespace_context).unwrap();
-            
+
+            let result = extractor
+                .extract_attributes(&start, &namespace_context)
+                .unwrap();
+
             assert!(!result.special_attributes.is_empty());
-            
+
             // Check for xsi:nil
             let xsi_nil_qname = QName::with_prefix_and_namespace(
                 "nil".to_string(),
-                "xsi".to_string(), 
-                "http://www.w3.org/2001/XMLSchema-instance".to_string()
+                "xsi".to_string(),
+                "http://www.w3.org/2001/XMLSchema-instance".to_string(),
             );
-            if let Some(SpecialAttributeValue::Nil(nil_value)) = result.special_attributes.get(&xsi_nil_qname) {
+            if let Some(SpecialAttributeValue::Nil(nil_value)) =
+                result.special_attributes.get(&xsi_nil_qname)
+            {
                 assert_eq!(*nil_value, true);
             }
         }
@@ -566,13 +655,13 @@ mod tests {
         let mut parent_attrs = AttributeMap::new();
         parent_attrs.insert_str("LanguageAndScriptCode", "en-US");
         parent_attrs.insert_str("ApplicableTerritoryCode", "Worldwide");
-        
+
         let mut child_attrs = AttributeMap::new();
         child_attrs.insert_str("title", "Child Title");
-        
+
         let extractor = AttributeExtractor::new();
         extractor.apply_inheritance(&parent_attrs, &mut child_attrs);
-        
+
         // Child should inherit language and territory
         assert!(child_attrs.get_str("LanguageAndScriptCode").is_some());
         assert!(child_attrs.get_str("ApplicableTerritoryCode").is_some());
@@ -585,10 +674,10 @@ mod tests {
         attributes.insert_str("LanguageAndScriptCode", "en-US"); // Standard
         attributes.insert_str("custom:proprietary", "custom value"); // Extension
         attributes.insert_str("xmlns:custom", "http://example.com/custom"); // Namespace
-        
+
         let standard = attributes.standard_attributes();
         let extensions = attributes.extension_attributes();
-        
+
         assert!(standard.len() >= 1); // Should contain LanguageAndScriptCode
         assert!(extensions.len() >= 1); // Should contain custom:proprietary
     }

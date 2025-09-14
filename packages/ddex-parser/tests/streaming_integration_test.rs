@@ -1,7 +1,7 @@
 // Integration test demonstrating working streaming parser
 
-use ddex_parser::streaming::minimal::{MinimalStreamIterator, MinimalElement};
 use ddex_core::models::versions::ERNVersion;
+use ddex_parser::streaming::minimal::{MinimalElement, MinimalStreamIterator};
 use std::io::Cursor;
 
 #[test]
@@ -32,17 +32,28 @@ fn test_streaming_parser_integration() {
     println!("Parsed {} elements", elements.len());
 
     // Check we got the expected elements
-    let has_header = elements.iter().any(|e| matches!(e, MinimalElement::Header { .. }));
-    let has_release = elements.iter().any(|e| matches!(e, MinimalElement::Release { .. }));
-    let has_resource = elements.iter().any(|e| matches!(e, MinimalElement::Resource { .. }));
-    let has_end_stream = elements.iter().any(|e| matches!(e, MinimalElement::EndOfStream));
+    let has_header = elements
+        .iter()
+        .any(|e| matches!(e, MinimalElement::Header { .. }));
+    let has_release = elements
+        .iter()
+        .any(|e| matches!(e, MinimalElement::Release { .. }));
+    let has_resource = elements
+        .iter()
+        .any(|e| matches!(e, MinimalElement::Resource { .. }));
+    let has_end_stream = elements
+        .iter()
+        .any(|e| matches!(e, MinimalElement::EndOfStream));
 
     assert!(has_header, "Should parse message header");
     assert!(has_release, "Should parse release");
     assert!(has_resource, "Should parse resource");
     assert!(has_end_stream, "Should have end of stream marker");
 
-    println!("✅ Streaming parser successfully parsed DDEX XML with {} elements", elements.len());
+    println!(
+        "✅ Streaming parser successfully parsed DDEX XML with {} elements",
+        elements.len()
+    );
 }
 
 #[test]

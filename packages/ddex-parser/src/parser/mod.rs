@@ -1,18 +1,18 @@
 // core/src/parser/mod.rs
 //! Parser module
 
+pub mod attribute_extractor;
 pub mod detector;
-pub mod security;
-pub mod stream;
-pub mod mode;
 pub mod dom;
 pub mod extension_capture;
-pub mod namespace_detector;
-pub mod attribute_extractor;
-pub mod xml_validator;
-pub mod selective_parser;
-pub mod xpath_selector;
+pub mod mode;
 pub mod multi_release_parser;
+pub mod namespace_detector;
+pub mod security;
+pub mod selective_parser;
+pub mod stream;
+pub mod xml_validator;
+pub mod xpath_selector;
 
 #[cfg(test)]
 mod tests;
@@ -45,7 +45,7 @@ impl Default for ParseOptions {
             resolve_references: true,
             include_raw: false,
             max_memory: 100 * 1024 * 1024, // 100MB
-            timeout_ms: 30000, // 30 seconds
+            timeout_ms: 30000,             // 30 seconds
             allow_blocking: false,
             chunk_size: 100,
             include_raw_extensions: false,
@@ -94,7 +94,7 @@ impl ParseOptions {
             ..Default::default()
         }
     }
-    
+
     pub fn for_round_trip() -> Self {
         Self {
             include_raw_extensions: true,

@@ -1,9 +1,9 @@
 //! Main builder implementation
 
-use crate::generator::{ASTGenerator, xml_writer::XmlWriter};
+pub use super::preflight::PreflightLevel;
+use crate::generator::{xml_writer::XmlWriter, ASTGenerator};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
-pub use super::preflight::PreflightLevel;
 
 /// Build request for generating DDEX messages
 ///
@@ -308,13 +308,13 @@ pub struct DealTerms {
 pub struct BuildOptions {
     /// Determinism configuration
     pub determinism: Option<super::determinism::DeterminismConfig>,
-    
+
     /// Validation level
     pub preflight_level: super::preflight::PreflightLevel,
-    
+
     /// ID generation strategy
     pub id_strategy: IdStrategy,
-    
+
     /// Stable hash configuration (when using StableHash strategy)
     pub stable_hash_config: Option<super::id_generator::StableHashConfig>,
 }
@@ -348,19 +348,19 @@ pub enum IdStrategy {
 pub struct BuildResult {
     /// Generated XML
     pub xml: String,
-    
+
     /// Warnings
     pub warnings: Vec<BuildWarning>,
-    
+
     /// Errors (if any)
     pub errors: Vec<super::error::BuildError>,
-    
+
     /// Statistics
     pub statistics: BuildStatistics,
-    
+
     /// Canonical hash (if deterministic)
     pub canonical_hash: Option<String>,
-    
+
     /// Reproducibility banner (if requested)
     pub reproducibility_banner: Option<String>,
 }
@@ -415,15 +415,19 @@ impl DDEXBuilder {
             _inner: super::Builder::new(),
         }
     }
-    
+
     /// Build DDEX XML from request
-    pub fn build(&self, mut request: BuildRequest, options: BuildOptions) -> Result<BuildResult, super::error::BuildError> {
+    pub fn build(
+        &self,
+        mut request: BuildRequest,
+        options: BuildOptions,
+    ) -> Result<BuildResult, super::error::BuildError> {
         let start = std::time::Instant::now();
         let mut warnings = Vec::new();
-        
+
         // 1. Enhanced preflight checks with new validator
-        let validator = super::preflight::PreflightValidator::new(
-            super::preflight::ValidationConfig {
+        let validator =
+            super::preflight::PreflightValidator::new(super::preflight::ValidationConfig {
                 level: options.preflight_level,
                 profile: request.profile.clone(),
                 validate_identifiers: true,
@@ -431,11 +435,10 @@ impl DDEXBuilder {
                 check_required_fields: true,
                 validate_dates: true,
                 validate_references: true,
-            }
-        );
-        
+            });
+
         let validation_result = validator.validate(&request)?;
-        
+
         // Convert validation warnings to build warnings
         for warning in validation_result.warnings {
             warnings.push(BuildWarning {
@@ -444,42 +447,45 @@ impl DDEXBuilder {
                 location: Some(warning.location),
             });
         }
-        
+
         // Fail if validation didn't pass
         if !validation_result.passed {
             if options.preflight_level == super::preflight::PreflightLevel::Strict {
                 return Err(super::error::BuildError::ValidationFailed {
-                    errors: validation_result.errors.iter()
+                    errors: validation_result
+                        .errors
+                        .iter()
                         .map(|e| format!("{}: {}", e.code, e.message))
                         .collect(),
                 });
             }
         }
-        
+
         // 2. Generate IDs based on strategy
         self.generate_ids(&mut request, &options)?;
-        
+
         // 3. Generate AST
         let mut generator = ASTGenerator::new(request.version.clone());
         let ast = generator.generate(&request)?;
-        
+
         // 4. Apply determinism config
         let config = options.determinism.unwrap_or_default();
-        
+
         // 5. Generate XML
         let writer = XmlWriter::new(config.clone());
         let xml = writer.write(&ast)?;
-        
+
         // 6. Apply canonicalization if requested
-        let (final_xml, canonical_hash) = if config.canon_mode == super::determinism::CanonMode::DbC14n {
-            let canonicalizer = super::canonical::DB_C14N::new(config.clone());
-            let canonical = canonicalizer.canonicalize(&xml)?;
-            let hash = Some(canonicalizer.canonical_hash(&canonical)?);
-            (canonical, hash)
-        } else {
-            (xml, None)
-        };
-        
+        let (final_xml, canonical_hash) =
+            if config.canon_mode == super::determinism::CanonMode::DbC14n {
+                let canonicalizer = super::canonical::DB_C14N::new(config.clone());
+                let canonical = canonicalizer.canonicalize(&xml)?;
+                let hash = Some(canonicalizer.canonical_hash(&canonical)?);
+                (canonical, hash)
+            } else {
+                (xml, None)
+            };
+
         // 7. Generate reproducibility banner if requested
         let reproducibility_banner = if config.emit_reproducibility_banner {
             Some(format!(
@@ -490,9 +496,9 @@ impl DDEXBuilder {
         } else {
             None
         };
-        
+
         let elapsed = start.elapsed();
-        
+
         Ok(BuildResult {
             xml: final_xml.clone(),
             warnings,
@@ -508,41 +514,48 @@ impl DDEXBuilder {
             reproducibility_banner,
         })
     }
-    
+
     /// Generate IDs based on the selected strategy
-    fn generate_ids(&self, request: &mut BuildRequest, options: &BuildOptions) -> Result<(), super::error::BuildError> {
+    fn generate_ids(
+        &self,
+        request: &mut BuildRequest,
+        options: &BuildOptions,
+    ) -> Result<(), super::error::BuildError> {
         match options.id_strategy {
             IdStrategy::UUID => {
                 self.generate_uuid_ids(request)?;
-            },
+            }
             IdStrategy::UUIDv7 => {
                 self.generate_uuidv7_ids(request)?;
-            },
+            }
             IdStrategy::Sequential => {
                 self.generate_sequential_ids(request)?;
-            },
+            }
             IdStrategy::StableHash => {
                 self.generate_stable_hash_ids(request, options)?;
-            },
+            }
         }
         Ok(())
     }
-    
+
     /// Generate UUID v4 IDs
-    fn generate_uuid_ids(&self, request: &mut BuildRequest) -> Result<(), super::error::BuildError> {
+    fn generate_uuid_ids(
+        &self,
+        request: &mut BuildRequest,
+    ) -> Result<(), super::error::BuildError> {
         use uuid::Uuid;
-        
+
         // Generate message ID if missing
         if request.header.message_id.is_none() {
             request.header.message_id = Some(format!("MSG_{}", Uuid::new_v4()));
         }
-        
+
         // Generate release references if missing
         for release in &mut request.releases {
             if release.release_reference.is_none() {
                 release.release_reference = Some(format!("R{}", Uuid::new_v4().simple()));
             }
-            
+
             // Generate resource references for tracks
             for track in &mut release.tracks {
                 if track.resource_reference.is_none() {
@@ -550,37 +563,43 @@ impl DDEXBuilder {
                 }
             }
         }
-        
+
         // Generate deal references if missing
         for (idx, deal) in request.deals.iter_mut().enumerate() {
             if deal.deal_reference.is_none() {
                 deal.deal_reference = Some(format!("D{}", idx + 1));
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Generate UUID v7 IDs (time-ordered)
-    fn generate_uuidv7_ids(&self, request: &mut BuildRequest) -> Result<(), super::error::BuildError> {
+    fn generate_uuidv7_ids(
+        &self,
+        request: &mut BuildRequest,
+    ) -> Result<(), super::error::BuildError> {
         // For now, fall back to UUID v4
         // TODO: Implement proper UUID v7 generation
         self.generate_uuid_ids(request)
     }
-    
+
     /// Generate sequential IDs
-    fn generate_sequential_ids(&self, request: &mut BuildRequest) -> Result<(), super::error::BuildError> {
+    fn generate_sequential_ids(
+        &self,
+        request: &mut BuildRequest,
+    ) -> Result<(), super::error::BuildError> {
         // Generate message ID if missing
         if request.header.message_id.is_none() {
             request.header.message_id = Some(format!("MSG_{}", chrono::Utc::now().timestamp()));
         }
-        
+
         // Generate release references if missing
         for (idx, release) in request.releases.iter_mut().enumerate() {
             if release.release_reference.is_none() {
                 release.release_reference = Some(format!("R{}", idx + 1));
             }
-            
+
             // Generate resource references for tracks
             for (track_idx, track) in release.tracks.iter_mut().enumerate() {
                 if track.resource_reference.is_none() {
@@ -588,35 +607,44 @@ impl DDEXBuilder {
                 }
             }
         }
-        
+
         // Generate deal references if missing
         for (idx, deal) in request.deals.iter_mut().enumerate() {
             if deal.deal_reference.is_none() {
                 deal.deal_reference = Some(format!("D{}", idx + 1));
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Generate stable hash-based IDs
-    fn generate_stable_hash_ids(&self, request: &mut BuildRequest, options: &BuildOptions) -> Result<(), super::error::BuildError> {
-        let config = options.stable_hash_config.clone()
-            .unwrap_or_default();
+    fn generate_stable_hash_ids(
+        &self,
+        request: &mut BuildRequest,
+        options: &BuildOptions,
+    ) -> Result<(), super::error::BuildError> {
+        let config = options.stable_hash_config.clone().unwrap_or_default();
         let mut id_gen = super::id_generator::StableHashGenerator::new(config);
-        
+
         // Generate message ID if missing
         if request.header.message_id.is_none() {
             // Use sender/recipient info for stable message ID
-            let sender_name = request.header.message_sender.party_name
+            let sender_name = request
+                .header
+                .message_sender
+                .party_name
                 .first()
                 .map(|s| s.text.clone())
                 .unwrap_or_default();
-            let recipient_name = request.header.message_recipient.party_name
+            let recipient_name = request
+                .header
+                .message_recipient
+                .party_name
                 .first()
                 .map(|s| s.text.clone())
                 .unwrap_or_default();
-            
+
             let msg_id = id_gen.generate_party_id(
                 &format!("{}-{}", sender_name, recipient_name),
                 "MessageHeader",
@@ -624,28 +652,30 @@ impl DDEXBuilder {
             )?;
             request.header.message_id = Some(msg_id);
         }
-        
+
         // Generate stable IDs for releases
         for release in &mut request.releases {
             if release.release_reference.is_none() {
                 let id = id_gen.generate_release_id(
                     release.upc.as_deref().unwrap_or(&release.release_id),
                     "Album",
-                    &release.tracks.iter()
+                    &release
+                        .tracks
+                        .iter()
                         .map(|t| t.isrc.clone())
                         .collect::<Vec<_>>(),
                     &[], // Empty territory set for now
                 )?;
                 release.release_reference = Some(id);
             }
-            
+
             // Generate stable IDs for tracks/resources
             for track in &mut release.tracks {
                 if track.resource_reference.is_none() {
                     // Parse duration to seconds for stable hash
-                    let duration_seconds = self.parse_duration_to_seconds(&track.duration)
-                        .unwrap_or(0);
-                    
+                    let duration_seconds =
+                        self.parse_duration_to_seconds(&track.duration).unwrap_or(0);
+
                     let id = id_gen.generate_resource_id(
                         &track.isrc,
                         duration_seconds,
@@ -655,31 +685,32 @@ impl DDEXBuilder {
                 }
             }
         }
-        
+
         // Generate deal references if missing
         for (_idx, deal) in request.deals.iter_mut().enumerate() {
             if deal.deal_reference.is_none() {
                 // Create stable deal ID based on terms
                 let territories = deal.deal_terms.territory_code.join(",");
-                deal.deal_reference = Some(format!("DEAL_{}_{}", 
-                    deal.deal_terms.commercial_model_type,
-                    territories));
+                deal.deal_reference = Some(format!(
+                    "DEAL_{}_{}",
+                    deal.deal_terms.commercial_model_type, territories
+                ));
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Parse ISO 8601 duration to seconds
     fn parse_duration_to_seconds(&self, duration: &str) -> Option<u32> {
         // Simple parser for PT3M45S format
         if !duration.starts_with("PT") {
             return None;
         }
-        
+
         let mut seconds = 0u32;
         let mut current_num = String::new();
-        
+
         for ch in duration[2..].chars() {
             match ch {
                 '0'..='9' => current_num.push(ch),
@@ -688,35 +719,39 @@ impl DDEXBuilder {
                         seconds += hours * 3600;
                     }
                     current_num.clear();
-                },
+                }
                 'M' => {
                     if let Ok(minutes) = current_num.parse::<u32>() {
                         seconds += minutes * 60;
                     }
                     current_num.clear();
-                },
+                }
                 'S' => {
                     if let Ok(secs) = current_num.parse::<u32>() {
                         seconds += secs;
                     }
                     current_num.clear();
-                },
+                }
                 _ => {}
             }
         }
-        
+
         Some(seconds)
     }
-    
+
     /// Legacy preflight check method (kept for compatibility)
     #[allow(dead_code)]
-    fn preflight(&self, request: &BuildRequest, level: super::preflight::PreflightLevel) -> Result<Vec<BuildWarning>, super::error::BuildError> {
+    fn preflight(
+        &self,
+        request: &BuildRequest,
+        level: super::preflight::PreflightLevel,
+    ) -> Result<Vec<BuildWarning>, super::error::BuildError> {
         let mut warnings = Vec::new();
-        
+
         if level == super::preflight::PreflightLevel::None {
             return Ok(warnings);
         }
-        
+
         // Basic checks (enhanced validation is done in main build method)
         if request.releases.is_empty() {
             warnings.push(BuildWarning {
@@ -725,79 +760,83 @@ impl DDEXBuilder {
                 location: Some("/releases".to_string()),
             });
         }
-        
+
         if level == super::preflight::PreflightLevel::Strict && !warnings.is_empty() {
             return Err(super::error::BuildError::InvalidFormat {
                 field: "request".to_string(),
                 message: format!("{} validation warnings in strict mode", warnings.len()),
             });
         }
-        
+
         Ok(warnings)
     }
-    
+
     /// Compare two DDEX XML documents and return semantic differences
-    /// 
+    ///
     /// This method performs semantic diffing that understands DDEX business logic,
     /// not just XML structure differences.
-    pub fn diff_xml(&self, old_xml: &str, new_xml: &str) -> Result<super::diff::types::ChangeSet, super::error::BuildError> {
+    pub fn diff_xml(
+        &self,
+        old_xml: &str,
+        new_xml: &str,
+    ) -> Result<super::diff::types::ChangeSet, super::error::BuildError> {
         self.diff_xml_with_config(old_xml, new_xml, super::diff::DiffConfig::default())
     }
-    
+
     /// Compare two DDEX XML documents with custom diff configuration
     pub fn diff_xml_with_config(
-        &self, 
-        old_xml: &str, 
-        new_xml: &str, 
-        config: super::diff::DiffConfig
+        &self,
+        old_xml: &str,
+        new_xml: &str,
+        config: super::diff::DiffConfig,
     ) -> Result<super::diff::types::ChangeSet, super::error::BuildError> {
         // Parse both XML documents to AST
         let old_ast = self.parse_xml_to_ast(old_xml)?;
         let new_ast = self.parse_xml_to_ast(new_xml)?;
-        
+
         // Create diff engine and compare
         let mut diff_engine = super::diff::DiffEngine::new_with_config(config);
         diff_engine.diff(&old_ast, &new_ast)
     }
-    
+
     /// Compare a BuildRequest with existing XML to see what would change
     pub fn diff_request_with_xml(
-        &self, 
-        request: &BuildRequest, 
-        existing_xml: &str
+        &self,
+        request: &BuildRequest,
+        existing_xml: &str,
     ) -> Result<super::diff::types::ChangeSet, super::error::BuildError> {
         // Build new XML from request
         let build_result = self.build(request.clone(), BuildOptions::default())?;
-        
+
         // Compare existing XML with newly built XML
         self.diff_xml(existing_xml, &build_result.xml)
     }
-    
+
     /// Helper to parse XML string to AST
     fn parse_xml_to_ast(&self, xml: &str) -> Result<super::ast::AST, super::error::BuildError> {
         use quick_xml::Reader;
-        
+
         let mut reader = Reader::from_str(xml);
         reader.config_mut().trim_text(true);
-        
+
         // This is a simplified XML->AST parser
         // In a production system, you'd want to use the actual ddex-parser
         let mut root_element = super::ast::Element::new("Root");
         let namespace_map = indexmap::IndexMap::new();
-        
+
         // For now, create a basic AST structure
         // TODO: Implement proper XML parsing or integrate with ddex-parser
         root_element = root_element.with_text(xml);
-        
+
         Ok(super::ast::AST {
             root: root_element,
             namespaces: namespace_map,
             schema_location: None,
         })
     }
-    
+
     /// Create an UpdateReleaseMessage from two DDEX messages
-    /// 
+    ///
     /// This method compares an original DDEX message with an updated version and
     /// generates a minimal UpdateReleaseMessage containing only the differences.
     pub fn create_update(
@@ -809,7 +848,7 @@ impl DDEXBuilder {
         let mut update_generator = super::messages::UpdateGenerator::new();
         update_generator.create_update(original_xml, updated_xml, original_message_id)
     }
-    
+
     /// Create an UpdateReleaseMessage with custom configuration
     pub fn create_update_with_config(
         &self,
@@ -821,9 +860,9 @@ impl DDEXBuilder {
         let mut update_generator = super::messages::UpdateGenerator::new_with_config(config);
         update_generator.create_update(original_xml, updated_xml, original_message_id)
     }
-    
+
     /// Apply an UpdateReleaseMessage to a base DDEX message
-    /// 
+    ///
     /// This method takes a base DDEX message and applies the operations from an
     /// UpdateReleaseMessage to produce a new complete DDEX message.
     pub fn apply_update(
@@ -834,9 +873,9 @@ impl DDEXBuilder {
         let update_generator = super::messages::UpdateGenerator::new();
         update_generator.apply_update(base_xml, update)
     }
-    
+
     /// Create an update from a BuildRequest compared to existing XML
-    /// 
+    ///
     /// This is useful for generating updates when you have a new BuildRequest
     /// that represents the desired state and need to update an existing message.
     pub fn create_update_from_request(
@@ -847,11 +886,11 @@ impl DDEXBuilder {
     ) -> Result<super::messages::UpdateReleaseMessage, super::error::BuildError> {
         // Build new XML from request
         let build_result = self.build(request.clone(), BuildOptions::default())?;
-        
+
         // Create update between existing and new XML
         self.create_update(existing_xml, &build_result.xml, original_message_id)
     }
-    
+
     /// Validate an UpdateReleaseMessage for safety and consistency
     pub fn validate_update(
         &self,
@@ -860,7 +899,7 @@ impl DDEXBuilder {
         let update_generator = super::messages::UpdateGenerator::new();
         update_generator.validate_update(update)
     }
-    
+
     /// Generate an UpdateReleaseMessage as XML
     pub fn serialize_update(
         &self,
@@ -868,271 +907,343 @@ impl DDEXBuilder {
     ) -> Result<String, super::error::BuildError> {
         self.serialize_update_message_to_xml(update)
     }
-    
+
     // Helper methods for update serialization
-    
+
     fn serialize_update_message_to_xml(
         &self,
         update: &super::messages::UpdateReleaseMessage,
     ) -> Result<String, super::error::BuildError> {
         let mut xml = String::new();
-        
+
         // XML declaration and root element
         xml.push_str(r#"<?xml version="1.0" encoding="UTF-8"?>"#);
         xml.push('\n');
         xml.push_str(r#"<UpdateReleaseMessage xmlns="http://ddex.net/xml/ern/43" MessageSchemaVersionId="ern/43">"#);
         xml.push('\n');
-        
+
         // Message header
         self.serialize_update_header(&mut xml, &update.header)?;
-        
+
         // Update metadata
         self.serialize_update_metadata(&mut xml, &update.update_metadata)?;
-        
+
         // Update list
         self.serialize_update_list(&mut xml, &update.update_list)?;
-        
+
         // Resource updates
         if !update.resource_updates.is_empty() {
             self.serialize_resource_updates(&mut xml, &update.resource_updates)?;
         }
-        
+
         // Release updates
         if !update.release_updates.is_empty() {
             self.serialize_release_updates(&mut xml, &update.release_updates)?;
         }
-        
+
         // Deal updates
         if !update.deal_updates.is_empty() {
             self.serialize_deal_updates(&mut xml, &update.deal_updates)?;
         }
-        
+
         // Close root element
         xml.push_str("</UpdateReleaseMessage>\n");
-        
+
         Ok(xml)
     }
-    
+
     fn serialize_update_header(
         &self,
         xml: &mut String,
         header: &MessageHeaderRequest,
     ) -> Result<(), super::error::BuildError> {
         xml.push_str("  <MessageHeader>\n");
-        
+
         if let Some(ref message_id) = header.message_id {
-            xml.push_str(&format!("    <MessageId>{}</MessageId>\n", self.escape_xml(message_id)));
+            xml.push_str(&format!(
+                "    <MessageId>{}</MessageId>\n",
+                self.escape_xml(message_id)
+            ));
         }
-        
+
         // Message sender
         xml.push_str("    <MessageSender>\n");
         if !header.message_sender.party_name.is_empty() {
-            xml.push_str(&format!("      <PartyName>{}</PartyName>\n", 
-                self.escape_xml(&header.message_sender.party_name[0].text)));
+            xml.push_str(&format!(
+                "      <PartyName>{}</PartyName>\n",
+                self.escape_xml(&header.message_sender.party_name[0].text)
+            ));
         }
         xml.push_str("    </MessageSender>\n");
-        
+
         // Message recipient
         xml.push_str("    <MessageRecipient>\n");
         if !header.message_recipient.party_name.is_empty() {
-            xml.push_str(&format!("      <PartyName>{}</PartyName>\n", 
-                self.escape_xml(&header.message_recipient.party_name[0].text)));
+            xml.push_str(&format!(
+                "      <PartyName>{}</PartyName>\n",
+                self.escape_xml(&header.message_recipient.party_name[0].text)
+            ));
         }
         xml.push_str("    </MessageRecipient>\n");
-        
+
         // Created date time
         if let Some(ref created_time) = header.message_created_date_time {
-            xml.push_str(&format!("    <MessageCreatedDateTime>{}</MessageCreatedDateTime>\n", 
-                self.escape_xml(created_time)));
+            xml.push_str(&format!(
+                "    <MessageCreatedDateTime>{}</MessageCreatedDateTime>\n",
+                self.escape_xml(created_time)
+            ));
         } else {
             let default_time = chrono::Utc::now().to_rfc3339();
-            xml.push_str(&format!("    <MessageCreatedDateTime>{}</MessageCreatedDateTime>\n", 
-                self.escape_xml(&default_time)));
+            xml.push_str(&format!(
+                "    <MessageCreatedDateTime>{}</MessageCreatedDateTime>\n",
+                self.escape_xml(&default_time)
+            ));
         }
-        
+
         xml.push_str("  </MessageHeader>\n");
         Ok(())
     }
-    
+
     fn serialize_update_metadata(
         &self,
         xml: &mut String,
         metadata: &super::messages::UpdateMetadata,
     ) -> Result<(), super::error::BuildError> {
         xml.push_str("  <UpdateMetadata>\n");
-        xml.push_str(&format!("    <OriginalMessageId>{}</OriginalMessageId>\n", 
-            self.escape_xml(&metadata.original_message_id)));
-        xml.push_str(&format!("    <UpdateSequence>{}</UpdateSequence>\n", metadata.update_sequence));
-        xml.push_str(&format!("    <TotalOperations>{}</TotalOperations>\n", metadata.total_operations));
-        xml.push_str(&format!("    <ImpactLevel>{}</ImpactLevel>\n", 
-            self.escape_xml(&metadata.impact_level)));
-        xml.push_str(&format!("    <ValidationStatus>{}</ValidationStatus>\n", metadata.validation_status));
-        xml.push_str(&format!("    <UpdateCreatedDateTime>{}</UpdateCreatedDateTime>\n", 
-            metadata.update_created_timestamp.to_rfc3339()));
+        xml.push_str(&format!(
+            "    <OriginalMessageId>{}</OriginalMessageId>\n",
+            self.escape_xml(&metadata.original_message_id)
+        ));
+        xml.push_str(&format!(
+            "    <UpdateSequence>{}</UpdateSequence>\n",
+            metadata.update_sequence
+        ));
+        xml.push_str(&format!(
+            "    <TotalOperations>{}</TotalOperations>\n",
+            metadata.total_operations
+        ));
+        xml.push_str(&format!(
+            "    <ImpactLevel>{}</ImpactLevel>\n",
+            self.escape_xml(&metadata.impact_level)
+        ));
+        xml.push_str(&format!(
+            "    <ValidationStatus>{}</ValidationStatus>\n",
+            metadata.validation_status
+        ));
+        xml.push_str(&format!(
+            "    <UpdateCreatedDateTime>{}</UpdateCreatedDateTime>\n",
+            metadata.update_created_timestamp.to_rfc3339()
+        ));
         xml.push_str("  </UpdateMetadata>\n");
         Ok(())
     }
-    
+
     fn serialize_update_list(
         &self,
         xml: &mut String,
         operations: &[super::messages::UpdateOperation],
     ) -> Result<(), super::error::BuildError> {
         xml.push_str("  <UpdateList>\n");
-        
+
         for operation in operations {
             xml.push_str("    <UpdateOperation>\n");
-            xml.push_str(&format!("      <OperationId>{}</OperationId>\n", 
-                self.escape_xml(&operation.operation_id)));
+            xml.push_str(&format!(
+                "      <OperationId>{}</OperationId>\n",
+                self.escape_xml(&operation.operation_id)
+            ));
             xml.push_str(&format!("      <Action>{}</Action>\n", operation.action));
-            xml.push_str(&format!("      <TargetPath>{}</TargetPath>\n", 
-                self.escape_xml(&operation.target_path)));
-            xml.push_str(&format!("      <EntityType>{}</EntityType>\n", operation.entity_type));
-            xml.push_str(&format!("      <EntityId>{}</EntityId>\n", 
-                self.escape_xml(&operation.entity_id)));
-            
+            xml.push_str(&format!(
+                "      <TargetPath>{}</TargetPath>\n",
+                self.escape_xml(&operation.target_path)
+            ));
+            xml.push_str(&format!(
+                "      <EntityType>{}</EntityType>\n",
+                operation.entity_type
+            ));
+            xml.push_str(&format!(
+                "      <EntityId>{}</EntityId>\n",
+                self.escape_xml(&operation.entity_id)
+            ));
+
             if let Some(ref old_value) = operation.old_value {
-                xml.push_str(&format!("      <OldValue>{}</OldValue>\n", 
-                    self.escape_xml(old_value)));
+                xml.push_str(&format!(
+                    "      <OldValue>{}</OldValue>\n",
+                    self.escape_xml(old_value)
+                ));
             }
-            
+
             if let Some(ref new_value) = operation.new_value {
-                xml.push_str(&format!("      <NewValue>{}</NewValue>\n", 
-                    self.escape_xml(new_value)));
+                xml.push_str(&format!(
+                    "      <NewValue>{}</NewValue>\n",
+                    self.escape_xml(new_value)
+                ));
             }
-            
-            xml.push_str(&format!("      <IsCritical>{}</IsCritical>\n", operation.is_critical));
-            xml.push_str(&format!("      <Description>{}</Description>\n", 
-                self.escape_xml(&operation.description)));
-            
+
+            xml.push_str(&format!(
+                "      <IsCritical>{}</IsCritical>\n",
+                operation.is_critical
+            ));
+            xml.push_str(&format!(
+                "      <Description>{}</Description>\n",
+                self.escape_xml(&operation.description)
+            ));
+
             if !operation.dependencies.is_empty() {
                 xml.push_str("      <Dependencies>\n");
                 for dependency in &operation.dependencies {
-                    xml.push_str(&format!("        <Dependency>{}</Dependency>\n", 
-                        self.escape_xml(dependency)));
+                    xml.push_str(&format!(
+                        "        <Dependency>{}</Dependency>\n",
+                        self.escape_xml(dependency)
+                    ));
                 }
                 xml.push_str("      </Dependencies>\n");
             }
-            
+
             xml.push_str("    </UpdateOperation>\n");
         }
-        
+
         xml.push_str("  </UpdateList>\n");
         Ok(())
     }
-    
+
     fn serialize_resource_updates(
         &self,
         xml: &mut String,
         resource_updates: &indexmap::IndexMap<String, super::messages::ResourceUpdate>,
     ) -> Result<(), super::error::BuildError> {
         xml.push_str("  <ResourceUpdates>\n");
-        
+
         for (resource_id, update) in resource_updates {
             xml.push_str("    <ResourceUpdate>\n");
-            xml.push_str(&format!("      <ResourceId>{}</ResourceId>\n", 
-                self.escape_xml(resource_id)));
-            xml.push_str(&format!("      <ResourceReference>{}</ResourceReference>\n", 
-                self.escape_xml(&update.resource_reference)));
+            xml.push_str(&format!(
+                "      <ResourceId>{}</ResourceId>\n",
+                self.escape_xml(resource_id)
+            ));
+            xml.push_str(&format!(
+                "      <ResourceReference>{}</ResourceReference>\n",
+                self.escape_xml(&update.resource_reference)
+            ));
             xml.push_str(&format!("      <Action>{}</Action>\n", update.action));
-            
+
             // Add resource data if present
             if let Some(ref data) = update.resource_data {
                 xml.push_str("      <ResourceData>\n");
-                xml.push_str(&format!("        <Type>{}</Type>\n", 
-                    self.escape_xml(&data.resource_type)));
-                xml.push_str(&format!("        <Title>{}</Title>\n", 
-                    self.escape_xml(&data.title)));
-                xml.push_str(&format!("        <Artist>{}</Artist>\n", 
-                    self.escape_xml(&data.artist)));
-                
+                xml.push_str(&format!(
+                    "        <Type>{}</Type>\n",
+                    self.escape_xml(&data.resource_type)
+                ));
+                xml.push_str(&format!(
+                    "        <Title>{}</Title>\n",
+                    self.escape_xml(&data.title)
+                ));
+                xml.push_str(&format!(
+                    "        <Artist>{}</Artist>\n",
+                    self.escape_xml(&data.artist)
+                ));
+
                 if let Some(ref isrc) = data.isrc {
-                    xml.push_str(&format!("        <ISRC>{}</ISRC>\n", 
-                        self.escape_xml(isrc)));
+                    xml.push_str(&format!("        <ISRC>{}</ISRC>\n", self.escape_xml(isrc)));
                 }
-                
+
                 if let Some(ref duration) = data.duration {
-                    xml.push_str(&format!("        <Duration>{}</Duration>\n", 
-                        self.escape_xml(duration)));
+                    xml.push_str(&format!(
+                        "        <Duration>{}</Duration>\n",
+                        self.escape_xml(duration)
+                    ));
                 }
-                
+
                 xml.push_str("      </ResourceData>\n");
             }
-            
+
             xml.push_str("    </ResourceUpdate>\n");
         }
-        
+
         xml.push_str("  </ResourceUpdates>\n");
         Ok(())
     }
-    
+
     fn serialize_release_updates(
         &self,
         xml: &mut String,
         release_updates: &indexmap::IndexMap<String, super::messages::ReleaseUpdate>,
     ) -> Result<(), super::error::BuildError> {
         xml.push_str("  <ReleaseUpdates>\n");
-        
+
         for (release_id, update) in release_updates {
             xml.push_str("    <ReleaseUpdate>\n");
-            xml.push_str(&format!("      <ReleaseId>{}</ReleaseId>\n", 
-                self.escape_xml(release_id)));
-            xml.push_str(&format!("      <ReleaseReference>{}</ReleaseReference>\n", 
-                self.escape_xml(&update.release_reference)));
+            xml.push_str(&format!(
+                "      <ReleaseId>{}</ReleaseId>\n",
+                self.escape_xml(release_id)
+            ));
+            xml.push_str(&format!(
+                "      <ReleaseReference>{}</ReleaseReference>\n",
+                self.escape_xml(&update.release_reference)
+            ));
             xml.push_str(&format!("      <Action>{}</Action>\n", update.action));
-            
+
             // Add release data if present
             if let Some(ref data) = update.release_data {
                 xml.push_str("      <ReleaseData>\n");
-                xml.push_str(&format!("        <Type>{}</Type>\n", 
-                    self.escape_xml(&data.release_type)));
-                xml.push_str(&format!("        <Title>{}</Title>\n", 
-                    self.escape_xml(&data.title)));
-                xml.push_str(&format!("        <Artist>{}</Artist>\n", 
-                    self.escape_xml(&data.artist)));
-                
+                xml.push_str(&format!(
+                    "        <Type>{}</Type>\n",
+                    self.escape_xml(&data.release_type)
+                ));
+                xml.push_str(&format!(
+                    "        <Title>{}</Title>\n",
+                    self.escape_xml(&data.title)
+                ));
+                xml.push_str(&format!(
+                    "        <Artist>{}</Artist>\n",
+                    self.escape_xml(&data.artist)
+                ));
+
                 if let Some(ref label) = data.label {
-                    xml.push_str(&format!("        <Label>{}</Label>\n", 
-                        self.escape_xml(label)));
+                    xml.push_str(&format!(
+                        "        <Label>{}</Label>\n",
+                        self.escape_xml(label)
+                    ));
                 }
-                
+
                 if let Some(ref upc) = data.upc {
-                    xml.push_str(&format!("        <UPC>{}</UPC>\n", 
-                        self.escape_xml(upc)));
+                    xml.push_str(&format!("        <UPC>{}</UPC>\n", self.escape_xml(upc)));
                 }
-                
+
                 xml.push_str("      </ReleaseData>\n");
             }
-            
+
             xml.push_str("    </ReleaseUpdate>\n");
         }
-        
+
         xml.push_str("  </ReleaseUpdates>\n");
         Ok(())
     }
-    
+
     fn serialize_deal_updates(
         &self,
         xml: &mut String,
         deal_updates: &indexmap::IndexMap<String, super::messages::DealUpdate>,
     ) -> Result<(), super::error::BuildError> {
         xml.push_str("  <DealUpdates>\n");
-        
+
         for (deal_id, update) in deal_updates {
             xml.push_str("    <DealUpdate>\n");
-            xml.push_str(&format!("      <DealId>{}</DealId>\n", 
-                self.escape_xml(deal_id)));
-            xml.push_str(&format!("      <DealReference>{}</DealReference>\n", 
-                self.escape_xml(&update.deal_reference)));
+            xml.push_str(&format!(
+                "      <DealId>{}</DealId>\n",
+                self.escape_xml(deal_id)
+            ));
+            xml.push_str(&format!(
+                "      <DealReference>{}</DealReference>\n",
+                self.escape_xml(&update.deal_reference)
+            ));
             xml.push_str(&format!("      <Action>{}</Action>\n", update.action));
-            
+
             xml.push_str("    </DealUpdate>\n");
         }
-        
+
         xml.push_str("  </DealUpdates>\n");
         Ok(())
     }
-    
+
     fn escape_xml(&self, text: &str) -> String {
         text.replace('&', "&amp;")
             .replace('<', "&lt;")

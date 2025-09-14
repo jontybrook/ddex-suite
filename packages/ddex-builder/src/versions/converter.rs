@@ -1,7 +1,7 @@
 use crate::presets::DdexVersion;
-use crate::versions::{ConversionOptions};
+use crate::versions::ConversionOptions;
 use indexmap::IndexMap;
-use quick_xml::events::{Event, BytesStart, BytesEnd};
+use quick_xml::events::{BytesEnd, BytesStart, Event};
 use quick_xml::{Reader, Writer};
 use std::io::Cursor;
 
@@ -88,11 +88,22 @@ enum ElementMapping {
     Direct(String),
     Renamed(String),
     /// These variants may be used in future versions
-    Split { into: Vec<String>, splitter: fn(&str) -> Vec<String> },
+    Split {
+        into: Vec<String>,
+        splitter: fn(&str) -> Vec<String>,
+    },
     /// These variants may be used in future versions
-    Merge { from: Vec<String>, merger: fn(Vec<&str>) -> String },
-    Deprecated { replacement: Option<String>, warning: String },
-    New { default_value: Option<String> },
+    Merge {
+        from: Vec<String>,
+        merger: fn(Vec<&str>) -> String,
+    },
+    Deprecated {
+        replacement: Option<String>,
+        warning: String,
+    },
+    New {
+        default_value: Option<String>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -115,9 +126,15 @@ struct FieldMigration {
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 enum MigrationType {
-    FormatChange { from_pattern: String, to_pattern: String },
+    FormatChange {
+        from_pattern: String,
+        to_pattern: String,
+    },
     ValueMapping(IndexMap<String, String>),
-    ValidationChange { old_rules: Vec<String>, new_rules: Vec<String> },
+    ValidationChange {
+        old_rules: Vec<String>,
+        new_rules: Vec<String>,
+    },
 }
 
 #[allow(dead_code)]
@@ -134,7 +151,11 @@ enum ValidationChangeType {
     RequiredRemoved(String),
     OptionalAdded(String),
     OptionalRemoved(String),
-    FormatChanged { field: String, old_format: String, new_format: String },
+    FormatChanged {
+        field: String,
+        old_format: String,
+        new_format: String,
+    },
 }
 
 impl VersionConverter {
@@ -156,25 +177,27 @@ impl VersionConverter {
 
     fn add_382_to_42_rules(&mut self) {
         let mut element_mappings = IndexMap::new();
-        
+
         element_mappings.insert(
             "SoundRecording".to_string(),
-            ElementMapping::Direct("SoundRecording".to_string())
+            ElementMapping::Direct("SoundRecording".to_string()),
         );
-        
+
         element_mappings.insert(
             "TechnicalSoundRecordingDetails".to_string(),
-            ElementMapping::Renamed("TechnicalDetails".to_string())
+            ElementMapping::Renamed("TechnicalDetails".to_string()),
         );
-        
+
         element_mappings.insert(
             "CommercialModelType".to_string(),
-            ElementMapping::New { default_value: Some("SubscriptionModel".to_string()) }
+            ElementMapping::New {
+                default_value: Some("SubscriptionModel".to_string()),
+            },
         );
 
         element_mappings.insert(
             "Territory".to_string(),
-            ElementMapping::Direct("Territory".to_string())
+            ElementMapping::Direct("Territory".to_string()),
         );
 
         let rules = ConversionRules {
@@ -185,16 +208,14 @@ impl VersionConverter {
                 schema_version_from: "ern/382".to_string(),
                 schema_version_to: "ern/42".to_string(),
             },
-            _field_migrations: vec![
-                FieldMigration {
-                    element: "Duration".to_string(),
-                    field: "value".to_string(),
-                    migration_type: MigrationType::FormatChange {
-                        from_pattern: r"^PT\d+S$".to_string(),
-                        to_pattern: r"^PT(\d+H)?(\d+M)?\d+(\.\d+)?S$".to_string(),
-                    },
+            _field_migrations: vec![FieldMigration {
+                element: "Duration".to_string(),
+                field: "value".to_string(),
+                migration_type: MigrationType::FormatChange {
+                    from_pattern: r"^PT\d+S$".to_string(),
+                    to_pattern: r"^PT(\d+H)?(\d+M)?\d+(\.\d+)?S$".to_string(),
                 },
-            ],
+            }],
             _validation_changes: vec![
                 ValidationChange {
                     element: "SoundRecording".to_string(),
@@ -207,25 +228,28 @@ impl VersionConverter {
             ],
         };
 
-        self.conversion_rules.insert((DdexVersion::Ern382, DdexVersion::Ern42), rules);
+        self.conversion_rules
+            .insert((DdexVersion::Ern382, DdexVersion::Ern42), rules);
     }
 
     fn add_42_to_43_rules(&mut self) {
         let mut element_mappings = IndexMap::new();
-        
+
         element_mappings.insert(
             "SoundRecording".to_string(),
-            ElementMapping::Direct("SoundRecording".to_string())
+            ElementMapping::Direct("SoundRecording".to_string()),
         );
-        
+
         element_mappings.insert(
             "VideoResource".to_string(),
-            ElementMapping::New { default_value: None }
+            ElementMapping::New {
+                default_value: None,
+            },
         );
-        
+
         element_mappings.insert(
             "HashSum".to_string(),
-            ElementMapping::Direct("HashSum".to_string())
+            ElementMapping::Direct("HashSum".to_string()),
         );
 
         let rules = ConversionRules {
@@ -236,16 +260,14 @@ impl VersionConverter {
                 schema_version_from: "ern/42".to_string(),
                 schema_version_to: "ern/43".to_string(),
             },
-            _field_migrations: vec![
-                FieldMigration {
-                    element: "ISRC".to_string(),
-                    field: "value".to_string(),
-                    migration_type: MigrationType::ValidationChange {
-                        old_rules: vec![r"^[A-Z]{2}[A-Z0-9]{3}\d{7}$".to_string()],
-                        new_rules: vec![r"^[A-Z]{2}-?[A-Z0-9]{3}-?\d{2}-?\d{5}$".to_string()],
-                    },
+            _field_migrations: vec![FieldMigration {
+                element: "ISRC".to_string(),
+                field: "value".to_string(),
+                migration_type: MigrationType::ValidationChange {
+                    old_rules: vec![r"^[A-Z]{2}[A-Z0-9]{3}\d{7}$".to_string()],
+                    new_rules: vec![r"^[A-Z]{2}-?[A-Z0-9]{3}-?\d{2}-?\d{5}$".to_string()],
                 },
-            ],
+            }],
             _validation_changes: vec![
                 ValidationChange {
                     element: "SoundRecording".to_string(),
@@ -258,28 +280,29 @@ impl VersionConverter {
             ],
         };
 
-        self.conversion_rules.insert((DdexVersion::Ern42, DdexVersion::Ern43), rules);
+        self.conversion_rules
+            .insert((DdexVersion::Ern42, DdexVersion::Ern43), rules);
     }
 
     fn add_43_to_42_rules(&mut self) {
         let mut element_mappings = IndexMap::new();
-        
+
         element_mappings.insert(
             "SoundRecording".to_string(),
-            ElementMapping::Direct("SoundRecording".to_string())
+            ElementMapping::Direct("SoundRecording".to_string()),
         );
-        
+
         element_mappings.insert(
             "VideoResource".to_string(),
-            ElementMapping::Deprecated { 
+            ElementMapping::Deprecated {
                 replacement: None,
-                warning: "VideoResource not supported in ERN 4.2, will be omitted".to_string()
-            }
+                warning: "VideoResource not supported in ERN 4.2, will be omitted".to_string(),
+            },
         );
-        
+
         element_mappings.insert(
             "HashSum".to_string(),
-            ElementMapping::Direct("HashSum".to_string())
+            ElementMapping::Direct("HashSum".to_string()),
         );
 
         let rules = ConversionRules {
@@ -291,36 +314,36 @@ impl VersionConverter {
                 schema_version_to: "ern/42".to_string(),
             },
             _field_migrations: vec![],
-            _validation_changes: vec![
-                ValidationChange {
-                    element: "SoundRecording".to_string(),
-                    change_type: ValidationChangeType::RequiredRemoved("ProprietaryId".to_string()),
-                },
-            ],
+            _validation_changes: vec![ValidationChange {
+                element: "SoundRecording".to_string(),
+                change_type: ValidationChangeType::RequiredRemoved("ProprietaryId".to_string()),
+            }],
         };
 
-        self.conversion_rules.insert((DdexVersion::Ern43, DdexVersion::Ern42), rules);
+        self.conversion_rules
+            .insert((DdexVersion::Ern43, DdexVersion::Ern42), rules);
     }
 
     fn add_42_to_382_rules(&mut self) {
         let mut element_mappings = IndexMap::new();
-        
+
         element_mappings.insert(
             "SoundRecording".to_string(),
-            ElementMapping::Direct("SoundRecording".to_string())
+            ElementMapping::Direct("SoundRecording".to_string()),
         );
-        
+
         element_mappings.insert(
             "TechnicalDetails".to_string(),
-            ElementMapping::Renamed("TechnicalSoundRecordingDetails".to_string())
+            ElementMapping::Renamed("TechnicalSoundRecordingDetails".to_string()),
         );
-        
+
         element_mappings.insert(
             "CommercialModelType".to_string(),
-            ElementMapping::Deprecated { 
+            ElementMapping::Deprecated {
                 replacement: None,
-                warning: "CommercialModelType not supported in ERN 3.8.2, will be omitted".to_string()
-            }
+                warning: "CommercialModelType not supported in ERN 3.8.2, will be omitted"
+                    .to_string(),
+            },
         );
 
         let rules = ConversionRules {
@@ -332,15 +355,14 @@ impl VersionConverter {
                 schema_version_to: "ern/382".to_string(),
             },
             _field_migrations: vec![],
-            _validation_changes: vec![
-                ValidationChange {
-                    element: "SoundRecording".to_string(),
-                    change_type: ValidationChangeType::OptionalRemoved("HashSum".to_string()),
-                },
-            ],
+            _validation_changes: vec![ValidationChange {
+                element: "SoundRecording".to_string(),
+                change_type: ValidationChangeType::OptionalRemoved("HashSum".to_string()),
+            }],
         };
 
-        self.conversion_rules.insert((DdexVersion::Ern42, DdexVersion::Ern382), rules);
+        self.conversion_rules
+            .insert((DdexVersion::Ern42, DdexVersion::Ern382), rules);
     }
 
     /// Convert DDEX content between versions
@@ -350,7 +372,13 @@ impl VersionConverter {
     /// * `from_version` - Source DDEX version
     /// * `to_version` - Target DDEX version
     /// * `options` - Optional conversion configuration
-    pub fn convert(&self, xml_content: &str, from_version: DdexVersion, to_version: DdexVersion, options: Option<ConversionOptions>) -> ConversionResult {
+    pub fn convert(
+        &self,
+        xml_content: &str,
+        from_version: DdexVersion,
+        to_version: DdexVersion,
+        options: Option<ConversionOptions>,
+    ) -> ConversionResult {
         let options = options.unwrap_or_default();
         let mut report = ConversionReport {
             from_version,
@@ -372,9 +400,12 @@ impl VersionConverter {
         match conversion_path {
             Some(path) => self.execute_conversion_path(xml_content, &path, options, &mut report),
             None => ConversionResult::Failure {
-                error: format!("No conversion path found from {:?} to {:?}", from_version, to_version),
+                error: format!(
+                    "No conversion path found from {:?} to {:?}",
+                    from_version, to_version
+                ),
                 report,
-            }
+            },
         }
     }
 
@@ -385,25 +416,38 @@ impl VersionConverter {
 
         // Check for multi-step conversions
         match (from, to) {
-            (DdexVersion::Ern382, DdexVersion::Ern43) => {
-                Some(vec![DdexVersion::Ern382, DdexVersion::Ern42, DdexVersion::Ern43])
-            }
-            (DdexVersion::Ern43, DdexVersion::Ern382) => {
-                Some(vec![DdexVersion::Ern43, DdexVersion::Ern42, DdexVersion::Ern382])
-            }
+            (DdexVersion::Ern382, DdexVersion::Ern43) => Some(vec![
+                DdexVersion::Ern382,
+                DdexVersion::Ern42,
+                DdexVersion::Ern43,
+            ]),
+            (DdexVersion::Ern43, DdexVersion::Ern382) => Some(vec![
+                DdexVersion::Ern43,
+                DdexVersion::Ern42,
+                DdexVersion::Ern382,
+            ]),
             _ => None,
         }
     }
 
-    fn execute_conversion_path(&self, xml_content: &str, path: &[DdexVersion], options: ConversionOptions, report: &mut ConversionReport) -> ConversionResult {
+    fn execute_conversion_path(
+        &self,
+        xml_content: &str,
+        path: &[DdexVersion],
+        options: ConversionOptions,
+        report: &mut ConversionReport,
+    ) -> ConversionResult {
         let mut current_xml = xml_content.to_string();
-        
+
         for window in path.windows(2) {
             let from = window[0];
             let to = window[1];
-            
+
             match self.convert_single_step(&current_xml, from, to, &options, report) {
-                ConversionResult::Success { xml, report: step_report } => {
+                ConversionResult::Success {
+                    xml,
+                    report: step_report,
+                } => {
                     current_xml = xml;
                     report.warnings.extend(step_report.warnings);
                     report.elements_converted += step_report.elements_converted;
@@ -411,7 +455,10 @@ impl VersionConverter {
                     report.elements_added += step_report.elements_added;
                 }
                 ConversionResult::Failure { error, .. } => {
-                    return ConversionResult::Failure { error, report: report.clone() };
+                    return ConversionResult::Failure {
+                        error,
+                        report: report.clone(),
+                    };
                 }
             }
         }
@@ -422,13 +469,22 @@ impl VersionConverter {
         }
     }
 
-    fn convert_single_step(&self, xml_content: &str, from: DdexVersion, to: DdexVersion, options: &ConversionOptions, report: &mut ConversionReport) -> ConversionResult {
+    fn convert_single_step(
+        &self,
+        xml_content: &str,
+        from: DdexVersion,
+        to: DdexVersion,
+        options: &ConversionOptions,
+        report: &mut ConversionReport,
+    ) -> ConversionResult {
         let rules = match self.conversion_rules.get(&(from, to)) {
             Some(rules) => rules,
-            None => return ConversionResult::Failure {
-                error: format!("No direct conversion rules from {:?} to {:?}", from, to),
-                report: report.clone(),
-            },
+            None => {
+                return ConversionResult::Failure {
+                    error: format!("No direct conversion rules from {:?} to {:?}", from, to),
+                    report: report.clone(),
+                }
+            }
         };
 
         match self.transform_xml(xml_content, rules, options) {
@@ -442,11 +498,16 @@ impl VersionConverter {
             Err(error) => ConversionResult::Failure {
                 error: error.to_string(),
                 report: report.clone(),
-            }
+            },
         }
     }
 
-    fn transform_xml(&self, xml_content: &str, rules: &ConversionRules, options: &ConversionOptions) -> Result<(String, Vec<ConversionWarning>), Box<dyn std::error::Error>> {
+    fn transform_xml(
+        &self,
+        xml_content: &str,
+        rules: &ConversionRules,
+        options: &ConversionOptions,
+    ) -> Result<(String, Vec<ConversionWarning>), Box<dyn std::error::Error>> {
         let mut reader = Reader::from_str(xml_content);
         let mut writer = Writer::new(Cursor::new(Vec::new()));
         let mut warnings = Vec::new();
@@ -474,7 +535,10 @@ impl VersionConverter {
                                     new_element.push_attribute(attr);
                                 }
                             }
-                            self.update_namespace_attributes(&mut new_element, &rules.namespace_mapping);
+                            self.update_namespace_attributes(
+                                &mut new_element,
+                                &rules.namespace_mapping,
+                            );
                             writer.write_event(Event::Start(new_element))?;
                         }
                         Some(ElementMapping::Renamed(new_name)) => {
@@ -484,15 +548,24 @@ impl VersionConverter {
                                     new_element.push_attribute(attr);
                                 }
                             }
-                            self.update_namespace_attributes(&mut new_element, &rules.namespace_mapping);
+                            self.update_namespace_attributes(
+                                &mut new_element,
+                                &rules.namespace_mapping,
+                            );
                             writer.write_event(Event::Start(new_element))?;
                             warnings.push(ConversionWarning {
                                 warning_type: ConversionWarningType::ElementRenamed,
-                                message: format!("Element '{}' renamed to '{}'", element_name, new_name),
+                                message: format!(
+                                    "Element '{}' renamed to '{}'",
+                                    element_name, new_name
+                                ),
                                 element: Some(element_name),
                             });
                         }
-                        Some(ElementMapping::Deprecated { replacement: _, warning }) => {
+                        Some(ElementMapping::Deprecated {
+                            replacement: _,
+                            warning,
+                        }) => {
                             skip_element = true;
                             skip_depth = 1;
                             warnings.push(ConversionWarning {
@@ -506,7 +579,10 @@ impl VersionConverter {
                         }
                         _ => {
                             let mut cloned_element = e.clone();
-                            self.update_namespace_attributes(&mut cloned_element, &rules.namespace_mapping);
+                            self.update_namespace_attributes(
+                                &mut cloned_element,
+                                &rules.namespace_mapping,
+                            );
                             writer.write_event(Event::Start(cloned_element))?;
                         }
                     }
@@ -580,15 +656,19 @@ impl VersionConverter {
         Ok((transformed_xml, warnings))
     }
 
-    fn update_namespace_attributes(&self, element: &mut BytesStart, namespace_mapping: &NamespaceMapping) {
+    fn update_namespace_attributes(
+        &self,
+        element: &mut BytesStart,
+        namespace_mapping: &NamespaceMapping,
+    ) {
         // Update xmlns attributes to new namespace
         let mut attrs_to_update = Vec::new();
-        
+
         for (i, attr_result) in element.attributes().enumerate() {
             if let Ok(attr) = attr_result {
                 let key = String::from_utf8_lossy(attr.key.as_ref());
                 let value = String::from_utf8_lossy(&attr.value);
-                
+
                 if key == "xmlns" && value == namespace_mapping.from {
                     attrs_to_update.push((i, "xmlns".to_string(), namespace_mapping.to.clone()));
                 } else if key.starts_with("xmlns:") && value == namespace_mapping.from {
@@ -641,7 +721,14 @@ mod tests {
     fn test_multi_step_conversion_path() {
         let converter = VersionConverter::new();
         let path = converter.find_conversion_path(DdexVersion::Ern382, DdexVersion::Ern43);
-        assert_eq!(path, Some(vec![DdexVersion::Ern382, DdexVersion::Ern42, DdexVersion::Ern43]));
+        assert_eq!(
+            path,
+            Some(vec![
+                DdexVersion::Ern382,
+                DdexVersion::Ern42,
+                DdexVersion::Ern43
+            ])
+        );
     }
 
     #[test]
@@ -649,9 +736,11 @@ mod tests {
         let converter = VersionConverter::new();
         let xml = r#"<?xml version="1.0" encoding="UTF-8"?><test>content</test>"#;
         let result = converter.convert(xml, DdexVersion::Ern42, DdexVersion::Ern42, None);
-        
+
         match result {
-            ConversionResult::Success { xml: result_xml, .. } => {
+            ConversionResult::Success {
+                xml: result_xml, ..
+            } => {
                 assert_eq!(result_xml, xml);
             }
             _ => panic!("Expected successful conversion for same version"),

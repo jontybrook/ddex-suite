@@ -1,7 +1,7 @@
 //! Parser-specific error handling
 
 use ddex_core::error::DDEXError;
-use ddex_core::ffi::{FFIError, FFIErrorSeverity, FFIErrorCategory};
+use ddex_core::ffi::{FFIError, FFIErrorCategory, FFIErrorSeverity};
 use thiserror::Error;
 
 // Re-export ErrorLocation for use in this crate
@@ -18,21 +18,15 @@ pub enum ParseError {
         message: String,
         location: ErrorLocation,
     },
-    
+
     #[error("Unsupported DDEX version: {version}")]
-    UnsupportedVersion {
-        version: String,
-    },
-    
+    UnsupportedVersion { version: String },
+
     #[error("Security violation: {message}")]
-    SecurityViolation {
-        message: String,
-    },
-    
+    SecurityViolation { message: String },
+
     #[error("Parse timeout after {seconds} seconds")]
-    Timeout {
-        seconds: u64,
-    },
+    Timeout { seconds: u64 },
 
     #[error("Type conversion error: {message}")]
     ConversionError {
@@ -42,11 +36,9 @@ pub enum ParseError {
 
     #[error("Core error: {0}")]
     Core(#[from] DDEXError),
-    
+
     #[error("IO error: {message}")]
-    Io {
-        message: String,
-    },
+    Io { message: String },
 
     #[error("XML depth limit exceeded: {depth} > {max}")]
     DepthLimitExceeded { depth: usize, max: usize },
@@ -62,28 +54,16 @@ pub enum ParseError {
     },
 
     #[error("Unexpected closing tag '{tag}' at position {position}")]
-    UnexpectedClosingTag {
-        tag: String,
-        position: usize,
-    },
+    UnexpectedClosingTag { tag: String, position: usize },
 
     #[error("Unclosed XML tags at end of document: {tags:?} at position {position}")]
-    UnclosedTags {
-        tags: Vec<String>,
-        position: usize,
-    },
+    UnclosedTags { tags: Vec<String>, position: usize },
 
     #[error("Malformed XML: {message} at position {position}")]
-    MalformedXml {
-        message: String,
-        position: usize,
-    },
+    MalformedXml { message: String, position: usize },
 
     #[error("Invalid XML attribute: {message} at position {position}")]
-    InvalidAttribute {
-        message: String,
-        position: usize,
-    },
+    InvalidAttribute { message: String, position: usize },
 
     /// Simple XML error variant for compatibility with utf8_utils
     #[error("XML parsing error: {0}")]
@@ -170,16 +150,26 @@ impl From<ParseError> for FFIError {
                 hint: Some("Ensure the XML file is properly encoded as UTF-8".to_string()),
                 category: FFIErrorCategory::XmlParsing,
             },
-            ParseError::MismatchedTags { expected, found, position } => FFIError {
+            ParseError::MismatchedTags {
+                expected,
+                found,
+                position,
+            } => FFIError {
                 code: "MISMATCHED_TAGS".to_string(),
-                message: format!("Mismatched XML tags: expected '{}', found '{}' at position {}", expected, found, position),
+                message: format!(
+                    "Mismatched XML tags: expected '{}', found '{}' at position {}",
+                    expected, found, position
+                ),
                 location: Some(ddex_core::ffi::FFIErrorLocation {
                     line: 0,
                     column: 0,
                     path: "parser".to_string(),
                 }),
                 severity: FFIErrorSeverity::Error,
-                hint: Some(format!("Ensure opening tag '{}' has matching closing tag", expected)),
+                hint: Some(format!(
+                    "Ensure opening tag '{}' has matching closing tag",
+                    expected
+                )),
                 category: FFIErrorCategory::XmlParsing,
             },
             ParseError::UnexpectedClosingTag { tag, position } => FFIError {
@@ -191,12 +181,17 @@ impl From<ParseError> for FFIError {
                     path: "parser".to_string(),
                 }),
                 severity: FFIErrorSeverity::Error,
-                hint: Some("Remove the unexpected closing tag or add the missing opening tag".to_string()),
+                hint: Some(
+                    "Remove the unexpected closing tag or add the missing opening tag".to_string(),
+                ),
                 category: FFIErrorCategory::XmlParsing,
             },
             ParseError::UnclosedTags { tags, position } => FFIError {
                 code: "UNCLOSED_TAGS".to_string(),
-                message: format!("Unclosed XML tags at end of document: {:?} at position {}", tags, position),
+                message: format!(
+                    "Unclosed XML tags at end of document: {:?} at position {}",
+                    tags, position
+                ),
                 location: Some(ddex_core::ffi::FFIErrorLocation {
                     line: 0,
                     column: 0,
@@ -220,7 +215,10 @@ impl From<ParseError> for FFIError {
             },
             ParseError::InvalidAttribute { message, position } => FFIError {
                 code: "INVALID_ATTRIBUTE".to_string(),
-                message: format!("Invalid XML attribute: {} at position {}", message, position),
+                message: format!(
+                    "Invalid XML attribute: {} at position {}",
+                    message, position
+                ),
                 location: Some(ddex_core::ffi::FFIErrorLocation {
                     line: 0,
                     column: 0,

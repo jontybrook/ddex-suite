@@ -2,12 +2,12 @@
 //! DOM-based parser for smaller DDEX files
 
 use crate::error::ParseError;
+use crate::parser::namespace_detector::{NamespaceContext, NamespaceDetector};
+use crate::parser::ParseOptions;
+use crate::transform::{flatten::Flattener, graph::GraphBuilder};
 use ddex_core::models::flat::ParsedERNMessage;
 use ddex_core::models::graph::ERNMessage;
 use ddex_core::models::versions::ERNVersion;
-use crate::parser::ParseOptions;
-use crate::parser::namespace_detector::{NamespaceDetector, NamespaceContext};
-use crate::transform::{graph::GraphBuilder, flatten::Flattener};
 use std::io::{BufRead, Seek, SeekFrom};
 use std::time::Instant;
 
@@ -27,26 +27,31 @@ pub fn parse_dom<R: BufRead + Seek>(
 
     // First pass: detect namespaces with security enforcement
     let mut namespace_detector = NamespaceDetector::new();
-    let namespace_result = namespace_detector.detect_from_xml_with_security(&mut reader, security_config)?;
+    let namespace_result =
+        namespace_detector.detect_from_xml_with_security(&mut reader, security_config)?;
     let namespace_context = NamespaceContext::from_detection_result(namespace_result);
-    
+
     // Reset reader for second pass
     reader.seek(SeekFrom::Start(0))?;
-    
+
     // Build graph model from XML with namespace context
     let graph_builder = GraphBuilder::new(version);
-    let graph = graph_builder.build_from_xml_with_context_and_security(reader, namespace_context, security_config)?;
-    
+    let graph = graph_builder.build_from_xml_with_context_and_security(
+        reader,
+        namespace_context,
+        security_config,
+    )?;
+
     // Optionally resolve references
     let graph = if options.resolve_references {
         resolve_references(graph)?
     } else {
         graph
     };
-    
+
     // Flatten to developer-friendly model
     let flat = Flattener::flatten(graph.clone());
-    
+
     // Check elapsed time
     let elapsed = start.elapsed();
     if elapsed.as_millis() > options.timeout_ms as u128 {
@@ -54,7 +59,7 @@ pub fn parse_dom<R: BufRead + Seek>(
             seconds: elapsed.as_secs(),
         });
     }
-    
+
     Ok(ParsedERNMessage {
         graph,
         flat,
@@ -64,10 +69,10 @@ pub fn parse_dom<R: BufRead + Seek>(
 
 fn resolve_references(message: ERNMessage) -> Result<ERNMessage, ParseError> {
     use crate::transform::resolve::ReferenceResolver;
-    
+
     let mut resolver = ReferenceResolver::new();
     resolver.build_maps(&message);
-    
+
     // Check for unresolved references
     let unresolved = resolver.validate_references(&message);
     if !unresolved.is_empty() {
@@ -81,6 +86,6 @@ fn resolve_references(message: ERNMessage) -> Result<ERNMessage, ParseError> {
             );
         }
     }
-    
+
     Ok(message)
 }

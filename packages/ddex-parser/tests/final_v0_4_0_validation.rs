@@ -3,9 +3,9 @@
 //! This comprehensive test suite validates all performance achievements
 //! and ensures the parser is ready for release.
 
-use std::time::Instant;
-use std::fs;
 use chrono;
+use std::fs;
+use std::time::Instant;
 
 /// Complete v0.4.0 validation test
 #[test]
@@ -80,13 +80,21 @@ fn complete_v0_4_0_validation() {
     }
 
     println!("{}", "=".repeat(60));
-    println!("VALIDATION COMPLETE: {}/{} passed ({:.1}%)", passed, total, (passed as f64 / total as f64) * 100.0);
+    println!(
+        "VALIDATION COMPLETE: {}/{} passed ({:.1}%)",
+        passed,
+        total,
+        (passed as f64 / total as f64) * 100.0
+    );
 
     if passed == total {
         println!("\n🎉 v0.4.0 IS READY FOR RELEASE! 🎉");
         generate_release_certificate();
     } else {
-        println!("\n⚠️  {} validation(s) failed. Review before release.", total - passed);
+        println!(
+            "\n⚠️  {} validation(s) failed. Review before release.",
+            total - passed
+        );
         generate_partial_certificate(passed, total);
     }
 }
@@ -101,7 +109,10 @@ fn validate_throughput_target() -> bool {
     let elapsed = start.elapsed();
 
     let throughput = 10.0 / elapsed.as_secs_f64(); // MB/s
-    println!("  Measured throughput: {:.2} MB/s (target: 280+ MB/s)", throughput);
+    println!(
+        "  Measured throughput: {:.2} MB/s (target: 280+ MB/s)",
+        throughput
+    );
 
     // For demonstration, we'll use a lower threshold since we're not using the actual streaming parser
     throughput > 50.0 // Adjusted target for basic validation
@@ -143,7 +154,10 @@ fn validate_selective_parsing() -> bool {
     let full_time = start.elapsed();
 
     let speedup = full_time.as_secs_f64() / selective_time.as_secs_f64();
-    println!("  Selective parsing speedup: {:.1}x (target: 11-12x)", speedup);
+    println!(
+        "  Selective parsing speedup: {:.1}x (target: 11-12x)",
+        speedup
+    );
 
     // For basic validation, any speedup > 2x is considered good
     speedup > 2.0 && isrc_count > 0
@@ -219,19 +233,22 @@ fn validate_language_bindings() -> bool {
 
 /// Generate test XML data
 fn generate_test_xml(target_bytes: usize) -> Vec<u8> {
-    let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43">
     <MessageHeader>
         <MessageId>FINAL-VALIDATION-TEST</MessageId>
         <CreatedDateTime>2024-09-13T12:00:00Z</CreatedDateTime>
     </MessageHeader>
-"#);
+"#,
+    );
 
     let single_release_size = 800;
     let num_releases = (target_bytes / single_release_size).max(10);
 
     for i in 0..num_releases {
-        xml.push_str(&format!(r#"
+        xml.push_str(&format!(
+            r#"
     <Release ReleaseReference="VAL-REL-{:08}">
         <ReferenceTitle>
             <TitleText>Validation Release #{}</TitleText>
@@ -240,7 +257,9 @@ fn generate_test_xml(target_bytes: usize) -> Vec<u8> {
         <Genre>
             <GenreText>Validation</GenreText>
         </Genre>
-    </Release>"#, i, i));
+    </Release>"#,
+            i, i
+        ));
     }
 
     xml.push_str("\n</ern:NewReleaseMessage>");
@@ -249,18 +268,21 @@ fn generate_test_xml(target_bytes: usize) -> Vec<u8> {
 
 /// Generate test XML with ISRC data for selective parsing tests
 fn generate_test_xml_with_isrc(target_bytes: usize) -> Vec<u8> {
-    let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43">
     <MessageHeader>
         <MessageId>ISRC-VALIDATION-TEST</MessageId>
     </MessageHeader>
-"#);
+"#,
+    );
 
     let single_release_size = 1000;
     let num_releases = (target_bytes / single_release_size).max(10);
 
     for i in 0..num_releases {
-        xml.push_str(&format!(r#"
+        xml.push_str(&format!(
+            r#"
     <Release ReleaseReference="ISRC-REL-{:08}">
         <ReferenceTitle>
             <TitleText>ISRC Test Release #{}</TitleText>
@@ -272,7 +294,15 @@ fn generate_test_xml_with_isrc(target_bytes: usize) -> Vec<u8> {
             <ISRC>US-VAL-{:02}-{:05}</ISRC>
         </ResourceId>
         <Title>Track {}</Title>
-    </Resource>"#, i, i, i, i, i % 100, i, i));
+    </Resource>"#,
+            i,
+            i,
+            i,
+            i,
+            i % 100,
+            i,
+            i
+        ));
     }
 
     xml.push_str("\n</ern:NewReleaseMessage>");
@@ -289,7 +319,7 @@ fn parse_with_quick_xml(data: &[u8]) -> usize {
         match reader.read_event_into(&mut buf) {
             Ok(quick_xml::events::Event::Start(_)) => element_count += 1,
             Ok(quick_xml::events::Event::Eof) => break,
-            Ok(_) => {},
+            Ok(_) => {}
             Err(_) => break,
         }
         buf.clear();
@@ -384,7 +414,11 @@ fn generate_partial_certificate(passed: usize, total: usize) {
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
 "#,
-        passed, total, percentage, passed, total - passed,
+        passed,
+        total,
+        percentage,
+        passed,
+        total - passed,
         chrono::Local::now().format("%Y-%m-%d")
     );
 

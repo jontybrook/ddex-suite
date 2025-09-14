@@ -1,15 +1,17 @@
-use ddex_parser::DDEXParser;
 use ddex_parser::parser::security::SecurityConfig;
+use ddex_parser::DDEXParser;
 use std::io::Cursor;
 
 fn main() {
     println!("Testing depth tracking fix with siblings...\n");
 
     // Create XML with many sibling elements at depth 3
-    let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <NewReleaseMessage xmlns="http://ddex.net/xml/ern/43">
     <MessageHeader><MessageId>MSG123</MessageId></MessageHeader>
-    <ReleaseList>"#);
+    <ReleaseList>"#,
+    );
 
     // Add 50 sibling Release elements (depth should remain 3 for all)
     for i in 0..50 {

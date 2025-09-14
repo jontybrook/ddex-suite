@@ -2,7 +2,7 @@
 
 use crate::error::ParseError;
 use crate::utf8_utils;
-use quick_xml::events::{Event, BytesStart, BytesEnd, BytesText};
+use quick_xml::events::{BytesEnd, BytesStart, BytesText, Event};
 use quick_xml::Reader;
 use std::io::BufRead;
 
@@ -53,7 +53,7 @@ impl XmlValidator {
     pub fn validate_event<R: BufRead>(
         &mut self,
         event: &Event,
-        reader: &Reader<R>
+        reader: &Reader<R>,
     ) -> Result<(), ParseError> {
         // Update current position for error reporting
         self.current_position = reader.buffer_position() as usize;
@@ -101,7 +101,10 @@ impl XmlValidator {
     /// Handle XML start element
     fn handle_start_element(&mut self, element: &BytesStart) -> Result<(), ParseError> {
         // Use local_name() to get just the element name without namespace prefix
-        let element_name = utf8_utils::decode_utf8_at_position(element.local_name().as_ref(), self.current_position)?;
+        let element_name = utf8_utils::decode_utf8_at_position(
+            element.local_name().as_ref(),
+            self.current_position,
+        )?;
 
         if self.strict_validation {
             // Validate element name
@@ -131,14 +134,20 @@ impl XmlValidator {
         let element_depth = self.element_stack.len() + 1;
 
         // Push element onto stack for tag matching with its depth
-        self.element_stack.push((element_name.clone(), element_depth));
+        self.element_stack
+            .push((element_name.clone(), element_depth));
 
         // Update current depth to this element's depth
         self.current_depth = element_depth;
 
         // Debug: print what we're pushing (only for first few elements)
         if self.element_stack.len() <= 5 {
-            eprintln!("PUSH DEBUG: '{}' depth {} (stack size now: {})", element_name, self.current_depth, self.element_stack.len());
+            eprintln!(
+                "PUSH DEBUG: '{}' depth {} (stack size now: {})",
+                element_name,
+                self.current_depth,
+                self.element_stack.len()
+            );
         }
 
         Ok(())
@@ -147,7 +156,10 @@ impl XmlValidator {
     /// Handle XML end element
     fn handle_end_element(&mut self, element: &BytesEnd) -> Result<(), ParseError> {
         // Use local_name() to get just the element name without namespace prefix
-        let element_name = utf8_utils::decode_utf8_at_position(element.local_name().as_ref(), self.current_position)?;
+        let element_name = utf8_utils::decode_utf8_at_position(
+            element.local_name().as_ref(),
+            self.current_position,
+        )?;
 
         if self.strict_validation {
             // Check if there's a matching start tag
@@ -190,7 +202,10 @@ impl XmlValidator {
     /// Handle empty XML element (self-closing)
     fn handle_empty_element(&mut self, element: &BytesStart) -> Result<(), ParseError> {
         // Use local_name() to get just the element name without namespace prefix
-        let element_name = utf8_utils::decode_utf8_at_position(element.local_name().as_ref(), self.current_position)?;
+        let element_name = utf8_utils::decode_utf8_at_position(
+            element.local_name().as_ref(),
+            self.current_position,
+        )?;
 
         if self.strict_validation {
             // Validate element name
@@ -236,11 +251,10 @@ impl XmlValidator {
         let _decoded = utf8_utils::decode_utf8_at_position(cdata, self.current_position)?;
 
         // CDATA sections cannot contain "]]>" sequence except at the end
-        let cdata_str = std::str::from_utf8(cdata)
-            .map_err(|e| ParseError::InvalidUtf8 {
-                position: self.current_position + e.valid_up_to(),
-                error: e.to_string()
-            })?;
+        let cdata_str = std::str::from_utf8(cdata).map_err(|e| ParseError::InvalidUtf8 {
+            position: self.current_position + e.valid_up_to(),
+            error: e.to_string(),
+        })?;
 
         if cdata_str.contains("]]>") && !cdata_str.ends_with("]]>") {
             return Err(ParseError::MalformedXml {
@@ -263,8 +277,10 @@ impl XmlValidator {
             })?;
 
             // Decode attribute name and value
-            let attr_name = utf8_utils::decode_attribute_name(attr.key.as_ref(), self.current_position)?;
-            let attr_value = utf8_utils::decode_attribute_value(&attr.value, self.current_position)?;
+            let attr_name =
+                utf8_utils::decode_attribute_name(attr.key.as_ref(), self.current_position)?;
+            let attr_value =
+                utf8_utils::decode_attribute_value(&attr.value, self.current_position)?;
 
             // Validate attribute name
             if attr_name.is_empty() {
@@ -304,7 +320,11 @@ impl XmlValidator {
     /// Validate at document end that all elements are properly closed
     fn validate_document_end(&mut self) -> Result<(), ParseError> {
         if self.strict_validation && !self.element_stack.is_empty() {
-            let unclosed_tags = self.element_stack.iter().map(|(name, _)| name.clone()).collect();
+            let unclosed_tags = self
+                .element_stack
+                .iter()
+                .map(|(name, _)| name.clone())
+                .collect();
             return Err(ParseError::UnclosedTags {
                 tags: unclosed_tags,
                 position: self.current_position,
@@ -319,7 +339,10 @@ impl XmlValidator {
 
     /// Get current element stack (for debugging)
     pub fn get_element_stack(&self) -> Vec<String> {
-        self.element_stack.iter().map(|(name, _)| name.clone()).collect()
+        self.element_stack
+            .iter()
+            .map(|(name, _)| name.clone())
+            .collect()
     }
 
     /// Check if validator is currently inside any elements
@@ -361,18 +384,20 @@ fn is_valid_xml_name(name: &str) -> bool {
 
 /// Check if character can start an XML name
 fn is_name_start_char(ch: char) -> bool {
-    ch.is_ascii_alphabetic() || ch == '_' || ch == ':'
-        || (ch >= '\u{C0}' && ch <= '\u{D6}')
-        || (ch >= '\u{D8}' && ch <= '\u{F6}')
-        || (ch >= '\u{F8}' && ch <= '\u{2FF}')
-        || (ch >= '\u{370}' && ch <= '\u{37D}')
-        || (ch >= '\u{37F}' && ch <= '\u{1FFF}')
-        || (ch >= '\u{200C}' && ch <= '\u{200D}')
-        || (ch >= '\u{2070}' && ch <= '\u{218F}')
-        || (ch >= '\u{2C00}' && ch <= '\u{2FEF}')
-        || (ch >= '\u{3001}' && ch <= '\u{D7FF}')
-        || (ch >= '\u{F900}' && ch <= '\u{FDCF}')
-        || (ch >= '\u{FDF0}' && ch <= '\u{FFFD}')
+    ch.is_ascii_alphabetic()
+        || ch == '_'
+        || ch == ':'
+        || ('\u{C0}'..='\u{D6}').contains(&ch)
+        || ('\u{D8}'..='\u{F6}').contains(&ch)
+        || ('\u{F8}'..='\u{2FF}').contains(&ch)
+        || ('\u{370}'..='\u{37D}').contains(&ch)
+        || ('\u{37F}'..='\u{1FFF}').contains(&ch)
+        || ('\u{200C}'..='\u{200D}').contains(&ch)
+        || ('\u{2070}'..='\u{218F}').contains(&ch)
+        || ('\u{2C00}'..='\u{2FEF}').contains(&ch)
+        || ('\u{3001}'..='\u{D7FF}').contains(&ch)
+        || ('\u{F900}'..='\u{FDCF}').contains(&ch)
+        || ('\u{FDF0}'..='\u{FFFD}').contains(&ch)
 }
 
 /// Check if character can be in an XML name
@@ -382,8 +407,8 @@ fn is_name_char(ch: char) -> bool {
         || ch == '-'
         || ch == '.'
         || ch == '\u{B7}'
-        || (ch >= '\u{0300}' && ch <= '\u{036F}')
-        || (ch >= '\u{203F}' && ch <= '\u{2040}')
+        || ('\u{0300}'..='\u{036F}').contains(&ch)
+        || ('\u{203F}'..='\u{2040}').contains(&ch)
 }
 
 #[cfg(test)]

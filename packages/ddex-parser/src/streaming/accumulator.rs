@@ -34,7 +34,7 @@ pub struct PendingReference {
 /// Parsed element ready for output
 #[derive(Debug, Clone)]
 pub enum AccumulatedElement {
-    Header(MessageHeader),
+    Header(Box<MessageHeader>),
     Release(Release),
     Resource(Resource),
     Party(Party),
@@ -311,7 +311,7 @@ impl StreamingAccumulator {
             match builder.to_core() {
                 Ok(header) => {
                     self.stats.completed_elements += 1;
-                    Some(AccumulatedElement::Header(header))
+                    Some(AccumulatedElement::Header(Box::new(header)))
                 }
                 Err(e) => {
                     if self.config.enable_validation {
@@ -334,7 +334,7 @@ impl StreamingAccumulator {
                             comments: None,
                         };
                         self.stats.completed_elements += 1;
-                        Some(AccumulatedElement::Header(header))
+                        Some(AccumulatedElement::Header(Box::new(header)))
                     } else {
                         None
                     }

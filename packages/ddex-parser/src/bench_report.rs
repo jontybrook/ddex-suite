@@ -1,7 +1,7 @@
 // core/src/bench_report.rs
 //! Benchmark report generation
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BenchmarkReport {
@@ -48,7 +48,7 @@ impl BenchmarkReport {
             results: vec![],
         }
     }
-    
+
     pub fn save(&self, path: &str) -> Result<(), std::io::Error> {
         let json = serde_json::to_string_pretty(self)?;
         std::fs::write(path, json)?;

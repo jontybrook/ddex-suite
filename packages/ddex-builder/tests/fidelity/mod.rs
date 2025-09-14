@@ -1,16 +1,16 @@
 //! Comprehensive Fidelity Test Suite for DDEX Builder
-//! 
+//!
 //! This module implements comprehensive fidelity testing to ensure that:
 //! - Parse → Build → Parse round-trips preserve all data
 //! - Byte-perfect reproduction when using Perfect Fidelity Engine
 //! - All ERN versions (3.8.2, 4.2, 4.3) work correctly
 //! - Real-world DDEX files are handled properly
 
-use ddex_builder::Builder;
 use ddex_builder::builder::BuildRequest;
-use std::path::{Path, PathBuf};
-use std::fs;
+use ddex_builder::Builder;
 use std::collections::HashMap;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 // pub mod samples;
 pub mod round_trip;
@@ -67,28 +67,30 @@ pub struct FidelityTestRunner {
 impl FidelityTestRunner {
     pub fn new(config: FidelityTestConfig) -> Self {
         let builder = Builder::new();
-        
+
         // Configure fidelity options if needed
         // Note: Perfect fidelity is configured via preset or direct configuration
-        
+
         Self { config, builder }
     }
-    
+
     /// Run fidelity tests on all available test data
-    pub async fn run_all_tests(&self) -> Result<Vec<FidelityTestResult>, Box<dyn std::error::Error>> {
+    pub async fn run_all_tests(
+        &self,
+    ) -> Result<Vec<FidelityTestResult>, Box<dyn std::error::Error>> {
         let mut results = Vec::new();
-        
+
         // Ensure test data directory exists
         fs::create_dir_all(&self.config.test_data_dir)?;
-        
+
         // Generate sample data if not present
         if !self.has_sufficient_test_data()? {
             self.generate_test_data().await?;
         }
-        
+
         // Run tests on all files
         let test_files = self.discover_test_files()?;
-        
+
         for file_path in test_files {
             match self.test_file(&file_path).await {
                 Ok(result) => results.push(result),
@@ -107,41 +109,45 @@ impl FidelityTestRunner {
                 }
             }
         }
-        
+
         Ok(results)
     }
-    
+
     /// Test a single file for fidelity
-    pub async fn test_file(&self, file_path: &Path) -> Result<FidelityTestResult, Box<dyn std::error::Error>> {
+    pub async fn test_file(
+        &self,
+        file_path: &Path,
+    ) -> Result<FidelityTestResult, Box<dyn std::error::Error>> {
         let original_xml = fs::read_to_string(file_path)?;
         let original_size = original_xml.len();
-        
+
         // Parse timing
         let parse_start = std::time::Instant::now();
         let parsed_message = self.parse_xml(&original_xml)?;
         let parse_time_ms = parse_start.elapsed().as_millis() as u64;
-        
+
         // Build timing
         let build_start = std::time::Instant::now();
         let build_request = self.create_build_request(&parsed_message)?;
         let rebuilt_xml = self.builder.build_with_fidelity(&build_request)?.xml;
         let build_time_ms = build_start.elapsed().as_millis() as u64;
-        
+
         let rebuilt_size = rebuilt_xml.len();
-        
+
         // Test round-trip by parsing again
         let reparsed_message = self.parse_xml(&rebuilt_xml).is_ok();
-        
+
         // Test byte-perfect reproduction
         let byte_perfect = if self.config.perfect_fidelity {
-            self.normalize_for_comparison(&original_xml) == self.normalize_for_comparison(&rebuilt_xml)
+            self.normalize_for_comparison(&original_xml)
+                == self.normalize_for_comparison(&rebuilt_xml)
         } else {
             // Semantic equivalence check
             reparsed_message
         };
-        
+
         let version = self.detect_version(&original_xml);
-        
+
         Ok(FidelityTestResult {
             file_path: file_path.to_path_buf(),
             version,
@@ -154,11 +160,11 @@ impl FidelityTestRunner {
             error: None,
         })
     }
-    
+
     /// Check if we have sufficient test data
     fn has_sufficient_test_data(&self) -> Result<bool, std::io::Error> {
         let test_files = self.discover_test_files()?;
-        
+
         // Check for coverage across versions
         let mut version_counts = HashMap::new();
         for file_path in &test_files {
@@ -167,39 +173,48 @@ impl FidelityTestRunner {
                 *version_counts.entry(version).or_insert(0) += 1;
             }
         }
-        
+
         // We want at least 10 files per version
         for version in &self.config.versions {
             if version_counts.get(version).unwrap_or(&0) < &10 {
                 return Ok(false);
             }
         }
-        
+
         Ok(test_files.len() >= 100) // At least 100 total files
     }
-    
+
     /// Generate test data if not present
     async fn generate_test_data(&self) -> Result<(), Box<dyn std::error::Error>> {
         println!("Generating comprehensive test data...");
-        
+
         // Generate samples for each version
         for version in &self.config.versions {
             self.generate_version_samples(version).await?;
         }
-        
+
         Ok(())
     }
-    
+
     /// Generate sample files for a specific version
-    async fn generate_version_samples(&self, version: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let version_dir = self.config.test_data_dir.join(format!("ern_{}", version.replace(".", "_")));
+    async fn generate_version_samples(
+        &self,
+        version: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let version_dir = self
+            .config
+            .test_data_dir
+            .join(format!("ern_{}", version.replace(".", "_")));
         fs::create_dir_all(&version_dir)?;
-        
+
         // Generate various types of DDEX messages
         let sample_generators = [
             ("simple_release", self.generate_simple_release(version)),
             ("complex_release", self.generate_complex_release(version)),
-            ("multi_track_album", self.generate_multi_track_album(version)),
+            (
+                "multi_track_album",
+                self.generate_multi_track_album(version),
+            ),
             ("compilation", self.generate_compilation(version)),
             ("single_track", self.generate_single_track(version)),
             ("classical_album", self.generate_classical_album(version)),
@@ -208,7 +223,7 @@ impl FidelityTestRunner {
             ("soundtrack", self.generate_soundtrack(version)),
             ("podcast_series", self.generate_podcast_series(version)),
         ];
-        
+
         for (name, sample) in sample_generators.iter() {
             for i in 0..10 {
                 let filename = format!("{}_{:02}.xml", name, i + 1);
@@ -216,28 +231,32 @@ impl FidelityTestRunner {
                 fs::write(&file_path, sample)?;
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Discover all test files in the test data directory
     fn discover_test_files(&self) -> Result<Vec<PathBuf>, std::io::Error> {
         let mut files = Vec::new();
-        
+
         if !self.config.test_data_dir.exists() {
             return Ok(files);
         }
-        
+
         self.collect_xml_files(&self.config.test_data_dir, &mut files)?;
         Ok(files)
     }
-    
+
     /// Recursively collect XML files
-    fn collect_xml_files(&self, dir: &Path, files: &mut Vec<PathBuf>) -> Result<(), std::io::Error> {
+    fn collect_xml_files(
+        &self,
+        dir: &Path,
+        files: &mut Vec<PathBuf>,
+    ) -> Result<(), std::io::Error> {
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
             let path = entry.path();
-            
+
             if path.is_dir() {
                 self.collect_xml_files(&path, files)?;
             } else if path.extension().map_or(false, |ext| ext == "xml") {
@@ -251,7 +270,7 @@ impl FidelityTestRunner {
         }
         Ok(())
     }
-    
+
     /// Parse XML content into a message structure
     fn parse_xml(&self, xml: &str) -> Result<ParsedMessage, Box<dyn std::error::Error>> {
         // Implementation would use ddex-parser here
@@ -261,9 +280,12 @@ impl FidelityTestRunner {
             content: xml.to_string(),
         })
     }
-    
+
     /// Create a build request from parsed message
-    fn create_build_request(&self, message: &ParsedMessage) -> Result<BuildRequest, Box<dyn std::error::Error>> {
+    fn create_build_request(
+        &self,
+        message: &ParsedMessage,
+    ) -> Result<BuildRequest, Box<dyn std::error::Error>> {
         // Implementation would convert parsed message to build request
         // For now, create a minimal build request
         Ok(BuildRequest {
@@ -295,7 +317,7 @@ impl FidelityTestRunner {
             extensions: None,
         })
     }
-    
+
     /// Detect ERN version from XML content
     fn detect_version(&self, xml: &str) -> String {
         if xml.contains("http://ddex.net/xml/ern/382") {
@@ -308,7 +330,7 @@ impl FidelityTestRunner {
             "unknown".to_string()
         }
     }
-    
+
     /// Normalize XML for comparison
     fn normalize_for_comparison(&self, xml: &str) -> String {
         // Remove variations that don't affect semantic meaning
@@ -319,10 +341,11 @@ impl FidelityTestRunner {
             .trim()
             .to_string()
     }
-    
+
     // Sample generators - simplified versions for testing
     fn generate_simple_release(&self, version: &str) -> String {
-        format!(r#"<?xml version="1.0" encoding="UTF-8"?>
+        format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
 <ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/{version_path}" MessageSchemaVersionId="ern/{version_short}">
   <MessageHeader>
     <MessageId>MSG_{}</MessageId>
@@ -360,41 +383,41 @@ impl FidelityTestRunner {
             version_short = version.replace(".", "")
         )
     }
-    
+
     // Additional sample generators would be implemented here
     fn generate_complex_release(&self, version: &str) -> String {
         // More complex structure with multiple tracks, detailed metadata, etc.
         self.generate_simple_release(version) // Simplified for now
     }
-    
+
     fn generate_multi_track_album(&self, version: &str) -> String {
         self.generate_simple_release(version) // Simplified for now
     }
-    
+
     fn generate_compilation(&self, version: &str) -> String {
         self.generate_simple_release(version) // Simplified for now
     }
-    
+
     fn generate_single_track(&self, version: &str) -> String {
         self.generate_simple_release(version) // Simplified for now
     }
-    
+
     fn generate_classical_album(&self, version: &str) -> String {
         self.generate_simple_release(version) // Simplified for now
     }
-    
+
     fn generate_electronic_ep(&self, version: &str) -> String {
         self.generate_simple_release(version) // Simplified for now
     }
-    
+
     fn generate_live_recording(&self, version: &str) -> String {
         self.generate_simple_release(version) // Simplified for now
     }
-    
+
     fn generate_soundtrack(&self, version: &str) -> String {
         self.generate_simple_release(version) // Simplified for now
     }
-    
+
     fn generate_podcast_series(&self, version: &str) -> String {
         self.generate_simple_release(version) // Simplified for now
     }
@@ -410,34 +433,34 @@ pub struct ParsedMessage {
 #[cfg(test)]
 mod tests {
     use super::*;
-        
+
     #[tokio::test]
     async fn test_fidelity_runner_creation() {
         let config = FidelityTestConfig::default();
         let runner = FidelityTestRunner::new(config);
         assert!(runner.config.perfect_fidelity);
     }
-    
-    #[tokio::test] 
+
+    #[tokio::test]
     async fn test_version_detection() {
         let config = FidelityTestConfig::default();
         let runner = FidelityTestRunner::new(config);
-        
+
         let ern_43_xml = r#"<root xmlns:ern="http://ddex.net/xml/ern/43">test</root>"#;
         assert_eq!(runner.detect_version(ern_43_xml), "4.3");
-        
+
         let ern_42_xml = r#"<root xmlns:ern="http://ddex.net/xml/ern/42">test</root>"#;
         assert_eq!(runner.detect_version(ern_42_xml), "4.2");
-        
+
         let ern_382_xml = r#"<root xmlns:ern="http://ddex.net/xml/ern/382">test</root>"#;
         assert_eq!(runner.detect_version(ern_382_xml), "3.8.2");
     }
-    
+
     #[tokio::test]
     async fn test_sample_generation() {
         let config = FidelityTestConfig::default();
         let runner = FidelityTestRunner::new(config);
-        
+
         let sample = runner.generate_simple_release("4.3");
         assert!(sample.contains("ern:NewReleaseMessage"));
         assert!(sample.contains("http://ddex.net/xml/ern/43"));

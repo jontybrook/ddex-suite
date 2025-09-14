@@ -4,7 +4,7 @@
 //! including 3.8.2, 4.2, and 4.3 with automatic conversion capabilities.
 //!
 //! # Supported Versions
-//! 
+//!
 //! - **ERN 3.8.2**: Legacy version with different namespaces and element structures
 //! - **ERN 4.2**: Intermediate version with some modern features
 //! - **ERN 4.3**: Current recommended version with full feature set
@@ -19,7 +19,7 @@
 //!
 //! ```rust
 //! use ddex_builder::versions::{VersionConverter, DdexVersion};
-//! 
+//!
 //! let converter = VersionConverter::new();
 //! let result = converter.convert_version(ddex_xml, DdexVersion::Ern382, DdexVersion::Ern43)?;
 //! ```
@@ -29,10 +29,10 @@ use crate::presets::DdexVersion;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
+mod converter;
 mod ern_382;
 mod ern_42;
 mod ern_43;
-mod converter;
 
 // Use qualified re-exports to avoid naming conflicts
 /// ERN 3.8.2 version support
@@ -51,17 +51,20 @@ pub mod ern43 {
 }
 
 // Re-export the latest version (4.3) items directly for convenience
-pub use ern_43::{get_version_spec, builders, validation};
+pub use ern_43::{builders, get_version_spec, validation};
 
 // For backward compatibility, also expose version-specific namespace functions
 pub use ern_382::get_namespace_mappings as get_namespace_mappings_382;
 pub use ern_42::get_namespace_mappings as get_namespace_mappings_42;
 pub use ern_43::get_namespace_mappings as get_namespace_mappings_43;
 
+pub use converter::{
+    ConversionReport as ConverterReport, ConversionResult as ConverterResult,
+    ConversionWarning as ConverterWarning, ConversionWarningType, VersionConverter,
+};
 pub use ern_382::get_xml_template as get_xml_template_382;
 pub use ern_42::get_xml_template as get_xml_template_42;
 pub use ern_43::get_xml_template as get_xml_template_43;
-pub use converter::{VersionConverter, ConversionResult as ConverterResult, ConversionReport as ConverterReport, ConversionWarning as ConverterWarning, ConversionWarningType};
 
 /// Version-specific DDEX metadata and constraints
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -143,34 +146,34 @@ pub enum ConversionType {
         /// Original field name
         old_name: String,
         /// New field name
-        new_name: String
+        new_name: String,
     },
     /// Field structure changed
     Restructured {
         /// Description of restructuring
-        description: String
+        description: String,
     },
     /// Field was added in new version
     Added {
         /// Default value for new field
-        default_value: Option<String>
+        default_value: Option<String>,
     },
     /// Field was removed
     Removed {
         /// Reason for removal
-        reason: String
+        reason: String,
     },
     /// Field moved to different location
     Moved {
         /// Original path
         old_path: String,
         /// New path
-        new_path: String
+        new_path: String,
     },
     /// Field requires transformation
     Transformed {
         /// Description of transformation
-        description: String
+        description: String,
     },
 }
 
@@ -440,22 +443,22 @@ impl VersionManager {
             _default_options: ConversionOptions::default(),
         }
     }
-    
+
     /// Get version specification
     pub fn get_version_spec(&self, version: DdexVersion) -> Option<&VersionSpec> {
         self.version_specs.get(&version)
     }
-    
+
     /// Detect version from XML content
     pub fn detect_version(&self, xml_content: &str) -> Result<VersionDetection, BuildError> {
         let mut clues = Vec::new();
         let mut version_scores = IndexMap::new();
-        
+
         // Initialize scores
         for version in [DdexVersion::Ern382, DdexVersion::Ern42, DdexVersion::Ern43] {
             version_scores.insert(version, 0.0);
         }
-        
+
         // Analyze namespace
         if let Some(namespace) = self.extract_namespace(xml_content) {
             clues.push(DetectionClue {
@@ -463,7 +466,7 @@ impl VersionManager {
                 evidence: namespace.clone(),
                 weight: 0.8,
             });
-            
+
             // Score based on namespace
             for (version, spec) in &self.version_specs {
                 if spec.namespace == namespace {
@@ -471,7 +474,7 @@ impl VersionManager {
                 }
             }
         }
-        
+
         // Analyze message schema version ID
         if let Some(schema_version) = self.extract_message_schema_version(xml_content) {
             clues.push(DetectionClue {
@@ -479,7 +482,7 @@ impl VersionManager {
                 evidence: schema_version.clone(),
                 weight: 0.9,
             });
-            
+
             // Score based on schema version
             for (version, spec) in &self.version_specs {
                 if spec.message_schema_version_id == schema_version {
@@ -487,7 +490,7 @@ impl VersionManager {
                 }
             }
         }
-        
+
         // Look for version-specific elements
         for (version, spec) in &self.version_specs {
             for element in &spec.new_elements {
@@ -501,15 +504,15 @@ impl VersionManager {
                 }
             }
         }
-        
+
         // Determine best match
         let (detected_version, confidence) = version_scores
             .into_iter()
             .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
             .unwrap();
-        
+
         let normalized_confidence = (confidence / 2.5_f64).min(1.0_f64); // Normalize to 0-1
-        
+
         Ok(VersionDetection {
             detected_version,
             confidence: normalized_confidence,
@@ -517,43 +520,57 @@ impl VersionManager {
             ambiguities: Vec::new(), // TODO: Implement ambiguity detection
         })
     }
-    
+
     /// Check if conversion is supported between versions
     pub fn is_conversion_supported(&self, from: DdexVersion, to: DdexVersion) -> bool {
-        self.compatibility.conversion_paths.iter()
+        self.compatibility
+            .conversion_paths
+            .iter()
             .any(|path| path.from == from && path.to == to)
     }
-    
+
     /// Get conversion path information
-    pub fn get_conversion_path(&self, from: DdexVersion, to: DdexVersion) -> Option<&ConversionPath> {
-        self.compatibility.conversion_paths.iter()
+    pub fn get_conversion_path(
+        &self,
+        from: DdexVersion,
+        to: DdexVersion,
+    ) -> Option<&ConversionPath> {
+        self.compatibility
+            .conversion_paths
+            .iter()
             .find(|path| path.from == from && path.to == to)
     }
-    
+
     /// Get feature compatibility information
     pub fn get_feature_compatibility(&self, feature: &str) -> Option<&FeatureSupport> {
         self.compatibility.feature_compatibility.get(feature)
     }
-    
+
     /// Get recommended conversion strategy
-    pub fn get_recommended_strategy(&self, from: DdexVersion, to: DdexVersion) -> Option<&ConversionStrategy> {
+    pub fn get_recommended_strategy(
+        &self,
+        from: DdexVersion,
+        to: DdexVersion,
+    ) -> Option<&ConversionStrategy> {
         let scenario = format!("{:?} to {:?}", from, to);
-        self.compatibility.recommended_strategies.iter()
+        self.compatibility
+            .recommended_strategies
+            .iter()
             .find(|strategy| strategy.scenarios.contains(&scenario))
     }
-    
+
     // Private helper methods
-    
+
     fn load_default_specs() -> IndexMap<DdexVersion, VersionSpec> {
         let mut specs = IndexMap::new();
-        
+
         specs.insert(DdexVersion::Ern382, ern_382::get_version_spec());
         specs.insert(DdexVersion::Ern42, ern_42::get_version_spec());
         specs.insert(DdexVersion::Ern43, ern_43::get_version_spec());
-        
+
         specs
     }
-    
+
     fn build_compatibility_matrix() -> CompatibilityMatrix {
         let conversion_paths = vec![
             // Upgrade paths
@@ -629,55 +646,67 @@ impl VersionManager {
                 production_ready: false,
             },
         ];
-        
+
         let feature_compatibility = Self::build_feature_compatibility();
         let recommended_strategies = Self::build_recommended_strategies();
-        
+
         CompatibilityMatrix {
             conversion_paths,
             feature_compatibility,
             recommended_strategies,
         }
     }
-    
+
     fn build_feature_compatibility() -> IndexMap<String, FeatureSupport> {
         let mut features = IndexMap::new();
-        
-        features.insert("ResourceReference".to_string(), FeatureSupport {
-            feature: "Resource Reference Elements".to_string(),
-            ern_382: SupportLevel::Partial,
-            ern_42: SupportLevel::Full,
-            ern_43: SupportLevel::Full,
-            migration_notes: Some("Enhanced in 4.2 with better linking".to_string()),
-        });
-        
-        features.insert("DetailedDealTerms".to_string(), FeatureSupport {
-            feature: "Detailed Deal Terms".to_string(),
-            ern_382: SupportLevel::None,
-            ern_42: SupportLevel::Partial,
-            ern_43: SupportLevel::Full,
-            migration_notes: Some("New detailed terms structure in 4.2+".to_string()),
-        });
-        
-        features.insert("EnhancedMetadata".to_string(), FeatureSupport {
-            feature: "Enhanced Metadata Fields".to_string(),
-            ern_382: SupportLevel::None,
-            ern_42: SupportLevel::None,
-            ern_43: SupportLevel::New,
-            migration_notes: Some("Completely new in 4.3".to_string()),
-        });
-        
-        features.insert("DeprecatedElements".to_string(), FeatureSupport {
-            feature: "Legacy Deprecated Elements".to_string(),
-            ern_382: SupportLevel::Full,
-            ern_42: SupportLevel::Deprecated,
-            ern_43: SupportLevel::None,
-            migration_notes: Some("Removed in 4.3, use modern equivalents".to_string()),
-        });
-        
+
+        features.insert(
+            "ResourceReference".to_string(),
+            FeatureSupport {
+                feature: "Resource Reference Elements".to_string(),
+                ern_382: SupportLevel::Partial,
+                ern_42: SupportLevel::Full,
+                ern_43: SupportLevel::Full,
+                migration_notes: Some("Enhanced in 4.2 with better linking".to_string()),
+            },
+        );
+
+        features.insert(
+            "DetailedDealTerms".to_string(),
+            FeatureSupport {
+                feature: "Detailed Deal Terms".to_string(),
+                ern_382: SupportLevel::None,
+                ern_42: SupportLevel::Partial,
+                ern_43: SupportLevel::Full,
+                migration_notes: Some("New detailed terms structure in 4.2+".to_string()),
+            },
+        );
+
+        features.insert(
+            "EnhancedMetadata".to_string(),
+            FeatureSupport {
+                feature: "Enhanced Metadata Fields".to_string(),
+                ern_382: SupportLevel::None,
+                ern_42: SupportLevel::None,
+                ern_43: SupportLevel::New,
+                migration_notes: Some("Completely new in 4.3".to_string()),
+            },
+        );
+
+        features.insert(
+            "DeprecatedElements".to_string(),
+            FeatureSupport {
+                feature: "Legacy Deprecated Elements".to_string(),
+                ern_382: SupportLevel::Full,
+                ern_42: SupportLevel::Deprecated,
+                ern_43: SupportLevel::None,
+                migration_notes: Some("Removed in 4.3, use modern equivalents".to_string()),
+            },
+        );
+
         features
     }
-    
+
     fn build_recommended_strategies() -> Vec<ConversionStrategy> {
         vec![
             ConversionStrategy {
@@ -716,7 +745,7 @@ impl VersionManager {
             },
         ]
     }
-    
+
     fn extract_namespace(&self, xml_content: &str) -> Option<String> {
         // Simple regex to extract namespace from XML
         let re = regex::Regex::new(r#"xmlns="([^"]+)""#).ok()?;
@@ -724,7 +753,7 @@ impl VersionManager {
             .get(1)
             .map(|m| m.as_str().to_string())
     }
-    
+
     fn extract_message_schema_version(&self, xml_content: &str) -> Option<String> {
         let re = regex::Regex::new(r#"MessageSchemaVersionId="([^"]+)""#).ok()?;
         re.captures(xml_content)?
@@ -738,7 +767,6 @@ impl Default for VersionManager {
         Self::new()
     }
 }
-
 
 impl std::fmt::Display for ConversionDifficulty {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -777,22 +805,22 @@ impl std::fmt::Display for ImpactLevel {
 /// Utility functions for version handling
 pub mod utils {
     use super::*;
-    
+
     /// Get all supported versions
     pub fn supported_versions() -> Vec<DdexVersion> {
         vec![DdexVersion::Ern382, DdexVersion::Ern42, DdexVersion::Ern43]
     }
-    
+
     /// Check if version is legacy
     pub fn is_legacy_version(version: DdexVersion) -> bool {
         matches!(version, DdexVersion::Ern382)
     }
-    
+
     /// Check if version is modern
     pub fn is_modern_version(version: DdexVersion) -> bool {
         matches!(version, DdexVersion::Ern43)
     }
-    
+
     /// Get version release date
     pub fn get_version_release_date(version: DdexVersion) -> chrono::NaiveDate {
         match version {
@@ -802,7 +830,7 @@ pub mod utils {
             DdexVersion::Ern41 => chrono::NaiveDate::from_ymd_opt(2019, 11, 15).unwrap(),
         }
     }
-    
+
     /// Get version description
     pub fn get_version_description(version: DdexVersion) -> String {
         match version {

@@ -2,9 +2,9 @@
 //!
 //! This test validates basic performance characteristics without complex dependencies
 
-use std::time::Instant;
-use std::fs;
 use chrono;
+use std::fs;
+use std::time::Instant;
 
 #[test]
 fn validate_basic_performance() {
@@ -19,7 +19,10 @@ fn validate_basic_performance() {
     let result = basic_xml_parsing_test(&test_data);
     let elapsed = start.elapsed();
 
-    println!("Test file size: {:.2} MB", test_data.len() as f64 / (1024.0 * 1024.0));
+    println!(
+        "Test file size: {:.2} MB",
+        test_data.len() as f64 / (1024.0 * 1024.0)
+    );
     println!("Parse time: {:.3}s", elapsed.as_secs_f64());
 
     let throughput = (test_data.len() as f64 / (1024.0 * 1024.0)) / elapsed.as_secs_f64();
@@ -52,20 +55,23 @@ fn memory_efficiency_check() {
 
 /// Generate simple DDEX XML for testing
 fn generate_simple_ddex_xml(target_bytes: usize) -> Vec<u8> {
-    let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43">
     <MessageHeader>
         <MessageId>SIMPLE-PERF-TEST</MessageId>
         <CreatedDateTime>2024-09-13T12:00:00Z</CreatedDateTime>
     </MessageHeader>
-"#);
+"#,
+    );
 
     // Calculate releases needed
     let base_release_size = 500;
     let num_releases = (target_bytes / base_release_size).max(10);
 
     for i in 0..num_releases {
-        xml.push_str(&format!(r#"
+        xml.push_str(&format!(
+            r#"
     <Release ReleaseReference="REL-{:08}">
         <ReferenceTitle>
             <TitleText>Test Release {}</TitleText>
@@ -74,7 +80,9 @@ fn generate_simple_ddex_xml(target_bytes: usize) -> Vec<u8> {
         <Genre>
             <GenreText>Test</GenreText>
         </Genre>
-    </Release>"#, i, i));
+    </Release>"#,
+            i, i
+        ));
     }
 
     xml.push_str("\n</ern:NewReleaseMessage>");
@@ -91,7 +99,7 @@ fn basic_xml_parsing_test(data: &[u8]) -> usize {
         match reader.read_event_into(&mut buf) {
             Ok(quick_xml::events::Event::Start(_)) => element_count += 1,
             Ok(quick_xml::events::Event::Eof) => break,
-            Ok(_) => {},
+            Ok(_) => {}
             Err(_) => break,
         }
         buf.clear();
@@ -156,21 +164,32 @@ fn performance_scaling_test() {
         let throughput = (size_mb as f64) / elapsed.as_secs_f64();
         scaling_data.push((size_mb, throughput, elements));
 
-        println!("{}MB: {:.2} MB/s ({} elements)", size_mb, throughput, elements);
+        println!(
+            "{}MB: {:.2} MB/s ({} elements)",
+            size_mb, throughput, elements
+        );
     }
 
     // Check for consistent performance
     let throughputs: Vec<f64> = scaling_data.iter().map(|(_, t, _)| *t).collect();
     let avg_throughput = throughputs.iter().sum::<f64>() / throughputs.len() as f64;
-    let min_throughput = throughputs.iter().fold(f64::INFINITY, |a, &b| f64::min(a, b));
+    let min_throughput = throughputs
+        .iter()
+        .fold(f64::INFINITY, |a, &b| f64::min(a, b));
     let max_throughput = throughputs.iter().fold(0.0_f64, |a, &b| f64::max(a, b));
 
     println!("\nScaling Analysis:");
     println!("Average: {:.2} MB/s", avg_throughput);
     println!("Range: {:.2} - {:.2} MB/s", min_throughput, max_throughput);
-    println!("Variance: {:.1}%", ((max_throughput - min_throughput) / avg_throughput) * 100.0);
+    println!(
+        "Variance: {:.1}%",
+        ((max_throughput - min_throughput) / avg_throughput) * 100.0
+    );
 
-    assert!(avg_throughput > 50.0, "Should achieve reasonable throughput even with basic parsing");
+    assert!(
+        avg_throughput > 50.0,
+        "Should achieve reasonable throughput even with basic parsing"
+    );
     println!("✅ Performance scaling validated");
 }
 

@@ -8,6 +8,8 @@
 //! - Attribute value type preservation
 //! - HTML escaping and special character handling
 
+#![allow(clippy::approx_constant)] // Tests use literal values for validation
+
 use chrono::{DateTime, Datelike, NaiveDate, Utc};
 use ddex_core::models::attributes::AttributeMergeStrategy;
 use ddex_core::models::{AttributeMap, AttributeType, AttributeValidator, AttributeValue, QName};
@@ -78,7 +80,7 @@ mod comprehensive_attribute_tests {
         // Verify boolean preservation
         let is_main_qname = QName::new("isMainRelease".to_string());
         if let Some(AttributeValue::Boolean(value)) = original_attributes.get(&is_main_qname) {
-            assert_eq!(*value, true);
+            assert!(*value);
         } else {
             panic!("Boolean attribute not preserved correctly");
         }
@@ -360,7 +362,7 @@ mod comprehensive_attribute_tests {
         }
 
         if let Some(AttributeValue::Boolean(is_explicit)) = attributes.get(&custom_boolean) {
-            assert_eq!(*is_explicit, false);
+            assert!(!(*is_explicit));
         } else {
             panic!("Custom boolean attribute not preserved");
         }

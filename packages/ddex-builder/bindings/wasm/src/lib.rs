@@ -1,7 +1,7 @@
-use wasm_bindgen::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_wasm_bindgen::{from_value, to_value};
 use std::collections::HashMap;
+use wasm_bindgen::prelude::*;
 
 pub mod diff_viewer;
 
@@ -50,12 +50,7 @@ pub struct Release {
 #[wasm_bindgen]
 impl Release {
     #[wasm_bindgen(constructor)]
-    pub fn new(
-        release_id: String,
-        release_type: String,
-        title: String,
-        artist: String,
-    ) -> Release {
+    pub fn new(release_id: String, release_type: String, title: String, artist: String) -> Release {
         Release {
             release_id,
             release_type,
@@ -267,7 +262,7 @@ impl FidelityOptions {
             enable_checksums: false,
         }
     }
-    
+
     #[wasm_bindgen(js_name = createPerfectFidelity)]
     pub fn create_perfect_fidelity() -> FidelityOptions {
         FidelityOptions {
@@ -287,7 +282,7 @@ impl FidelityOptions {
             enable_checksums: true,
         }
     }
-    
+
     #[wasm_bindgen(js_name = createFastProcessing)]
     pub fn create_fast_processing() -> FidelityOptions {
         FidelityOptions {
@@ -482,7 +477,7 @@ impl WasmDdexBuilder {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Result<WasmDdexBuilder, JsValue> {
         console_error_panic_hook::set_once();
-        
+
         Ok(WasmDdexBuilder {
             releases: Vec::new(),
             resources: Vec::new(),
@@ -510,19 +505,26 @@ impl WasmDdexBuilder {
 
         // Generate a basic DDEX-like XML structure for demonstration
         let xml_output = self.generate_placeholder_xml()?;
-        
+
         let end_time = js_sys::Date::now();
         let build_time = end_time - start_time;
-        
+
         self.stats.last_build_size_bytes = xml_output.len() as f64;
         self.stats.total_build_time_ms += build_time;
 
-        console_log!("Build completed: {} bytes in {}ms", xml_output.len(), build_time);
+        console_log!(
+            "Build completed: {} bytes in {}ms",
+            xml_output.len(),
+            build_time
+        );
         Ok(xml_output)
     }
 
     #[wasm_bindgen(js_name = buildWithFidelity)]
-    pub async fn build_with_fidelity(&mut self, fidelity_options: Option<FidelityOptions>) -> Result<BuildResult, JsValue> {
+    pub async fn build_with_fidelity(
+        &mut self,
+        fidelity_options: Option<FidelityOptions>,
+    ) -> Result<BuildResult, JsValue> {
         let start_time = js_sys::Date::now();
 
         // Generate XML with fidelity considerations
@@ -531,10 +533,10 @@ impl WasmDdexBuilder {
         } else {
             self.generate_placeholder_xml()?
         };
-        
+
         let end_time = js_sys::Date::now();
         let build_time = end_time - start_time;
-        
+
         self.stats.last_build_size_bytes = xml_output.len() as f64;
         self.stats.total_build_time_ms += build_time;
 
@@ -552,7 +554,11 @@ impl WasmDdexBuilder {
                     xml_output.matches('=').count() as u32,
                     xml_output.matches("xmlns").count() as u32,
                     if xml_output.contains("xmlns:") { 1 } else { 0 },
-                    if options.canonicalization != "none" { 2.0 } else { 0.0 },
+                    if options.canonicalization != "none" {
+                        2.0
+                    } else {
+                        0.0
+                    },
                 );
                 build_result.set_statistics(Some(stats));
             }
@@ -561,7 +567,11 @@ impl WasmDdexBuilder {
             if options.enable_verification {
                 let verification = VerificationResult::new(
                     true,
-                    if options.enable_perfect_fidelity { 1.0 } else { 0.95 },
+                    if options.enable_perfect_fidelity {
+                        1.0
+                    } else {
+                        0.95
+                    },
                     options.canonicalization != "none",
                     options.enable_deterministic_ordering,
                 );
@@ -569,15 +579,27 @@ impl WasmDdexBuilder {
             }
         }
 
-        console_log!("Fidelity build completed: {} bytes in {}ms", xml_output.len(), build_time);
+        console_log!(
+            "Fidelity build completed: {} bytes in {}ms",
+            xml_output.len(),
+            build_time
+        );
         Ok(build_result)
     }
 
     #[wasm_bindgen(js_name = testRoundTripFidelity)]
-    pub async fn test_round_trip_fidelity(&mut self, _original_xml: String, fidelity_options: Option<FidelityOptions>) -> Result<VerificationResult, JsValue> {
+    pub async fn test_round_trip_fidelity(
+        &mut self,
+        _original_xml: String,
+        fidelity_options: Option<FidelityOptions>,
+    ) -> Result<VerificationResult, JsValue> {
         // Mock round-trip testing for WASM
         let fidelity_score = if let Some(ref options) = fidelity_options {
-            if options.enable_perfect_fidelity { 0.99 } else { 0.90 }
+            if options.enable_perfect_fidelity {
+                0.99
+            } else {
+                0.90
+            }
         } else {
             0.85
         };
@@ -586,11 +608,15 @@ impl WasmDdexBuilder {
             fidelity_score > 0.95,
             fidelity_score,
             true,
-            fidelity_options.as_ref().map_or(false, |o| o.enable_deterministic_ordering),
+            fidelity_options
+                .as_ref()
+                .map_or(false, |o| o.enable_deterministic_ordering),
         );
 
         if fidelity_score < 1.0 {
-            verification.set_issues(vec!["Minor whitespace differences detected in browser environment".to_string()]);
+            verification.set_issues(vec![
+                "Minor whitespace differences detected in browser environment".to_string(),
+            ]);
         }
 
         console_log!("Round-trip fidelity test: score={:.2}", fidelity_score);
@@ -598,31 +624,42 @@ impl WasmDdexBuilder {
     }
 
     #[wasm_bindgen(js_name = canonicalizeXml)]
-    pub fn canonicalize_xml(&self, xml: String, canonicalization: String) -> Result<String, JsValue> {
+    pub fn canonicalize_xml(
+        &self,
+        xml: String,
+        canonicalization: String,
+    ) -> Result<String, JsValue> {
         // Browser-based canonicalization implementation
         match canonicalization.as_str() {
             "db_c14n" => {
                 console_log!("Applying DB-C14N canonicalization");
                 Ok(self.apply_db_c14n_canonicalization(xml)?)
-            },
+            }
             "c14n" => {
                 console_log!("Applying C14N canonicalization");
                 Ok(self.apply_c14n_canonicalization(xml)?)
-            },
+            }
             "none" => Ok(xml),
-            _ => Err(JsValue::from_str(&format!("Unsupported canonicalization algorithm: {}", canonicalization)))
+            _ => Err(JsValue::from_str(&format!(
+                "Unsupported canonicalization algorithm: {}",
+                canonicalization
+            ))),
         }
     }
 
     #[wasm_bindgen]
     pub fn validate(&self) -> ValidationResult {
         let mut result = ValidationResult::new(!self.releases.is_empty());
-        
+
         if self.releases.is_empty() {
             result.set_errors(vec!["At least one release is required".to_string()]);
         }
-        
-        console_log!("Validation: is_valid={}, errors={}", result.is_valid, result.errors().len());
+
+        console_log!(
+            "Validation: is_valid={}, errors={}",
+            result.is_valid,
+            result.errors().len()
+        );
         result
     }
 
@@ -688,9 +725,14 @@ impl WasmDdexBuilder {
                 ],
                 "disclaimer": "Based on YouTube Partner documentation. Video encoding requirements may vary."
             }),
-            _ => return Err(JsValue::from_str(&format!("Unknown preset: {}", preset_name)))
+            _ => {
+                return Err(JsValue::from_str(&format!(
+                    "Unknown preset: {}",
+                    preset_name
+                )))
+            }
         };
-        
+
         serde_wasm_bindgen::to_value(&preset_info)
             .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
     }
@@ -699,7 +741,7 @@ impl WasmDdexBuilder {
     pub fn apply_preset(&mut self, preset_name: &str) -> Result<(), JsValue> {
         // Validate preset exists by trying to get its info
         let _preset_info = self.get_preset_info(preset_name)?;
-        
+
         // In a full implementation, this would apply the preset configuration
         // to the internal builder state. For now, we just validate the preset exists.
         console_log!("Applied preset: {}", preset_name);
@@ -750,9 +792,14 @@ impl WasmDdexBuilder {
                     }
                 }
             ]),
-            _ => return Err(JsValue::from_str(&format!("Unknown preset: {}", preset_name)))
+            _ => {
+                return Err(JsValue::from_str(&format!(
+                    "Unknown preset: {}",
+                    preset_name
+                )))
+            }
         };
-        
+
         serde_wasm_bindgen::to_value(&rules)
             .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
     }
@@ -763,25 +810,33 @@ impl WasmDdexBuilder {
         xml.push('\n');
         xml.push_str(r#"<NewReleaseMessage xmlns="http://ddex.net/xml/ern/43" MessageSchemaVersionId="ern/43">"#);
         xml.push('\n');
-        
+
         // Message header
         xml.push_str("  <MessageHeader>\n");
-        xml.push_str(&format!("    <MessageId>{}</MessageId>\n", uuid::Uuid::new_v4()));
+        xml.push_str(&format!(
+            "    <MessageId>{}</MessageId>\n",
+            uuid::Uuid::new_v4()
+        ));
         xml.push_str("    <MessageSender>\n");
         xml.push_str("      <PartyName>DDEX Suite WASM</PartyName>\n");
         xml.push_str("    </MessageSender>\n");
         xml.push_str("    <MessageRecipient>\n");
         xml.push_str("      <PartyName>Web Client</PartyName>\n");
         xml.push_str("    </MessageRecipient>\n");
-        xml.push_str(&format!("    <MessageCreatedDateTime>{}</MessageCreatedDateTime>\n", 
-            chrono::Utc::now().to_rfc3339()));
+        xml.push_str(&format!(
+            "    <MessageCreatedDateTime>{}</MessageCreatedDateTime>\n",
+            chrono::Utc::now().to_rfc3339()
+        ));
         xml.push_str("  </MessageHeader>\n");
 
         // Releases
         for release in &self.releases {
             xml.push_str("  <ReleaseList>\n");
             xml.push_str("    <Release>\n");
-            xml.push_str(&format!("      <ReleaseId>{}</ReleaseId>\n", release.release_id));
+            xml.push_str(&format!(
+                "      <ReleaseId>{}</ReleaseId>\n",
+                release.release_id
+            ));
             xml.push_str(&format!("      <Title>{}</Title>\n", release.title));
             xml.push_str(&format!("      <Artist>{}</Artist>\n", release.artist));
             if let Some(ref label) = release.label {
@@ -795,7 +850,10 @@ impl WasmDdexBuilder {
         for resource in &self.resources {
             xml.push_str("  <ResourceList>\n");
             xml.push_str("    <SoundRecording>\n");
-            xml.push_str(&format!("      <ResourceId>{}</ResourceId>\n", resource.resource_id));
+            xml.push_str(&format!(
+                "      <ResourceId>{}</ResourceId>\n",
+                resource.resource_id
+            ));
             xml.push_str(&format!("      <Title>{}</Title>\n", resource.title));
             xml.push_str(&format!("      <Artist>{}</Artist>\n", resource.artist));
             if let Some(ref isrc) = resource.isrc {
@@ -804,19 +862,19 @@ impl WasmDdexBuilder {
             xml.push_str("    </SoundRecording>\n");
             xml.push_str("  </ResourceList>\n");
         }
-        
+
         xml.push_str("</NewReleaseMessage>\n");
         Ok(xml)
     }
 
     fn generate_fidelity_xml(&self, options: &FidelityOptions) -> Result<String, JsValue> {
         let mut xml = self.generate_placeholder_xml()?;
-        
+
         // Apply canonicalization if requested
         if options.canonicalization != "none" {
             xml = self.canonicalize_xml(xml, options.canonicalization.clone())?;
         }
-        
+
         // Add comments if preservation is enabled
         if options.preserve_comments {
             xml = xml.replace(
@@ -824,7 +882,7 @@ impl WasmDdexBuilder {
                 "  <!-- Generated with DDEX Suite WASM Perfect Fidelity Engine -->\n</NewReleaseMessage>"
             );
         }
-        
+
         // Add processing instructions if enabled
         if options.preserve_processing_instructions {
             xml = xml.replace(
@@ -832,7 +890,7 @@ impl WasmDdexBuilder {
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<?xml-stylesheet type=\"text/xsl\" href=\"ddex-transform.xsl\"?>"
             );
         }
-        
+
         Ok(xml)
     }
 
@@ -840,7 +898,7 @@ impl WasmDdexBuilder {
         // Basic DB-C14N implementation for browser environment
         // This is a simplified version - full implementation would require XML parser
         let mut canonical = xml.clone();
-        
+
         // Remove unnecessary whitespace between elements
         canonical = canonical
             .split('\n')
@@ -848,32 +906,38 @@ impl WasmDdexBuilder {
             .filter(|line| !line.is_empty())
             .collect::<Vec<_>>()
             .join("");
-        
+
         // Ensure deterministic attribute ordering (simplified)
-        if canonical.contains("MessageSchemaVersionId") && canonical.contains("BusinessTransactionId") {
+        if canonical.contains("MessageSchemaVersionId")
+            && canonical.contains("BusinessTransactionId")
+        {
             canonical = canonical.replace(
                 r#"BusinessTransactionId="([^"]*)" MessageSchemaVersionId="([^"]*)""#,
                 r#"MessageSchemaVersionId="$2" BusinessTransactionId="$1""#,
             );
         }
-        
-        console_log!("Applied DB-C14N canonicalization, reduced from {} to {} bytes", xml.len(), canonical.len());
+
+        console_log!(
+            "Applied DB-C14N canonicalization, reduced from {} to {} bytes",
+            xml.len(),
+            canonical.len()
+        );
         Ok(canonical)
     }
 
     fn apply_c14n_canonicalization(&self, xml: String) -> Result<String, JsValue> {
         // Basic C14N implementation for browser environment
         let mut canonical = xml.clone();
-        
+
         // Remove XML declaration if it's the default
         if canonical.starts_with(r#"<?xml version="1.0" encoding="UTF-8"?>"#) {
             canonical = canonical.replace(r#"<?xml version="1.0" encoding="UTF-8"?>"#, "");
             canonical = canonical.trim_start().to_string();
         }
-        
+
         // Normalize line endings
         canonical = canonical.replace("\r\n", "\n").replace('\r', "\n");
-        
+
         console_log!("Applied C14N canonicalization");
         Ok(canonical)
     }
@@ -885,20 +949,23 @@ pub async fn batch_build(requests: JsValue) -> Result<Vec<String>, JsValue> {
     let array = js_sys::Array::from(&requests);
     let length = array.length();
     let mut results = Vec::new();
-    
+
     for _i in 0..length {
         // Create a simple placeholder result for each request
-        let result = format!(r#"<?xml version="1.0" encoding="UTF-8"?>
+        let result = format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
 <NewReleaseMessage xmlns="http://ddex.net/xml/ern/43">
   <MessageHeader>
     <MessageId>{}</MessageId>
     <MessageSender><PartyName>DDEX Suite WASM</PartyName></MessageSender>
     <MessageRecipient><PartyName>Web Client</PartyName></MessageRecipient>
   </MessageHeader>
-</NewReleaseMessage>"#, uuid::Uuid::new_v4());
+</NewReleaseMessage>"#,
+            uuid::Uuid::new_v4()
+        );
         results.push(result);
     }
-    
+
     console_log!("Batch build completed: {} results", results.len());
     Ok(results)
 }
@@ -907,7 +974,7 @@ pub async fn batch_build(requests: JsValue) -> Result<Vec<String>, JsValue> {
 pub fn validate_structure(xml: String) -> ValidationResult {
     // Basic XML validation - check for well-formedness
     let mut result = ValidationResult::new(true);
-    
+
     // Simple validation checks
     if xml.is_empty() {
         result.is_valid = false;
@@ -916,8 +983,12 @@ pub fn validate_structure(xml: String) -> ValidationResult {
         result.is_valid = false;
         result.set_errors(vec!["Invalid XML format".to_string()]);
     }
-    
-    console_log!("XML validation: is_valid={}, errors={}", result.is_valid, result.errors().len());
+
+    console_log!(
+        "XML validation: is_valid={}, errors={}",
+        result.is_valid,
+        result.errors().len()
+    );
     result
 }
 

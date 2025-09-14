@@ -1,28 +1,21 @@
 // packages/ddex-builder/src/preflight.rs
 //! Comprehensive preflight validation for DDEX messages
 
-use regex::Regex;
 use once_cell::sync::Lazy;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 // Validation regex patterns
-static ISRC_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^[A-Z]{2}[A-Z0-9]{3}\d{2}\d{5}$").unwrap()
-});
+static ISRC_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^[A-Z]{2}[A-Z0-9]{3}\d{2}\d{5}$").unwrap());
 
-static UPC_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^\d{12,14}$").unwrap()
-});
+static UPC_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\d{12,14}$").unwrap());
 
 #[allow(dead_code)]
-static ISWC_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^T\d{10}$").unwrap()
-});
+static ISWC_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"^T\d{10}$").unwrap());
 
 #[allow(dead_code)]
-static ISNI_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^\d{15}[\dX]$").unwrap()
-});
+static ISNI_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\d{15}[\dX]$").unwrap());
 
 /// Preflight validator for DDEX messages
 pub struct PreflightValidator {
@@ -34,22 +27,22 @@ pub struct PreflightValidator {
 pub struct ValidationConfig {
     /// Validation level
     pub level: PreflightLevel,
-    
+
     /// Validate identifier formats
     pub validate_identifiers: bool,
-    
+
     /// Validate checksums
     pub validate_checksums: bool,
-    
+
     /// Check for required fields
     pub check_required_fields: bool,
-    
+
     /// Validate dates
     pub validate_dates: bool,
-    
+
     /// Check references
     pub validate_references: bool,
-    
+
     /// Profile-specific validation
     pub profile: Option<String>,
 }
@@ -134,7 +127,7 @@ impl PreflightValidator {
     pub fn new(config: ValidationConfig) -> Self {
         Self { config }
     }
-    
+
     /// Validate a build request
     pub fn validate(
         &self,
@@ -146,38 +139,38 @@ impl PreflightValidator {
             info: Vec::new(),
             passed: true,
         };
-        
+
         if self.config.level == PreflightLevel::None {
             return Ok(result);
         }
-        
+
         // Validate releases
         for (idx, release) in request.releases.iter().enumerate() {
             self.validate_release(release, idx, &mut result)?;
         }
-        
+
         // Validate deals
         for (idx, deal) in request.deals.iter().enumerate() {
             self.validate_deal(deal, idx, &mut result)?;
         }
-        
+
         // Check cross-references if enabled
         if self.config.validate_references {
             self.validate_references(request, &mut result)?;
         }
-        
+
         // Apply profile-specific validation
         if let Some(profile) = &self.config.profile {
             self.validate_profile(request, profile, &mut result)?;
         }
-        
+
         // Determine if validation passed
-        result.passed = result.errors.is_empty() && 
-            (self.config.level != PreflightLevel::Strict || result.warnings.is_empty());
-        
+        result.passed = result.errors.is_empty()
+            && (self.config.level != PreflightLevel::Strict || result.warnings.is_empty());
+
         Ok(result)
     }
-    
+
     fn validate_release(
         &self,
         release: &super::builder::ReleaseRequest,
@@ -185,7 +178,7 @@ impl PreflightValidator {
         result: &mut ValidationResult,
     ) -> Result<(), super::error::BuildError> {
         let location = format!("/releases[{}]", idx);
-        
+
         // Check required fields
         if self.config.check_required_fields {
             if release.title.is_empty() {
@@ -196,7 +189,7 @@ impl PreflightValidator {
                     location: format!("{}/title", location),
                 });
             }
-            
+
             if release.artist.is_empty() {
                 result.warnings.push(ValidationWarning {
                     code: "MISSING_ARTIST".to_string(),
@@ -207,7 +200,7 @@ impl PreflightValidator {
                 });
             }
         }
-        
+
         // Validate UPC
         if self.config.validate_identifiers {
             if let Some(upc) = &release.upc {
@@ -221,15 +214,15 @@ impl PreflightValidator {
                 }
             }
         }
-        
+
         // Validate tracks
         for (track_idx, track) in release.tracks.iter().enumerate() {
             self.validate_track(track, idx, track_idx, result)?;
         }
-        
+
         Ok(())
     }
-    
+
     fn validate_track(
         &self,
         track: &super::builder::TrackRequest,
@@ -238,7 +231,7 @@ impl PreflightValidator {
         result: &mut ValidationResult,
     ) -> Result<(), super::error::BuildError> {
         let location = format!("/releases[{}]/tracks[{}]", release_idx, track_idx);
-        
+
         // Validate ISRC
         if self.config.validate_identifiers {
             if !self.validate_isrc(&track.isrc) {
@@ -250,7 +243,7 @@ impl PreflightValidator {
                 });
             }
         }
-        
+
         // Validate duration format
         if !track.duration.is_empty() && !self.validate_duration(&track.duration) {
             result.warnings.push(ValidationWarning {
@@ -261,10 +254,10 @@ impl PreflightValidator {
                 suggestion: Some("Use format PT3M45S for 3:45".to_string()),
             });
         }
-        
+
         Ok(())
     }
-    
+
     fn validate_deal(
         &self,
         deal: &super::builder::DealRequest,
@@ -272,7 +265,7 @@ impl PreflightValidator {
         result: &mut ValidationResult,
     ) -> Result<(), super::error::BuildError> {
         let location = format!("/deals[{}]", idx);
-        
+
         // Validate territory codes
         for (t_idx, territory) in deal.deal_terms.territory_code.iter().enumerate() {
             if !self.validate_territory_code(territory) {
@@ -285,10 +278,10 @@ impl PreflightValidator {
                 });
             }
         }
-        
+
         Ok(())
     }
-    
+
     fn validate_references(
         &self,
         request: &super::builder::BuildRequest,
@@ -297,19 +290,19 @@ impl PreflightValidator {
         // Collect all references
         let mut release_refs = indexmap::IndexSet::new();
         let mut resource_refs = indexmap::IndexSet::new();
-        
+
         for release in &request.releases {
             if let Some(ref_val) = &release.release_reference {
                 release_refs.insert(ref_val.clone());
             }
-            
+
             for track in &release.tracks {
                 if let Some(ref_val) = &track.resource_reference {
                     resource_refs.insert(ref_val.clone());
                 }
             }
         }
-        
+
         // Check deal references
         for (idx, deal) in request.deals.iter().enumerate() {
             for (r_idx, release_ref) in deal.release_references.iter().enumerate() {
@@ -323,10 +316,10 @@ impl PreflightValidator {
                 }
             }
         }
-        
+
         Ok(())
     }
-    
+
     fn validate_profile(
         &self,
         request: &super::builder::BuildRequest,
@@ -345,7 +338,7 @@ impl PreflightValidator {
             }
         }
     }
-    
+
     fn validate_audio_album_profile(
         &self,
         request: &super::builder::BuildRequest,
@@ -358,13 +351,15 @@ impl PreflightValidator {
                 result.warnings.push(ValidationWarning {
                     code: "ALBUM_TRACK_COUNT".to_string(),
                     field: "tracks".to_string(),
-                    message: format!("AudioAlbum typically has 2+ tracks, found {}", 
-                        release.tracks.len()),
+                    message: format!(
+                        "AudioAlbum typically has 2+ tracks, found {}",
+                        release.tracks.len()
+                    ),
                     location: format!("/releases[{}]/tracks", idx),
                     suggestion: Some("Consider using AudioSingle profile".to_string()),
                 });
             }
-            
+
             // Should have UPC
             if release.upc.is_none() {
                 result.errors.push(ValidationError {
@@ -375,10 +370,10 @@ impl PreflightValidator {
                 });
             }
         }
-        
+
         Ok(())
     }
-    
+
     fn validate_audio_single_profile(
         &self,
         request: &super::builder::BuildRequest,
@@ -391,40 +386,40 @@ impl PreflightValidator {
                 result.warnings.push(ValidationWarning {
                     code: "SINGLE_TRACK_COUNT".to_string(),
                     field: "tracks".to_string(),
-                    message: format!("AudioSingle typically has 1-3 tracks, found {}", 
-                        release.tracks.len()),
+                    message: format!(
+                        "AudioSingle typically has 1-3 tracks, found {}",
+                        release.tracks.len()
+                    ),
                     location: format!("/releases[{}]/tracks", idx),
                     suggestion: Some("Consider using AudioAlbum profile".to_string()),
                 });
             }
         }
-        
+
         Ok(())
     }
-    
+
     // Identifier validation methods
     fn validate_isrc(&self, isrc: &str) -> bool {
         ISRC_PATTERN.is_match(isrc)
     }
-    
+
     fn validate_upc(&self, upc: &str) -> bool {
         if !UPC_PATTERN.is_match(upc) {
             return false;
         }
-        
+
         // Validate check digit
         self.validate_upc_checksum(upc)
     }
-    
+
     fn validate_upc_checksum(&self, upc: &str) -> bool {
-        let digits: Vec<u32> = upc.chars()
-            .filter_map(|c| c.to_digit(10))
-            .collect();
-        
+        let digits: Vec<u32> = upc.chars().filter_map(|c| c.to_digit(10)).collect();
+
         if digits.len() < 12 {
             return false;
         }
-        
+
         let mut sum = 0;
         for (i, &digit) in digits.iter().take(digits.len() - 1).enumerate() {
             if i % 2 == 0 {
@@ -433,17 +428,16 @@ impl PreflightValidator {
                 sum += digit * 3;
             }
         }
-        
+
         let check_digit = (10 - (sum % 10)) % 10;
         digits[digits.len() - 1] == check_digit
     }
-    
+
     fn validate_duration(&self, duration: &str) -> bool {
         // Basic ISO 8601 duration validation
-        duration.starts_with("PT") && 
-            (duration.contains('M') || duration.contains('S'))
+        duration.starts_with("PT") && (duration.contains('M') || duration.contains('S'))
     }
-    
+
     fn validate_territory_code(&self, code: &str) -> bool {
         // Basic ISO 3166-1 alpha-2 validation
         code.len() == 2 && code.chars().all(|c| c.is_ascii_uppercase())

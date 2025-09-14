@@ -1,5 +1,5 @@
 //! # DDEX Builder - Deterministic DDEX XML Generation
-//! 
+//!
 //! A high-performance, memory-safe DDEX XML builder that generates deterministic,
 //! byte-perfect XML using DB-C14N/1.0 canonicalization. Built in Rust with
 //! comprehensive security features and bindings for JavaScript, Python, and WebAssembly.
@@ -123,64 +123,68 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+pub mod api_security;
 pub mod ast;
 pub mod builder;
+pub mod caching;
 pub mod canonical;
 pub mod determinism;
-pub mod error;
-pub mod guarantees;
-pub mod generator;
-pub mod presets;
-pub mod streaming;
 pub mod diff;
-pub mod messages;
-pub mod linker;
-pub mod id_generator;
-pub mod preflight;
-pub mod schema;
-pub mod versions;
-pub mod optimized_strings;
-pub mod memory_optimization;
-pub mod parallel_processing;
-pub mod caching;
-pub mod security;
-pub mod api_security;
-pub mod namespace_minimizer;
+pub mod error;
 pub mod fidelity;
-pub mod verification;
+pub mod generator;
+pub mod guarantees;
+pub mod id_generator;
+pub mod linker;
+pub mod memory_optimization;
+pub mod messages;
+pub mod namespace_minimizer;
+pub mod optimized_strings;
+pub mod parallel_processing;
+pub mod preflight;
+pub mod presets;
 pub mod round_trip;
+pub mod schema;
+pub mod security;
+pub mod streaming;
+pub mod verification;
+pub mod versions;
 
 // Re-export main types
-pub use builder::{DDEXBuilder, BuildOptions, BuildRequest, BuildResult};
+pub use builder::{BuildOptions, BuildRequest, BuildResult, DDEXBuilder};
 pub use canonical::DB_C14N;
 pub use determinism::DeterminismConfig;
+pub use diff::formatter::DiffFormatter;
+pub use diff::types::{ChangeSet, ChangeType, DiffPath, ImpactLevel, SemanticChange};
+pub use diff::{DiffConfig, DiffEngine, VersionCompatibility};
 pub use error::{BuildError, BuildWarning};
 pub use guarantees::{DeterminismGuarantee, DeterminismGuaranteeValidator, GuaranteeReport};
-pub use presets::PartnerPreset;
-pub use linker::{ReferenceLinker, LinkerConfig, EntityType, LinkingError};
-pub use id_generator::{StableHashGenerator, StableHashConfig, HashAlgorithm};
-pub use preflight::{PreflightValidator, ValidationConfig, ValidationResult, PreflightLevel};
-pub use diff::{DiffEngine, DiffConfig, VersionCompatibility};
-pub use diff::types::{ChangeSet, SemanticChange, DiffPath, ChangeType, ImpactLevel};
-pub use diff::formatter::DiffFormatter;
-pub use messages::{UpdateReleaseMessage, UpdateGenerator, UpdateAction, UpdateConfig, ValidationStatus};
-pub use schema::{SchemaGenerator, JsonSchema, SchemaConfig, SchemaDraft, SchemaCommand};
-pub use versions::{VersionManager, VersionConverter, ConverterResult as ConversionResult, ConversionOptions};
+pub use id_generator::{HashAlgorithm, StableHashConfig, StableHashGenerator};
+pub use linker::{EntityType, LinkerConfig, LinkingError, ReferenceLinker};
+pub use messages::{
+    UpdateAction, UpdateConfig, UpdateGenerator, UpdateReleaseMessage, ValidationStatus,
+};
+pub use preflight::{PreflightLevel, PreflightValidator, ValidationConfig, ValidationResult};
 pub use presets::DdexVersion;
+pub use presets::PartnerPreset;
+pub use schema::{JsonSchema, SchemaCommand, SchemaConfig, SchemaDraft, SchemaGenerator};
+pub use versions::{
+    ConversionOptions, ConverterResult as ConversionResult, VersionConverter, VersionManager,
+};
 
 // Security module exports
-pub use security::{InputValidator, SecurityConfig, RateLimiter, SecureTempFile, OutputSanitizer};
-pub use api_security::{ApiSecurityManager, ApiSecurityConfig, FfiDataType, BatchStats};
+pub use api_security::{ApiSecurityConfig, ApiSecurityManager, BatchStats, FfiDataType};
+pub use security::{InputValidator, OutputSanitizer, RateLimiter, SecureTempFile, SecurityConfig};
 
 // Perfect Fidelity Engine exports
-pub use fidelity::{FidelityConfig, PreservationLevel, FidelityStatistics};
+pub use fidelity::{FidelityConfig, FidelityStatistics, PreservationLevel};
+pub use round_trip::{FidelityAnalysis, RoundTripTester};
 pub use verification::{BuildVerifier, VerificationStatistics};
-pub use round_trip::{RoundTripTester, FidelityAnalysis};
 
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 use std::collections::HashMap;
+use std::time::Duration;
 
 /// Version of the DB-C14N specification
 pub const DB_C14N_VERSION: &str = "1.0";
@@ -434,7 +438,7 @@ impl Default for BuildStatistics {
 ///
 /// let mut builder = Builder::new();
 /// builder.preset("spotify_audio_43")?;
-/// 
+///
 /// // Builder is now configured for Spotify Audio releases (ERN 4.3)
 /// assert!(builder.is_preset_locked() == false); // Unlocked for further customization
 /// # Ok::<(), ddex_builder::BuildError>(())
@@ -447,7 +451,7 @@ impl Default for BuildStatistics {
 ///
 /// let mut builder = Builder::new();
 /// builder.apply_preset("spotify_audio_43", true)?; // Lock the preset
-/// 
+///
 /// assert!(builder.is_preset_locked());
 /// # Ok::<(), ddex_builder::BuildError>(())
 /// ```
@@ -459,13 +463,13 @@ impl Default for BuildStatistics {
 /// use ddex_builder::versions::ConversionOptions;
 ///
 /// let builder = Builder::new();
-/// 
+///
 /// // Check version compatibility
 /// let compatible = builder.is_version_compatible(
-///     DdexVersion::Ern382, 
+///     DdexVersion::Ern382,
 ///     DdexVersion::Ern43
 /// );
-/// 
+///
 /// if compatible {
 ///     let options = Some(ConversionOptions::default());
 ///     let result = builder.convert_version(
@@ -528,7 +532,7 @@ impl Builder {
     /// ```
     ///
     /// # Performance
-    /// 
+    ///
     /// Creating a new builder is fast (~1μs) as presets are loaded from
     /// embedded configuration data.
     pub fn new() -> Self {
@@ -542,7 +546,7 @@ impl Builder {
             verification_config: VerificationConfig::default(),
         }
     }
-    
+
     /// Create builder with custom configuration
     pub fn with_config(config: DeterminismConfig) -> Self {
         Self {
@@ -555,7 +559,7 @@ impl Builder {
             verification_config: VerificationConfig::default(),
         }
     }
-    
+
     /// Create builder with Perfect Fidelity Engine enabled
     pub fn with_perfect_fidelity() -> Self {
         let mut fidelity_options = FidelityOptions::default();
@@ -566,7 +570,7 @@ impl Builder {
         fidelity_options.preserve_attribute_order = true;
         fidelity_options.preserve_namespace_prefixes = true;
         fidelity_options.enable_verification = true;
-        
+
         Self {
             config: DeterminismConfig::default(),
             presets: Self::load_default_presets(),
@@ -577,7 +581,7 @@ impl Builder {
             verification_config: VerificationConfig::default(),
         }
     }
-    
+
     /// Create builder with custom fidelity options
     pub fn with_fidelity_options(fidelity_options: FidelityOptions) -> Self {
         Self {
@@ -590,7 +594,7 @@ impl Builder {
             verification_config: VerificationConfig::default(),
         }
     }
-    
+
     /// Create builder optimized for round-trip operations
     pub fn for_round_trip() -> Self {
         let mut fidelity_options = FidelityOptions::default();
@@ -603,12 +607,12 @@ impl Builder {
         fidelity_options.canonicalization = CanonicalizationAlgorithm::DbC14N;
         fidelity_options.enable_verification = true;
         fidelity_options.collect_statistics = true;
-        
+
         let mut verification_config = VerificationConfig::default();
         verification_config.enable_round_trip_verification = true;
         verification_config.enable_canonicalization_verification = true;
         verification_config.enable_determinism_verification = true;
-        
+
         Self {
             config: DeterminismConfig::default(),
             presets: Self::load_default_presets(),
@@ -619,7 +623,7 @@ impl Builder {
             verification_config,
         }
     }
-    
+
     /// Applies a partner preset configuration to the builder.
     ///
     /// Presets contain pre-configured settings optimized for specific music platforms
@@ -666,21 +670,23 @@ impl Builder {
     ///
     /// [`available_presets`]: Self::available_presets
     pub fn apply_preset(&mut self, preset_name: &str, lock: bool) -> Result<(), error::BuildError> {
-        let preset = self.presets.get(preset_name)
+        let preset = self
+            .presets
+            .get(preset_name)
             .ok_or_else(|| error::BuildError::InvalidFormat {
                 field: "preset".to_string(),
                 message: format!("Unknown preset: {}", preset_name),
             })?
             .clone();
-        
+
         // Apply the preset's determinism config
         self.config = preset.determinism;
-        
+
         // Lock the preset if requested
         if lock {
             self.locked_preset = Some(preset_name.to_string());
         }
-        
+
         Ok(())
     }
 
@@ -699,28 +705,28 @@ impl Builder {
     pub fn get_preset(&self, preset_name: &str) -> Option<&PartnerPreset> {
         self.presets.get(preset_name)
     }
-    
+
     /// Check if a preset is locked
     pub fn is_preset_locked(&self) -> bool {
         self.locked_preset.is_some()
     }
-    
+
     /// Get the current configuration
     pub fn config(&self) -> &DeterminismConfig {
         &self.config
     }
-    
+
     /// Get the current fidelity options
     pub fn fidelity_options(&self) -> &FidelityOptions {
         &self.fidelity_options
     }
-    
+
     /// Set fidelity options
     pub fn set_fidelity_options(&mut self, options: FidelityOptions) -> &mut Self {
         self.fidelity_options = options;
         self
     }
-    
+
     /// Enable Perfect Fidelity Engine with default settings
     pub fn enable_perfect_fidelity(&mut self) -> &mut Self {
         self.fidelity_options.enable_perfect_fidelity = true;
@@ -732,7 +738,7 @@ impl Builder {
         self.fidelity_options.enable_verification = true;
         self
     }
-    
+
     /// Disable Perfect Fidelity Engine
     pub fn disable_perfect_fidelity(&mut self) -> &mut Self {
         self.fidelity_options.enable_perfect_fidelity = false;
@@ -743,131 +749,150 @@ impl Builder {
         self.fidelity_options.enable_verification = false;
         self
     }
-    
+
     /// Set canonicalization algorithm
     pub fn with_canonicalization(&mut self, algorithm: CanonicalizationAlgorithm) -> &mut Self {
         self.fidelity_options.canonicalization = algorithm;
         self
     }
-    
+
     /// Enable DB-C14N/1.0 canonicalization (default for DDEX)
     pub fn with_db_c14n(&mut self) -> &mut Self {
         self.fidelity_options.canonicalization = CanonicalizationAlgorithm::DbC14N;
         self
     }
-    
+
     /// Enable standard XML C14N canonicalization
     pub fn with_c14n(&mut self) -> &mut Self {
         self.fidelity_options.canonicalization = CanonicalizationAlgorithm::C14N;
         self
     }
-    
+
     /// Enable XML C14N 1.1 canonicalization
     pub fn with_c14n11(&mut self) -> &mut Self {
         self.fidelity_options.canonicalization = CanonicalizationAlgorithm::C14N11;
         self
     }
-    
+
     /// Set custom canonicalization rules
-    pub fn with_custom_canonicalization(&mut self, rules: CustomCanonicalizationRules) -> &mut Self {
+    pub fn with_custom_canonicalization(
+        &mut self,
+        rules: CustomCanonicalizationRules,
+    ) -> &mut Self {
         self.fidelity_options.canonicalization = CanonicalizationAlgorithm::Custom(rules.clone());
         self.fidelity_options.custom_canonicalization_rules = Some(rules);
         self
     }
-    
+
     /// Enable build verification
     pub fn with_verification(&mut self, config: VerificationConfig) -> &mut Self {
         self.fidelity_options.enable_verification = true;
         self.verification_config = config;
         self
     }
-    
+
     /// Enable statistics collection
     pub fn with_statistics(&mut self) -> &mut Self {
         self.fidelity_options.collect_statistics = true;
         self
     }
-    
+
     /// Check if Perfect Fidelity Engine is enabled
     pub fn is_perfect_fidelity_enabled(&self) -> bool {
         self.fidelity_options.enable_perfect_fidelity
     }
-    
+
     /// Get current canonicalization algorithm
     pub fn canonicalization_algorithm(&self) -> &CanonicalizationAlgorithm {
         &self.fidelity_options.canonicalization
     }
-    
+
     /// Set target DDEX version for building
     pub fn with_version(&mut self, version: DdexVersion) -> &mut Self {
         self.target_version = Some(version);
         self
     }
-    
+
     /// Get the target DDEX version
     pub fn target_version(&self) -> Option<DdexVersion> {
         self.target_version
     }
-    
+
     /// Detect version from XML content
     pub fn detect_version(&self, xml_content: &str) -> Result<DdexVersion, error::BuildError> {
-        self.version_manager.detect_version(xml_content)
+        self.version_manager
+            .detect_version(xml_content)
             .map(|detection| detection.detected_version)
             .map_err(|e| error::BuildError::InvalidFormat {
                 field: "version".to_string(),
                 message: format!("Version detection failed: {}", e),
             })
     }
-    
+
     /// Convert XML between DDEX versions
-    pub fn convert_version(&self, xml_content: &str, from_version: DdexVersion, to_version: DdexVersion, options: Option<ConversionOptions>) -> Result<versions::ConverterResult, error::BuildError> {
+    pub fn convert_version(
+        &self,
+        xml_content: &str,
+        from_version: DdexVersion,
+        to_version: DdexVersion,
+        options: Option<ConversionOptions>,
+    ) -> Result<versions::ConverterResult, error::BuildError> {
         let converter = versions::VersionConverter::new();
         Ok(converter.convert(xml_content, from_version, to_version, options))
     }
-    
+
     /// Get version compatibility information
     pub fn is_version_compatible(&self, from: DdexVersion, to: DdexVersion) -> bool {
         self.version_manager.is_conversion_supported(from, to)
     }
-    
+
     /// Get supported DDEX versions
     pub fn supported_versions(&self) -> Vec<DdexVersion> {
         versions::utils::supported_versions()
     }
-    
+
     fn load_default_presets() -> IndexMap<String, PartnerPreset> {
         presets::all_presets()
     }
-    
+
     /// Build DDEX XML with Perfect Fidelity Engine
-    pub fn build_with_fidelity(&self, request: &builder::BuildRequest) -> Result<FidelityBuildResult, error::BuildError> {
+    pub fn build_with_fidelity(
+        &self,
+        request: &builder::BuildRequest,
+    ) -> Result<FidelityBuildResult, error::BuildError> {
         let start_time = std::time::Instant::now();
         let mut statistics = BuildStatistics::default();
-        
+
         // Use the existing build options structure
         let build_options = builder::BuildOptions::default();
-        
+
         // Build the XML using existing builder
         let ddex_builder = builder::DDEXBuilder::new();
         let build_result = ddex_builder.build(request.clone(), build_options)?;
-        
+
         statistics.build_time = start_time.elapsed();
         statistics.output_size_bytes = build_result.xml.len();
-        
+
         // Perform verification if enabled
         let verification_result = if self.fidelity_options.enable_verification {
             // Convert lib VerificationConfig to verification VerificationConfig
             let verification_config = verification::VerificationConfig {
-                enable_round_trip_verification: self.verification_config.enable_round_trip_verification,
-                enable_canonicalization_verification: self.verification_config.enable_canonicalization_verification,
+                enable_round_trip_verification: self
+                    .verification_config
+                    .enable_round_trip_verification,
+                enable_canonicalization_verification: self
+                    .verification_config
+                    .enable_canonicalization_verification,
                 enable_schema_validation: self.verification_config.enable_schema_validation,
-                enable_determinism_verification: self.verification_config.enable_determinism_verification,
+                enable_determinism_verification: self
+                    .verification_config
+                    .enable_determinism_verification,
                 determinism_test_iterations: self.verification_config.determinism_test_iterations,
                 verification_timeout: self.verification_config.verification_timeout,
             };
             let verifier = verification::BuildVerifier::new(verification_config);
             let result = verifier.verify(&build_result.xml, &self.fidelity_options)?;
-            
+
             // Convert verification::VerificationResult to VerificationResult
             Some(VerificationResult {
                 success: result.success,
@@ -875,23 +900,31 @@ impl Builder {
                 canonicalization_success: result.canonicalization_success,
                 determinism_success: result.determinism_success,
                 schema_validation_success: result.schema_validation_success,
-                issues: result.issues.into_iter().map(|issue| VerificationIssue {
-                    category: issue.category,
-                    severity: match issue.severity {
-                        verification::VerificationSeverity::Error => VerificationSeverity::Error,
-                        verification::VerificationSeverity::Warning => VerificationSeverity::Warning,
-                        verification::VerificationSeverity::Info => VerificationSeverity::Info,
-                    },
-                    message: issue.message,
-                    path: issue.path,
-                    suggestion: issue.suggestion,
-                }).collect(),
+                issues: result
+                    .issues
+                    .into_iter()
+                    .map(|issue| VerificationIssue {
+                        category: issue.category,
+                        severity: match issue.severity {
+                            verification::VerificationSeverity::Error => {
+                                VerificationSeverity::Error
+                            }
+                            verification::VerificationSeverity::Warning => {
+                                VerificationSeverity::Warning
+                            }
+                            verification::VerificationSeverity::Info => VerificationSeverity::Info,
+                        },
+                        message: issue.message,
+                        path: issue.path,
+                        suggestion: issue.suggestion,
+                    })
+                    .collect(),
                 verification_time: result.verification_time,
             })
         } else {
             None
         };
-        
+
         Ok(FidelityBuildResult {
             xml: build_result.xml,
             statistics: if self.fidelity_options.collect_statistics {
@@ -900,30 +933,37 @@ impl Builder {
                 None
             },
             verification_result,
-            canonicalization_applied: self.fidelity_options.canonicalization != CanonicalizationAlgorithm::None,
-            db_c14n_version: if self.fidelity_options.canonicalization == CanonicalizationAlgorithm::DbC14N {
+            canonicalization_applied: self.fidelity_options.canonicalization
+                != CanonicalizationAlgorithm::None,
+            db_c14n_version: if self.fidelity_options.canonicalization
+                == CanonicalizationAlgorithm::DbC14N
+            {
                 Some(DB_C14N_VERSION.to_string())
             } else {
                 None
             },
         })
     }
-    
+
     /// Verify build output meets fidelity requirements
     pub fn verify_build(&self, xml_output: &str) -> Result<VerificationResult, error::BuildError> {
         // Convert lib VerificationConfig to verification VerificationConfig
         let verification_config = verification::VerificationConfig {
             enable_round_trip_verification: self.verification_config.enable_round_trip_verification,
-            enable_canonicalization_verification: self.verification_config.enable_canonicalization_verification,
+            enable_canonicalization_verification: self
+                .verification_config
+                .enable_canonicalization_verification,
             enable_schema_validation: self.verification_config.enable_schema_validation,
-            enable_determinism_verification: self.verification_config.enable_determinism_verification,
+            enable_determinism_verification: self
+                .verification_config
+                .enable_determinism_verification,
             determinism_test_iterations: self.verification_config.determinism_test_iterations,
             verification_timeout: self.verification_config.verification_timeout,
         };
-        
+
         let verifier = verification::BuildVerifier::new(verification_config);
         let result = verifier.verify(xml_output, &self.fidelity_options)?;
-        
+
         // Convert verification::VerificationResult to VerificationResult
         Ok(VerificationResult {
             success: result.success,
@@ -931,26 +971,35 @@ impl Builder {
             canonicalization_success: result.canonicalization_success,
             determinism_success: result.determinism_success,
             schema_validation_success: result.schema_validation_success,
-            issues: result.issues.into_iter().map(|issue| VerificationIssue {
-                category: issue.category,
-                severity: match issue.severity {
-                    verification::VerificationSeverity::Error => VerificationSeverity::Error,
-                    verification::VerificationSeverity::Warning => VerificationSeverity::Warning,
-                    verification::VerificationSeverity::Info => VerificationSeverity::Info,
-                },
-                message: issue.message,
-                path: issue.path,
-                suggestion: issue.suggestion,
-            }).collect(),
+            issues: result
+                .issues
+                .into_iter()
+                .map(|issue| VerificationIssue {
+                    category: issue.category,
+                    severity: match issue.severity {
+                        verification::VerificationSeverity::Error => VerificationSeverity::Error,
+                        verification::VerificationSeverity::Warning => {
+                            VerificationSeverity::Warning
+                        }
+                        verification::VerificationSeverity::Info => VerificationSeverity::Info,
+                    },
+                    message: issue.message,
+                    path: issue.path,
+                    suggestion: issue.suggestion,
+                })
+                .collect(),
             verification_time: result.verification_time,
         })
     }
-    
+
     /// Test round-trip fidelity: XML → Parse → Build → Parse → Compare
-    pub fn test_round_trip_fidelity(&self, original_xml: &str) -> Result<RoundTripResult, error::BuildError> {
+    pub fn test_round_trip_fidelity(
+        &self,
+        original_xml: &str,
+    ) -> Result<RoundTripResult, error::BuildError> {
         let round_trip = round_trip::RoundTripTester::new(self.fidelity_options.clone());
         let result = round_trip.test_round_trip(original_xml)?;
-        
+
         // Convert round_trip::RoundTripResult to RoundTripResult
         Ok(RoundTripResult {
             success: result.success,
@@ -961,7 +1010,7 @@ impl Builder {
             test_time: result.test_time,
         })
     }
-    
+
     /// Canonicalize XML using the configured algorithm
     pub fn canonicalize(&self, xml_content: &str) -> Result<String, error::BuildError> {
         match &self.fidelity_options.canonicalization {
@@ -969,23 +1018,23 @@ impl Builder {
             CanonicalizationAlgorithm::C14N => {
                 // TODO: Implement C14N canonicalization
                 Ok(xml_content.to_string())
-            },
+            }
             CanonicalizationAlgorithm::C14N11 => {
                 // TODO: Implement C14N11 canonicalization
                 Ok(xml_content.to_string())
-            },
+            }
             CanonicalizationAlgorithm::DbC14N => {
                 // TODO: Implement DB-C14N canonicalization using canonical module
                 Ok(xml_content.to_string())
-            },
+            }
             CanonicalizationAlgorithm::Custom(rules) => {
                 // TODO: Implement custom canonicalization
                 let _ = rules; // Avoid unused parameter warning
                 Ok(xml_content.to_string())
-            },
+            }
         }
     }
-    
+
     /// Get DB-C14N/1.0 configuration details
     pub fn db_c14n_config(&self) -> DbC14NConfig {
         DbC14NConfig {
@@ -993,7 +1042,9 @@ impl Builder {
             algorithm: self.fidelity_options.canonicalization.clone(),
             deterministic_ordering: self.fidelity_options.enable_deterministic_ordering,
             preserve_comments: self.fidelity_options.preserve_comments,
-            preserve_processing_instructions: self.fidelity_options.preserve_processing_instructions,
+            preserve_processing_instructions: self
+                .fidelity_options
+                .preserve_processing_instructions,
             namespace_handling: if self.fidelity_options.preserve_namespace_prefixes {
                 NamespaceHandling::Preserve
             } else {
@@ -1001,12 +1052,15 @@ impl Builder {
             },
         }
     }
-    
+
     /// Internal build method used by determinism verifier
-    pub(crate) fn build_internal(&self, request: &builder::BuildRequest) -> Result<builder::BuildResult, error::BuildError> {
+    pub(crate) fn build_internal(
+        &self,
+        request: &builder::BuildRequest,
+    ) -> Result<builder::BuildResult, error::BuildError> {
         let ddex_builder = builder::DDEXBuilder::new();
         let build_options = builder::BuildOptions::default();
-        
+
         ddex_builder.build(request.clone(), build_options)
     }
 }
@@ -1093,29 +1147,29 @@ pub fn fidelity_engine_info() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_builder_creation() {
         let builder = Builder::new();
         assert!(!builder.is_preset_locked());
     }
-    
+
     #[test]
     fn test_preset_application() {
         let mut builder = Builder::new();
         assert!(builder.apply_preset("audio_album", false).is_ok());
         assert!(!builder.is_preset_locked());
-        
+
         assert!(builder.apply_preset("audio_album", true).is_ok());
         assert!(builder.is_preset_locked());
     }
-    
+
     #[test]
     fn test_unknown_preset() {
         let mut builder = Builder::new();
         assert!(builder.apply_preset("unknown_preset", false).is_err());
     }
-    
+
     #[test]
     fn test_version_info() {
         let info = version_info();

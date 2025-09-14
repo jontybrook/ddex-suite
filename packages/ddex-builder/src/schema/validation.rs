@@ -1,9 +1,9 @@
 //! Schema-based validation for DDEX structures
 
 use super::*;
-use serde_json::Value as JsonValue;
-use regex::Regex;
 use once_cell::sync::Lazy;
+use regex::Regex;
+use serde_json::Value as JsonValue;
 
 /// Schema-based validator for DDEX data
 #[derive(Debug, Clone)]
@@ -82,25 +82,18 @@ pub struct ValidationMetadata {
 }
 
 // Common DDEX validation patterns
-static ISRC_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^[A-Z]{2}[A-Z0-9]{3}\d{7}$").unwrap()
-});
+static ISRC_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[A-Z]{2}[A-Z0-9]{3}\d{7}$").unwrap());
 
-static UPC_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^\d{12}$").unwrap()
-});
+static UPC_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\d{12}$").unwrap());
 
-static LANGUAGE_CODE_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^[a-z]{2}(-[A-Z]{2})?$").unwrap()
-});
+static LANGUAGE_CODE_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^[a-z]{2}(-[A-Z]{2})?$").unwrap());
 
-static TERRITORY_CODE_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^[A-Z]{2}|Worldwide$").unwrap()
-});
+static TERRITORY_CODE_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^[A-Z]{2}|Worldwide$").unwrap());
 
-static DURATION_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^PT(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?$").unwrap()
-});
+static DURATION_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^PT(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?$").unwrap());
 
 impl Default for ValidationConfig {
     fn default() -> Self {
@@ -121,33 +114,33 @@ impl SchemaValidator {
             config: ValidationConfig::default(),
         }
     }
-    
+
     /// Create validator with custom configuration
     pub fn with_config(schema: JsonSchema, config: ValidationConfig) -> Self {
         Self { schema, config }
     }
-    
+
     /// Validate JSON data against the schema
     pub fn validate(&self, data: &JsonValue) -> ValidationResult {
         let start_time = std::time::Instant::now();
         let mut errors = Vec::new();
         let mut warnings = Vec::new();
         let mut properties_validated = 0;
-        
+
         self.validate_recursive(
-            data, 
-            &self.schema, 
-            "", 
-            "", 
-            0, 
-            &mut errors, 
+            data,
+            &self.schema,
+            "",
+            "",
+            0,
+            &mut errors,
             &mut warnings,
-            &mut properties_validated
+            &mut properties_validated,
         );
-        
+
         let validation_time = start_time.elapsed();
         let valid = errors.is_empty() && (!self.config.strict_mode || warnings.is_empty());
-        
+
         ValidationResult {
             valid,
             errors,
@@ -160,15 +153,15 @@ impl SchemaValidator {
             },
         }
     }
-    
+
     /// Validate and return detailed path-based errors
     pub fn validate_with_paths(&self, data: &JsonValue) -> ValidationResult {
         // Same as validate but with more detailed path tracking
         self.validate(data)
     }
-    
+
     // Private validation methods
-    
+
     fn validate_recursive(
         &self,
         data: &JsonValue,
@@ -183,23 +176,31 @@ impl SchemaValidator {
         if depth > self.config.max_depth {
             errors.push(ValidationError {
                 code: "MAX_DEPTH_EXCEEDED".to_string(),
-                message: format!("Maximum validation depth {} exceeded", self.config.max_depth),
+                message: format!(
+                    "Maximum validation depth {} exceeded",
+                    self.config.max_depth
+                ),
                 instance_path: instance_path.to_string(),
                 schema_path: schema_path.to_string(),
                 invalid_value: Some(data.clone()),
             });
             return;
         }
-        
+
         *properties_validated += 1;
-        
+
         // Handle schema references
         if let Some(ref reference) = schema.reference {
             if let Some(resolved_schema) = self.resolve_reference(reference) {
                 return self.validate_recursive(
-                    data, &resolved_schema, instance_path, 
+                    data,
+                    &resolved_schema,
+                    instance_path,
                     &format!("{}/{}", schema_path, reference),
-                    depth + 1, errors, warnings, properties_validated
+                    depth + 1,
+                    errors,
+                    warnings,
+                    properties_validated,
                 );
             } else {
                 errors.push(ValidationError {
@@ -212,46 +213,79 @@ impl SchemaValidator {
                 return;
             }
         }
-        
+
         // Validate type
         if let Some(ref expected_type) = schema.schema_type {
             self.validate_type(data, expected_type, instance_path, schema_path, errors);
         }
-        
+
         match data {
             JsonValue::Object(obj) => {
-                self.validate_object(obj, schema, instance_path, schema_path, depth, errors, warnings, properties_validated);
-            },
+                self.validate_object(
+                    obj,
+                    schema,
+                    instance_path,
+                    schema_path,
+                    depth,
+                    errors,
+                    warnings,
+                    properties_validated,
+                );
+            }
             JsonValue::Array(arr) => {
-                self.validate_array(arr, schema, instance_path, schema_path, depth, errors, warnings, properties_validated);
-            },
+                self.validate_array(
+                    arr,
+                    schema,
+                    instance_path,
+                    schema_path,
+                    depth,
+                    errors,
+                    warnings,
+                    properties_validated,
+                );
+            }
             JsonValue::String(s) => {
                 self.validate_string(s, schema, instance_path, schema_path, errors, warnings);
-            },
+            }
             JsonValue::Number(_) => {
                 self.validate_number(data, schema, instance_path, schema_path, errors, warnings);
-            },
+            }
             _ => {}
         }
-        
+
         // Validate enum values
         if let Some(ref enum_values) = schema.enum_values {
             if !enum_values.contains(data) {
                 errors.push(ValidationError {
                     code: "ENUM_VIOLATION".to_string(),
-                    message: format!("Value must be one of: {}", 
-                        enum_values.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(", ")),
+                    message: format!(
+                        "Value must be one of: {}",
+                        enum_values
+                            .iter()
+                            .map(|v| v.to_string())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ),
                     instance_path: instance_path.to_string(),
                     schema_path: format!("{}/enum", schema_path),
                     invalid_value: Some(data.clone()),
                 });
             }
         }
-        
+
         // Handle conditional schemas
-        self.validate_conditionals(data, schema, instance_path, schema_path, depth, errors, warnings, properties_validated);
+        self.validate_conditionals(
+            data,
+            schema,
+            instance_path,
+            schema_path,
+            depth,
+            errors,
+            warnings,
+            properties_validated,
+        );
     }
-    
+
     fn validate_object(
         &self,
         obj: &serde_json::Map<String, JsonValue>,
@@ -277,7 +311,7 @@ impl SchemaValidator {
                 }
             }
         }
-        
+
         // Validate properties
         if let Some(ref properties) = schema.properties {
             for (prop_name, prop_value) in obj {
@@ -286,15 +320,21 @@ impl SchemaValidator {
                 } else {
                     format!("{}/{}", instance_path, prop_name)
                 };
-                
+
                 if let Some(prop_schema) = properties.get(prop_name) {
                     self.validate_recursive(
-                        prop_value, prop_schema, &new_instance_path,
+                        prop_value,
+                        prop_schema,
+                        &new_instance_path,
                         &format!("{}/properties/{}", schema_path, prop_name),
-                        depth + 1, errors, warnings, properties_validated
+                        depth + 1,
+                        errors,
+                        warnings,
+                        properties_validated,
                     );
-                } else if !self.config.allow_additional_properties && 
-                    schema.additional_properties.unwrap_or(true) == false {
+                } else if !self.config.allow_additional_properties
+                    && schema.additional_properties.unwrap_or(true) == false
+                {
                     errors.push(ValidationError {
                         code: "ADDITIONAL_PROPERTY_NOT_ALLOWED".to_string(),
                         message: format!("Additional property '{}' is not allowed", prop_name),
@@ -306,7 +346,7 @@ impl SchemaValidator {
             }
         }
     }
-    
+
     fn validate_array(
         &self,
         arr: &Vec<JsonValue>,
@@ -323,39 +363,52 @@ impl SchemaValidator {
             if arr.len() < min_length {
                 errors.push(ValidationError {
                     code: "ARRAY_TOO_SHORT".to_string(),
-                    message: format!("Array must have at least {} items, has {}", min_length, arr.len()),
+                    message: format!(
+                        "Array must have at least {} items, has {}",
+                        min_length,
+                        arr.len()
+                    ),
                     instance_path: instance_path.to_string(),
                     schema_path: format!("{}/minLength", schema_path),
                     invalid_value: Some(JsonValue::Array(arr.clone())),
                 });
             }
         }
-        
+
         if let Some(max_length) = schema.max_length {
             if arr.len() > max_length {
                 errors.push(ValidationError {
                     code: "ARRAY_TOO_LONG".to_string(),
-                    message: format!("Array must have at most {} items, has {}", max_length, arr.len()),
+                    message: format!(
+                        "Array must have at most {} items, has {}",
+                        max_length,
+                        arr.len()
+                    ),
                     instance_path: instance_path.to_string(),
                     schema_path: format!("{}/maxLength", schema_path),
                     invalid_value: Some(JsonValue::Array(arr.clone())),
                 });
             }
         }
-        
+
         // Validate items
         if let Some(ref items_schema) = schema.items {
             for (index, item) in arr.iter().enumerate() {
                 let new_instance_path = format!("{}/{}", instance_path, index);
                 self.validate_recursive(
-                    item, items_schema, &new_instance_path,
+                    item,
+                    items_schema,
+                    &new_instance_path,
                     &format!("{}/items", schema_path),
-                    depth + 1, errors, warnings, properties_validated
+                    depth + 1,
+                    errors,
+                    warnings,
+                    properties_validated,
                 );
             }
         }
     }
-    
+
     fn validate_string(
         &self,
         s: &str,
@@ -370,26 +423,34 @@ impl SchemaValidator {
             if s.len() < min_length {
                 errors.push(ValidationError {
                     code: "STRING_TOO_SHORT".to_string(),
-                    message: format!("String must be at least {} characters, is {}", min_length, s.len()),
+                    message: format!(
+                        "String must be at least {} characters, is {}",
+                        min_length,
+                        s.len()
+                    ),
                     instance_path: instance_path.to_string(),
                     schema_path: format!("{}/minLength", schema_path),
                     invalid_value: Some(JsonValue::String(s.to_string())),
                 });
             }
         }
-        
+
         if let Some(max_length) = schema.max_length {
             if s.len() > max_length {
                 errors.push(ValidationError {
                     code: "STRING_TOO_LONG".to_string(),
-                    message: format!("String must be at most {} characters, is {}", max_length, s.len()),
+                    message: format!(
+                        "String must be at most {} characters, is {}",
+                        max_length,
+                        s.len()
+                    ),
                     instance_path: instance_path.to_string(),
                     schema_path: format!("{}/maxLength", schema_path),
                     invalid_value: Some(JsonValue::String(s.to_string())),
                 });
             }
         }
-        
+
         // Check pattern
         if let Some(ref pattern) = schema.pattern {
             if let Ok(regex) = Regex::new(pattern) {
@@ -404,16 +465,16 @@ impl SchemaValidator {
                 }
             }
         }
-        
+
         // Validate format
         if let Some(ref format) = schema.format {
             self.validate_format(s, format, instance_path, schema_path, errors, warnings);
         }
-        
+
         // Special DDEX validations
         self.validate_ddex_codes(s, instance_path, errors, warnings);
     }
-    
+
     fn validate_number(
         &self,
         _num: &JsonValue,
@@ -426,7 +487,7 @@ impl SchemaValidator {
         // Number validation logic would go here
         // (min, max, multipleOf, etc.)
     }
-    
+
     fn validate_type(
         &self,
         data: &JsonValue,
@@ -443,7 +504,7 @@ impl SchemaValidator {
             JsonValue::Array(_) => "array",
             JsonValue::Object(_) => "object",
         };
-        
+
         if actual_type != expected_type {
             errors.push(ValidationError {
                 code: "TYPE_MISMATCH".to_string(),
@@ -454,7 +515,7 @@ impl SchemaValidator {
             });
         }
     }
-    
+
     fn validate_format(
         &self,
         s: &str,
@@ -467,7 +528,7 @@ impl SchemaValidator {
         if !self.config.validate_formats {
             return;
         }
-        
+
         match format {
             "date" => {
                 if chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").is_err() {
@@ -479,7 +540,7 @@ impl SchemaValidator {
                         invalid_value: Some(JsonValue::String(s.to_string())),
                     });
                 }
-            },
+            }
             "date-time" => {
                 if chrono::DateTime::parse_from_rfc3339(s).is_err() {
                     errors.push(ValidationError {
@@ -490,7 +551,7 @@ impl SchemaValidator {
                         invalid_value: Some(JsonValue::String(s.to_string())),
                     });
                 }
-            },
+            }
             "uri" => {
                 if url::Url::parse(s).is_err() {
                     errors.push(ValidationError {
@@ -501,7 +562,7 @@ impl SchemaValidator {
                         invalid_value: Some(JsonValue::String(s.to_string())),
                     });
                 }
-            },
+            }
             _ => {
                 warnings.push(ValidationWarning {
                     code: "UNKNOWN_FORMAT".to_string(),
@@ -512,7 +573,7 @@ impl SchemaValidator {
             }
         }
     }
-    
+
     fn validate_ddex_codes(
         &self,
         s: &str,
@@ -532,7 +593,7 @@ impl SchemaValidator {
                 });
             }
         }
-        
+
         // Check for UPC patterns
         if instance_path.contains("upc") {
             if !UPC_PATTERN.is_match(s) {
@@ -545,20 +606,21 @@ impl SchemaValidator {
                 });
             }
         }
-        
+
         // Check duration format
         if instance_path.contains("duration") {
             if !DURATION_PATTERN.is_match(s) {
                 errors.push(ValidationError {
                     code: "INVALID_DURATION".to_string(),
-                    message: "Invalid duration format, expected ISO 8601 duration (PT#M#S)".to_string(),
+                    message: "Invalid duration format, expected ISO 8601 duration (PT#M#S)"
+                        .to_string(),
                     instance_path: instance_path.to_string(),
                     schema_path: "pattern".to_string(),
                     invalid_value: Some(JsonValue::String(s.to_string())),
                 });
             }
         }
-        
+
         // Check language codes
         if instance_path.contains("language_code") {
             if !LANGUAGE_CODE_PATTERN.is_match(s) {
@@ -566,24 +628,30 @@ impl SchemaValidator {
                     code: "SUSPICIOUS_LANGUAGE_CODE".to_string(),
                     message: "Language code does not match ISO 639 format".to_string(),
                     instance_path: instance_path.to_string(),
-                    suggestion: Some("Use ISO 639-1 language codes (e.g., 'en', 'fr', 'en-US')".to_string()),
+                    suggestion: Some(
+                        "Use ISO 639-1 language codes (e.g., 'en', 'fr', 'en-US')".to_string(),
+                    ),
                 });
             }
         }
-        
+
         // Check territory codes
         if instance_path.contains("territory_code") {
             if !TERRITORY_CODE_PATTERN.is_match(s) {
                 warnings.push(ValidationWarning {
                     code: "SUSPICIOUS_TERRITORY_CODE".to_string(),
-                    message: "Territory code should be ISO 3166 country code or 'Worldwide'".to_string(),
+                    message: "Territory code should be ISO 3166 country code or 'Worldwide'"
+                        .to_string(),
                     instance_path: instance_path.to_string(),
-                    suggestion: Some("Use ISO 3166-1 alpha-2 country codes (e.g., 'US', 'GB') or 'Worldwide'".to_string()),
+                    suggestion: Some(
+                        "Use ISO 3166-1 alpha-2 country codes (e.g., 'US', 'GB') or 'Worldwide'"
+                            .to_string(),
+                    ),
                 });
             }
         }
     }
-    
+
     fn validate_conditionals(
         &self,
         data: &JsonValue,
@@ -598,53 +666,74 @@ impl SchemaValidator {
         // Handle if/then/else conditions
         if let Some(ref if_schema) = schema.if_schema {
             let condition_result = self.test_condition(data, if_schema);
-            
+
             if condition_result {
                 if let Some(ref then_schema) = schema.then_schema {
                     self.validate_recursive(
-                        data, then_schema, instance_path,
+                        data,
+                        then_schema,
+                        instance_path,
                         &format!("{}/then", schema_path),
-                        depth + 1, errors, warnings, properties_validated
+                        depth + 1,
+                        errors,
+                        warnings,
+                        properties_validated,
                     );
                 }
             } else if let Some(ref else_schema) = schema.else_schema {
                 self.validate_recursive(
-                    data, else_schema, instance_path,
+                    data,
+                    else_schema,
+                    instance_path,
                     &format!("{}/else", schema_path),
-                    depth + 1, errors, warnings, properties_validated
+                    depth + 1,
+                    errors,
+                    warnings,
+                    properties_validated,
                 );
             }
         }
-        
+
         // Handle allOf, anyOf, oneOf
         if let Some(ref all_of) = schema.all_of {
             for (index, sub_schema) in all_of.iter().enumerate() {
                 self.validate_recursive(
-                    data, sub_schema, instance_path,
+                    data,
+                    sub_schema,
+                    instance_path,
                     &format!("{}/allOf/{}", schema_path, index),
-                    depth + 1, errors, warnings, properties_validated
+                    depth + 1,
+                    errors,
+                    warnings,
+                    properties_validated,
                 );
             }
         }
-        
+
         if let Some(ref any_of) = schema.any_of {
             let mut any_valid = false;
             for sub_schema in any_of {
                 let mut temp_errors = Vec::new();
                 let mut temp_warnings = Vec::new();
                 let mut temp_count = 0;
-                
+
                 self.validate_recursive(
-                    data, sub_schema, instance_path, schema_path,
-                    depth + 1, &mut temp_errors, &mut temp_warnings, &mut temp_count
+                    data,
+                    sub_schema,
+                    instance_path,
+                    schema_path,
+                    depth + 1,
+                    &mut temp_errors,
+                    &mut temp_warnings,
+                    &mut temp_count,
                 );
-                
+
                 if temp_errors.is_empty() {
                     any_valid = true;
                     break;
                 }
             }
-            
+
             if !any_valid {
                 errors.push(ValidationError {
                     code: "ANY_OF_FAILED".to_string(),
@@ -655,24 +744,30 @@ impl SchemaValidator {
                 });
             }
         }
-        
+
         if let Some(ref one_of) = schema.one_of {
             let mut valid_count = 0;
             for sub_schema in one_of {
                 let mut temp_errors = Vec::new();
                 let mut temp_warnings = Vec::new();
                 let mut temp_count = 0;
-                
+
                 self.validate_recursive(
-                    data, sub_schema, instance_path, schema_path,
-                    depth + 1, &mut temp_errors, &mut temp_warnings, &mut temp_count
+                    data,
+                    sub_schema,
+                    instance_path,
+                    schema_path,
+                    depth + 1,
+                    &mut temp_errors,
+                    &mut temp_warnings,
+                    &mut temp_count,
                 );
-                
+
                 if temp_errors.is_empty() {
                     valid_count += 1;
                 }
             }
-            
+
             if valid_count != 1 {
                 errors.push(ValidationError {
                     code: "ONE_OF_FAILED".to_string(),
@@ -684,12 +779,12 @@ impl SchemaValidator {
             }
         }
     }
-    
+
     fn test_condition(&self, _data: &JsonValue, _if_schema: &JsonSchema) -> bool {
         // Simplified condition testing - would need full implementation
         true
     }
-    
+
     fn resolve_reference(&self, reference: &str) -> Option<JsonSchema> {
         // Resolve JSON Schema $ref - simplified implementation
         if reference.starts_with("#/$defs/") {
@@ -700,32 +795,48 @@ impl SchemaValidator {
         }
         None
     }
-    
+
     fn calculate_schema_complexity(&self, schema: &JsonSchema) -> f64 {
         let mut complexity = 0.0;
-        
+
         if let Some(ref properties) = schema.properties {
             complexity += properties.len() as f64;
         }
         if let Some(ref definitions) = schema.definitions {
             complexity += definitions.len() as f64 * 2.0;
         }
-        if schema.all_of.is_some() { complexity += 3.0; }
-        if schema.any_of.is_some() { complexity += 4.0; }
-        if schema.one_of.is_some() { complexity += 5.0; }
-        if schema.if_schema.is_some() { complexity += 6.0; }
-        
+        if schema.all_of.is_some() {
+            complexity += 3.0;
+        }
+        if schema.any_of.is_some() {
+            complexity += 4.0;
+        }
+        if schema.one_of.is_some() {
+            complexity += 5.0;
+        }
+        if schema.if_schema.is_some() {
+            complexity += 6.0;
+        }
+
         complexity
     }
-    
+
     fn calculate_data_complexity(&self, data: &JsonValue) -> f64 {
         match data {
             JsonValue::Object(obj) => {
-                obj.len() as f64 + obj.values().map(|v| self.calculate_data_complexity(v) * 0.5).sum::<f64>()
-            },
+                obj.len() as f64
+                    + obj
+                        .values()
+                        .map(|v| self.calculate_data_complexity(v) * 0.5)
+                        .sum::<f64>()
+            }
             JsonValue::Array(arr) => {
-                arr.len() as f64 + arr.iter().map(|v| self.calculate_data_complexity(v) * 0.3).sum::<f64>()
-            },
+                arr.len() as f64
+                    + arr
+                        .iter()
+                        .map(|v| self.calculate_data_complexity(v) * 0.3)
+                        .sum::<f64>()
+            }
             _ => 1.0,
         }
     }
@@ -737,21 +848,23 @@ impl ValidationResult {
     pub fn is_valid(&self) -> bool {
         self.valid
     }
-    
+
     /// Get all errors as formatted strings
     pub fn error_messages(&self) -> Vec<String> {
-        self.errors.iter()
+        self.errors
+            .iter()
             .map(|e| format!("{}: {} (at {})", e.code, e.message, e.instance_path))
             .collect()
     }
-    
+
     /// Get all warnings as formatted strings
     pub fn warning_messages(&self) -> Vec<String> {
-        self.warnings.iter()
+        self.warnings
+            .iter()
             .map(|w| format!("{}: {} (at {})", w.code, w.message, w.instance_path))
             .collect()
     }
-    
+
     /// Get validation summary
     pub fn summary(&self) -> String {
         format!(

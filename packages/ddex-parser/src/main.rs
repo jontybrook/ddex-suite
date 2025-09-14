@@ -3,8 +3,8 @@
 mod cli;
 mod error;
 mod parser;
-mod transform;
 mod streaming;
+mod transform;
 mod utf8_utils;
 
 // Re-export for CLI use

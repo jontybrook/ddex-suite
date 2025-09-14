@@ -1,29 +1,35 @@
 //! Performance analysis and profiling for streaming parser
 
-use crate::streaming::working_impl::{WorkingStreamIterator, WorkingStreamingElement};
 use crate::error::ParseError;
+use crate::streaming::working_impl::{WorkingStreamIterator, WorkingStreamingElement};
 use ddex_core::models::versions::ERNVersion;
 use std::io::Cursor;
 use std::time::Instant;
 
 /// Generate large test XML for performance testing
 fn generate_large_test_file(target_size_bytes: usize) -> Vec<u8> {
-    let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43">
     <MessageHeader>
         <MessageId>PERF-TEST-MSG</MessageId>
         <CreatedDateTime>2023-01-01T00:00:00Z</CreatedDateTime>
     </MessageHeader>
-"#);
+"#,
+    );
 
     // Calculate how many releases we need
     let single_release_size = 500; // Approximate size of one release
     let target_releases = (target_size_bytes / single_release_size).max(10);
 
-    println!("Generating {} releases for performance test", target_releases);
+    println!(
+        "Generating {} releases for performance test",
+        target_releases
+    );
 
     for i in 0..target_releases {
-        xml.push_str(&format!(r#"
+        xml.push_str(&format!(
+            r#"
     <Release ReleaseReference="PERF-REL-{:06}">
         <ReferenceTitle>
             <TitleText>Performance Test Release #{}</TitleText>
@@ -43,7 +49,11 @@ fn generate_large_test_file(target_size_bytes: usize) -> Vec<u8> {
         </CLine>
         <ReleaseLabelReference>LBL-{:03}</ReleaseLabelReference>
     </Release>
-"#, i, i, i % 100));
+"#,
+            i,
+            i,
+            i % 100
+        ));
 
         // Add some sound recordings too
         for j in 0..5 {
@@ -55,7 +65,8 @@ fn generate_large_test_file(target_size_bytes: usize) -> Vec<u8> {
             let party_id = format!("00{:08}", i % 100);
             let artist_name = format!("Perf Artist {}", i % 1000);
 
-            xml.push_str(&format!(r#"
+            xml.push_str(&format!(
+                r#"
     <SoundRecording ResourceReference="{}">
         <ResourceId>
             <ISRC>{}</ISRC>
@@ -72,20 +83,28 @@ fn generate_large_test_file(target_size_bytes: usize) -> Vec<u8> {
             <ContributorRole>MainArtist</ContributorRole>
         </ResourceContributor>
     </SoundRecording>
-"#, resource_ref, isrc, track_title, duration_min, duration_sec, party_id, artist_name));
+"#,
+                resource_ref, isrc, track_title, duration_min, duration_sec, party_id, artist_name
+            ));
         }
 
         // Add progress feedback for large files
         if i > 0 && i % 1000 == 0 {
-            println!("Generated {} releases, file size: {:.1}MB",
-                    i, xml.len() as f64 / (1024.0 * 1024.0));
+            println!(
+                "Generated {} releases, file size: {:.1}MB",
+                i,
+                xml.len() as f64 / (1024.0 * 1024.0)
+            );
         }
     }
 
     xml.push_str("</ern:NewReleaseMessage>");
 
-    println!("Generated test file: {:.2}MB with {} releases",
-             xml.len() as f64 / (1024.0 * 1024.0), target_releases);
+    println!(
+        "Generated test file: {:.2}MB with {} releases",
+        xml.len() as f64 / (1024.0 * 1024.0),
+        target_releases
+    );
 
     xml.into_bytes()
 }
@@ -110,7 +129,10 @@ fn profile_memory_allocations() {
     let elapsed = start.elapsed();
 
     let per_iteration = elapsed.as_micros() as f64 / iterations as f64;
-    println!("Memory allocation profile: {:.2}μs per parse iteration", per_iteration);
+    println!(
+        "Memory allocation profile: {:.2}μs per parse iteration",
+        per_iteration
+    );
 
     // This reveals string allocation overhead
 }
@@ -137,8 +159,12 @@ fn profile_dom_parsing() {
     }
 
     let elapsed = start.elapsed();
-    println!("DOM parsing profile: {:?} for {} events, {:.2}μs per event",
-             elapsed, event_count, elapsed.as_micros() as f64 / event_count as f64);
+    println!(
+        "DOM parsing profile: {:?} for {} events, {:.2}μs per event",
+        elapsed,
+        event_count,
+        elapsed.as_micros() as f64 / event_count as f64
+    );
 }
 
 /// Profile string operations and text extraction
@@ -172,9 +198,18 @@ fn profile_string_operations() {
         let from_time = start.elapsed();
 
         println!("String '{}' ({} bytes):", test_str, test_str.len());
-        println!("  to_string(): {:.2}ns per op", to_string_time.as_nanos() as f64 / iterations as f64);
-        println!("  to_owned():  {:.2}ns per op", to_owned_time.as_nanos() as f64 / iterations as f64);
-        println!("  String::from(): {:.2}ns per op", from_time.as_nanos() as f64 / iterations as f64);
+        println!(
+            "  to_string(): {:.2}ns per op",
+            to_string_time.as_nanos() as f64 / iterations as f64
+        );
+        println!(
+            "  to_owned():  {:.2}ns per op",
+            to_owned_time.as_nanos() as f64 / iterations as f64
+        );
+        println!(
+            "  String::from(): {:.2}ns per op",
+            from_time.as_nanos() as f64 / iterations as f64
+        );
     }
 }
 
@@ -204,18 +239,17 @@ impl PerformanceAnalyzer {
         println!("🔍 Benchmarking current streaming implementation...\n");
 
         // Test different file sizes
-        let test_sizes = vec![
-            (1, "1MB"),
-            (10, "10MB"),
-            (50, "50MB"),
-            (100, "100MB"),
-        ];
+        let test_sizes = vec![(1, "1MB"), (10, "10MB"), (50, "50MB"), (100, "100MB")];
 
         for (size_mb, name) in test_sizes {
             let target_bytes = size_mb * 1024 * 1024;
             let test_data = generate_large_test_file(target_bytes);
 
-            println!("Testing {}: {:.2}MB actual size", name, test_data.len() as f64 / (1024.0 * 1024.0));
+            println!(
+                "Testing {}: {:.2}MB actual size",
+                name,
+                test_data.len() as f64 / (1024.0 * 1024.0)
+            );
 
             let result = self.benchmark_data(&test_data, name)?;
             self.results.push(result);
@@ -278,11 +312,23 @@ impl PerformanceAnalyzer {
         println!("🎯 BOTTLENECK ANALYSIS");
         println!("======================");
 
-        if let Some(best) = self.results.iter().max_by(|a, b| a.throughput_mb_per_sec.partial_cmp(&b.throughput_mb_per_sec).unwrap()) {
-            println!("Best throughput: {:.2} MB/s ({})", best.throughput_mb_per_sec, best.test_name);
+        if let Some(best) = self.results.iter().max_by(|a, b| {
+            a.throughput_mb_per_sec
+                .partial_cmp(&b.throughput_mb_per_sec)
+                .unwrap()
+        }) {
+            println!(
+                "Best throughput: {:.2} MB/s ({})",
+                best.throughput_mb_per_sec, best.test_name
+            );
         }
 
-        let avg_throughput: f64 = self.results.iter().map(|r| r.throughput_mb_per_sec).sum::<f64>() / self.results.len() as f64;
+        let avg_throughput: f64 = self
+            .results
+            .iter()
+            .map(|r| r.throughput_mb_per_sec)
+            .sum::<f64>()
+            / self.results.len() as f64;
         println!("Average throughput: {:.2} MB/s", avg_throughput);
         println!("TARGET throughput: 280 MB/s");
         println!("Required improvement: {:.0}x", 280.0 / avg_throughput);
@@ -290,7 +336,9 @@ impl PerformanceAnalyzer {
 
         println!("🚨 Identified bottlenecks:");
         if avg_throughput < 5.0 {
-            println!("   1. DOM-based parsing: Current implementation likely using full DOM parsing");
+            println!(
+                "   1. DOM-based parsing: Current implementation likely using full DOM parsing"
+            );
             println!("   2. String allocations: Excessive String::clone() and to_string() calls");
             println!("   3. Memory allocations: Non-zero-copy buffer management");
             println!("   4. XML parser overhead: quick-xml may be suboptimal for streaming");
@@ -305,7 +353,8 @@ impl PerformanceAnalyzer {
     }
 
     pub fn get_current_performance(&self) -> Option<f64> {
-        self.results.iter()
+        self.results
+            .iter()
             .map(|r| r.throughput_mb_per_sec)
             .max_by(|a, b| a.partial_cmp(b).unwrap())
     }
@@ -321,11 +370,17 @@ mod tests {
         analyzer.benchmark_current_implementation().unwrap();
 
         // Ensure we have baseline metrics
-        assert!(!analyzer.results.is_empty(), "Should have benchmark results");
+        assert!(
+            !analyzer.results.is_empty(),
+            "Should have benchmark results"
+        );
 
         if let Some(current_perf) = analyzer.get_current_performance() {
             println!("Current best performance: {:.2} MB/s", current_perf);
-            println!("Need {:.0}x improvement to reach 280 MB/s", 280.0 / current_perf);
+            println!(
+                "Need {:.0}x improvement to reach 280 MB/s",
+                280.0 / current_perf
+            );
         }
     }
 
@@ -349,7 +404,10 @@ mod tests {
             let elapsed = start.elapsed();
             let throughput = xml.len() as f64 / elapsed.as_secs_f64() / 1_000_000.0;
 
-            println!("Chunk size {:8}: {:.2} MB/s ({} elements)", chunk_size, throughput, total_elements);
+            println!(
+                "Chunk size {:8}: {:.2} MB/s ({} elements)",
+                chunk_size, throughput, total_elements
+            );
         }
     }
 

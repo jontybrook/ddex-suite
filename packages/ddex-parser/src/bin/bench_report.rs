@@ -1,5 +1,5 @@
 // core/src/bin/bench_report.rs
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BenchmarkReport {
@@ -44,11 +44,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
         results: vec![],
     };
-    
+
     let json = serde_json::to_string_pretty(&report)?;
     std::fs::create_dir_all("benchmarks/results")?;
     std::fs::write("benchmarks/results/report.json", json)?;
-    
+
     println!("Benchmark report generated at benchmarks/results/report.json");
     Ok(())
 }

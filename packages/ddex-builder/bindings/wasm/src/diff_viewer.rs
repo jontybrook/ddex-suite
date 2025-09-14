@@ -1,10 +1,10 @@
 //! Interactive HTML diff viewer for WASM
 
-use wasm_bindgen::prelude::*;
-use ddex_builder::diff::{DiffEngine, DiffConfig};
+use ddex_builder::ast::{Element, AST};
 use ddex_builder::diff::formatter::DiffFormatter;
-use ddex_builder::ast::{AST, Element};
-use serde::{Serialize, Deserialize};
+use ddex_builder::diff::{DiffConfig, DiffEngine};
+use serde::{Deserialize, Serialize};
+use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub struct DdexDiffViewer {
@@ -17,97 +17,111 @@ impl DdexDiffViewer {
     #[wasm_bindgen(constructor)]
     pub fn new() -> DdexDiffViewer {
         console_error_panic_hook::set_once();
-        
+
         DdexDiffViewer {
             engine: DiffEngine::new(),
         }
     }
-    
+
     /// Create a new diff viewer with custom configuration
     #[wasm_bindgen]
     pub fn with_config(config_json: &str) -> Result<DdexDiffViewer, JsError> {
         console_error_panic_hook::set_once();
-        
+
         let config: DiffConfig = serde_json::from_str(config_json)
             .map_err(|e| JsError::new(&format!("Invalid config JSON: {}", e)))?;
-        
+
         Ok(DdexDiffViewer {
             engine: DiffEngine::new_with_config(config),
         })
     }
-    
+
     /// Compare two DDEX XML strings and return HTML diff viewer
     #[wasm_bindgen]
     pub fn diff_to_html(&mut self, old_xml: &str, new_xml: &str) -> Result<String, JsError> {
         // Parse XML to AST (simplified for WASM demo)
         let old_ast = self.parse_xml_simple(old_xml)?;
         let new_ast = self.parse_xml_simple(new_xml)?;
-        
+
         // Perform diff
-        let changeset = self.engine.diff(&old_ast, &new_ast)
+        let changeset = self
+            .engine
+            .diff(&old_ast, &new_ast)
             .map_err(|e| JsError::new(&format!("Diff error: {}", e)))?;
-        
+
         // Generate interactive HTML
         Ok(self.generate_interactive_html(&changeset, old_xml, new_xml))
     }
-    
+
     /// Compare two DDEX XML strings and return JSON diff
     #[wasm_bindgen]
     pub fn diff_to_json(&mut self, old_xml: &str, new_xml: &str) -> Result<String, JsError> {
         let old_ast = self.parse_xml_simple(old_xml)?;
         let new_ast = self.parse_xml_simple(new_xml)?;
-        
-        let changeset = self.engine.diff(&old_ast, &new_ast)
+
+        let changeset = self
+            .engine
+            .diff(&old_ast, &new_ast)
             .map_err(|e| JsError::new(&format!("Diff error: {}", e)))?;
-        
+
         DiffFormatter::format_json(&changeset)
             .map_err(|e| JsError::new(&format!("JSON formatting error: {}", e)))
     }
-    
+
     /// Get diff summary as text
     #[wasm_bindgen]
     pub fn diff_to_summary(&mut self, old_xml: &str, new_xml: &str) -> Result<String, JsError> {
         let old_ast = self.parse_xml_simple(old_xml)?;
         let new_ast = self.parse_xml_simple(new_xml)?;
-        
-        let changeset = self.engine.diff(&old_ast, &new_ast)
+
+        let changeset = self
+            .engine
+            .diff(&old_ast, &new_ast)
             .map_err(|e| JsError::new(&format!("Diff error: {}", e)))?;
-        
+
         Ok(DiffFormatter::format_summary(&changeset))
     }
-    
+
     /// Generate JSON Patch from diff
     #[wasm_bindgen]
     pub fn diff_to_json_patch(&mut self, old_xml: &str, new_xml: &str) -> Result<String, JsError> {
         let old_ast = self.parse_xml_simple(old_xml)?;
         let new_ast = self.parse_xml_simple(new_xml)?;
-        
-        let changeset = self.engine.diff(&old_ast, &new_ast)
+
+        let changeset = self
+            .engine
+            .diff(&old_ast, &new_ast)
             .map_err(|e| JsError::new(&format!("Diff error: {}", e)))?;
-        
+
         DiffFormatter::format_json_patch(&changeset)
             .map_err(|e| JsError::new(&format!("JSON Patch formatting error: {}", e)))
     }
-    
+
     // Private helper methods
-    
+
     fn parse_xml_simple(&self, xml: &str) -> Result<AST, JsError> {
         // Simplified XML parsing for WASM demo
         // In production, you'd want proper XML parsing
         let root = Element::new("Root").with_text(xml);
-        
+
         Ok(AST {
             root,
             namespaces: indexmap::IndexMap::new(),
             schema_location: None,
         })
     }
-    
-    fn generate_interactive_html(&self, changeset: &ddex_builder::diff::types::ChangeSet, old_xml: &str, new_xml: &str) -> String {
+
+    fn generate_interactive_html(
+        &self,
+        changeset: &ddex_builder::diff::types::ChangeSet,
+        old_xml: &str,
+        new_xml: &str,
+    ) -> String {
         let mut html = String::new();
-        
+
         // Enhanced HTML with JavaScript interactivity
-        html.push_str(r#"<!DOCTYPE html>
+        html.push_str(
+            r#"<!DOCTYPE html>
 <html>
 <head>
     <title>DDEX Interactive Diff Viewer</title>
@@ -193,29 +207,42 @@ impl DdexDiffViewer {
 <body>
     <div class="header">
         <h1>🔍 DDEX Interactive Diff Viewer</h1>
-        <p>Generated: <span id="timestamp">"#);
-        
-        html.push_str(&changeset.timestamp.format("%Y-%m-%d %H:%M:%S UTC").to_string());
-        html.push_str(r#"</span></p>
+        <p>Generated: <span id="timestamp">"#,
+        );
+
+        html.push_str(
+            &changeset
+                .timestamp
+                .format("%Y-%m-%d %H:%M:%S UTC")
+                .to_string(),
+        );
+        html.push_str(
+            r#"</span></p>
         <div class="stats">
             <div class="stat">
-                <div class="stat-value">"#);
+                <div class="stat-value">"#,
+        );
         html.push_str(&changeset.summary.total_changes.to_string());
-        html.push_str(r#"</div>
+        html.push_str(
+            r#"</div>
                 <div>Total Changes</div>
             </div>
             <div class="stat">
-                <div class="stat-value impact-"#);
+                <div class="stat-value impact-"#,
+        );
         html.push_str(&changeset.impact_level().to_string().to_lowercase());
         html.push_str(r#"">"#);
         html.push_str(&changeset.impact_level().to_string());
-        html.push_str(r#"</div>
+        html.push_str(
+            r#"</div>
                 <div>Impact Level</div>
             </div>
             <div class="stat">
-                <div class="stat-value">"#);
+                <div class="stat-value">"#,
+        );
         html.push_str(&changeset.summary.critical_changes.to_string());
-        html.push_str(r#"</div>
+        html.push_str(
+            r#"</div>
                 <div>Critical</div>
             </div>
         </div>
@@ -227,27 +254,33 @@ impl DdexDiffViewer {
         <button class="btn" onclick="showView('summary')">Summary</button>
         <button class="btn" onclick="exportDiff('json')">Export JSON</button>
     </div>
-"#);
+"#,
+        );
 
         if changeset.has_changes() {
             // Side-by-side view
-            html.push_str(r#"
+            html.push_str(
+                r#"
     <div id="side-by-side-view" class="view">
         <div class="diff-container">
             <div class="diff-panel">
                 <div class="panel-header">📄 Original DDEX</div>
                 <div class="panel-content">
-                    <div class="xml-content" id="old-xml">"#);
+                    <div class="xml-content" id="old-xml">"#,
+            );
             html.push_str(&html_escape::encode_text(old_xml));
-            html.push_str(r#"</div>
+            html.push_str(
+                r#"</div>
                 </div>
             </div>
             <div class="diff-panel">
                 <div class="panel-header">📝 Modified DDEX</div>
                 <div class="panel-content">
-                    <div class="xml-content" id="new-xml">"#);
+                    <div class="xml-content" id="new-xml">"#,
+            );
             html.push_str(&html_escape::encode_text(new_xml));
-            html.push_str(r#"</div>
+            html.push_str(
+                r#"</div>
                 </div>
             </div>
         </div>
@@ -267,76 +300,98 @@ impl DdexDiffViewer {
             </div>
             <div class="panel-content">
                 <div class="changes-list" id="changes-list">
-"#);
-            
+"#,
+            );
+
             // Add changes
             for change in &changeset.changes {
                 let change_class = match change.change_type {
-                    ddex_builder::diff::types::ChangeType::ElementAdded | 
-                    ddex_builder::diff::types::ChangeType::AttributeAdded => "change-added",
-                    ddex_builder::diff::types::ChangeType::ElementRemoved | 
-                    ddex_builder::diff::types::ChangeType::AttributeRemoved => "change-removed",
+                    ddex_builder::diff::types::ChangeType::ElementAdded
+                    | ddex_builder::diff::types::ChangeType::AttributeAdded => "change-added",
+                    ddex_builder::diff::types::ChangeType::ElementRemoved
+                    | ddex_builder::diff::types::ChangeType::AttributeRemoved => "change-removed",
                     _ => "change-modified",
                 };
-                
-                let critical_class = if change.is_critical { " change-critical" } else { "" };
-                
-                html.push_str(&format!(r#"
+
+                let critical_class = if change.is_critical {
+                    " change-critical"
+                } else {
+                    ""
+                };
+
+                html.push_str(&format!(
+                    r#"
                     <div class="change-item {}{}" data-type="{}" data-critical="{}">
                         <div class="change-header">{} {}</div>
                         <div class="change-path">{}</div>
-"#, 
-                    change_class, critical_class,
+"#,
+                    change_class,
+                    critical_class,
                     change.change_type.to_string().to_lowercase(),
                     change.is_critical,
                     Self::change_type_icon(change.change_type),
                     html_escape::encode_text(&change.description),
                     html_escape::encode_text(&change.path.to_string())
                 ));
-                
+
                 if let Some(old_val) = &change.old_value {
-                    html.push_str(&format!(r#"
+                    html.push_str(&format!(
+                        r#"
                         <div class="change-values">
                             <div class="old-value">Old: {}</div>
-"#, html_escape::encode_text(old_val)));
+"#,
+                        html_escape::encode_text(old_val)
+                    ));
                 }
-                
+
                 if let Some(new_val) = &change.new_value {
-                    html.push_str(&format!(r#"
+                    html.push_str(&format!(
+                        r#"
                             <div class="new-value">New: {}</div>
                         </div>
-"#, html_escape::encode_text(new_val)));
+"#,
+                        html_escape::encode_text(new_val)
+                    ));
                 } else if change.old_value.is_some() {
                     html.push_str("</div>");
                 }
-                
+
                 html.push_str("</div>");
             }
-            
-            html.push_str(r#"
+
+            html.push_str(
+                r#"
                 </div>
             </div>
         </div>
     </div>
-"#);
+"#,
+            );
         } else {
-            html.push_str(r#"
+            html.push_str(
+                r#"
     <div class="no-changes">
         <h2>✅ No Semantic Changes Detected</h2>
         <p>The DDEX documents are semantically identical.</p>
     </div>
-"#);
+"#,
+            );
         }
-        
+
         // Summary view
-        html.push_str(r#"
+        html.push_str(
+            r#"
     <div id="summary-view" class="view" style="display: none;">
         <div class="diff-panel">
             <div class="panel-header">📊 Diff Summary</div>
             <div class="panel-content">
-                <pre style="white-space: pre-wrap; font-family: monospace;">"#);
-        html.push_str(&html_escape::encode_text(&DiffFormatter::format_summary(changeset)));
-        html.push_str(r#"</pre>
+                <pre style="white-space: pre-wrap; font-family: monospace;">"#,
+        );
+        html.push_str(&html_escape::encode_text(&DiffFormatter::format_summary(
+            changeset,
+        )));
+        html.push_str(
+            r#"</pre>
             </div>
         </div>
     </div>
@@ -389,19 +444,20 @@ impl DdexDiffViewer {
     </script>
 </body>
 </html>
-"#);
-        
+"#,
+        );
+
         html
     }
-    
+
     fn change_type_icon(change_type: ddex_builder::diff::types::ChangeType) -> &'static str {
         match change_type {
-            ddex_builder::diff::types::ChangeType::ElementAdded | 
-            ddex_builder::diff::types::ChangeType::AttributeAdded => "➕",
-            ddex_builder::diff::types::ChangeType::ElementRemoved | 
-            ddex_builder::diff::types::ChangeType::AttributeRemoved => "➖",
-            ddex_builder::diff::types::ChangeType::ElementModified | 
-            ddex_builder::diff::types::ChangeType::AttributeModified => "✏️",
+            ddex_builder::diff::types::ChangeType::ElementAdded
+            | ddex_builder::diff::types::ChangeType::AttributeAdded => "➕",
+            ddex_builder::diff::types::ChangeType::ElementRemoved
+            | ddex_builder::diff::types::ChangeType::AttributeRemoved => "➖",
+            ddex_builder::diff::types::ChangeType::ElementModified
+            | ddex_builder::diff::types::ChangeType::AttributeModified => "✏️",
             ddex_builder::diff::types::ChangeType::TextModified => "📝",
             ddex_builder::diff::types::ChangeType::ElementRenamed => "🔄",
             ddex_builder::diff::types::ChangeType::ElementMoved => "🔄",
@@ -430,7 +486,7 @@ impl Default for DiffViewerConfig {
     fn default() -> Self {
         Self {
             ignore_formatting: true,
-            ignore_reference_ids: true, 
+            ignore_reference_ids: true,
             ignore_order_changes: true,
             show_line_numbers: true,
             highlight_critical_changes: true,

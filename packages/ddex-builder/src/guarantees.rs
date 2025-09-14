@@ -1,10 +1,10 @@
 //! Determinism guarantees and validation for DDEX Builder
-//! 
+//!
 //! This module defines and enforces the determinism guarantees provided by the DDEX Builder.
 //! All guarantees are tested and validated to ensure consistent, reproducible XML output.
 
-use crate::error::BuildError;
 use crate::determinism::{DeterminismConfig, DeterminismVerifier};
+use crate::error::BuildError;
 use serde::{Deserialize, Serialize};
 
 /// Core determinism guarantees provided by DDEX Builder
@@ -229,20 +229,26 @@ impl DeterminismGuaranteeValidator {
                 (
                     true,
                     "IndexMap usage enforced by clippy rules in clippy.toml".to_string(),
-                    Some("forbid = ['std::collections::HashMap', 'std::collections::HashSet']".to_string()),
+                    Some(
+                        "forbid = ['std::collections::HashMap', 'std::collections::HashSet']"
+                            .to_string(),
+                    ),
                 )
             }
-            DeterminismGuarantee::StableSorting => {
-                (
-                    true,
-                    "All sorting operations use stable algorithms with consistent comparators".to_string(),
-                    Some("sort_by() and sort_unstable_by() are only used with deterministic comparators".to_string()),
-                )
-            }
+            DeterminismGuarantee::StableSorting => (
+                true,
+                "All sorting operations use stable algorithms with consistent comparators"
+                    .to_string(),
+                Some(
+                    "sort_by() and sort_unstable_by() are only used with deterministic comparators"
+                        .to_string(),
+                ),
+            ),
             _ => {
                 return Err(BuildError::DeterminismGuaranteeViolated {
                     guarantee: format!("{:?}", guarantee),
-                    details: "Code analysis validation not supported for this guarantee type".to_string(),
+                    details: "Code analysis validation not supported for this guarantee type"
+                        .to_string(),
                 });
             }
         };
@@ -269,40 +275,80 @@ impl DeterminismGuaranteeValidator {
             match guarantee {
                 DeterminismGuarantee::FixedTimestamps => {
                     // Verify that timestamps are consistent across builds
-                    let evidence = format!("All {} iterations produced identical timestamps", result.iterations);
-                    (true, "Timestamps are fixed and consistent across builds".to_string(), Some(evidence))
+                    let evidence = format!(
+                        "All {} iterations produced identical timestamps",
+                        result.iterations
+                    );
+                    (
+                        true,
+                        "Timestamps are fixed and consistent across builds".to_string(),
+                        Some(evidence),
+                    )
                 }
                 DeterminismGuarantee::UnicodeNormalization => {
-                    let evidence = "String normalization verified through deterministic output".to_string();
-                    (true, "Unicode normalization is applied consistently".to_string(), Some(evidence))
+                    let evidence =
+                        "String normalization verified through deterministic output".to_string();
+                    (
+                        true,
+                        "Unicode normalization is applied consistently".to_string(),
+                        Some(evidence),
+                    )
                 }
                 DeterminismGuarantee::StableHashing => {
                     let evidence = format!("SHA-256 hashes: {:?}", result.hashes);
-                    (true, "SHA-256 hashing produces consistent results".to_string(), Some(evidence))
+                    (
+                        true,
+                        "SHA-256 hashing produces consistent results".to_string(),
+                        Some(evidence),
+                    )
                 }
                 DeterminismGuarantee::CanonicalOrdering => {
-                    let evidence = "Element ordering verified through deterministic output".to_string();
-                    (true, "Canonical element ordering is maintained".to_string(), Some(evidence))
+                    let evidence =
+                        "Element ordering verified through deterministic output".to_string();
+                    (
+                        true,
+                        "Canonical element ordering is maintained".to_string(),
+                        Some(evidence),
+                    )
                 }
                 DeterminismGuarantee::LockedNamespacePrefixes => {
-                    let evidence = "Namespace prefixes verified through deterministic output".to_string();
-                    (true, "Namespace prefixes are locked and consistent".to_string(), Some(evidence))
+                    let evidence =
+                        "Namespace prefixes verified through deterministic output".to_string();
+                    (
+                        true,
+                        "Namespace prefixes are locked and consistent".to_string(),
+                        Some(evidence),
+                    )
                 }
                 DeterminismGuarantee::CanonicalXmlOutput => {
-                    let evidence = format!("DB-C14N/1.0 canonicalization produces {} identical outputs", result.iterations);
-                    (true, "XML output follows DB-C14N/1.0 specification".to_string(), Some(evidence))
+                    let evidence = format!(
+                        "DB-C14N/1.0 canonicalization produces {} identical outputs",
+                        result.iterations
+                    );
+                    (
+                        true,
+                        "XML output follows DB-C14N/1.0 specification".to_string(),
+                        Some(evidence),
+                    )
                 }
-                _ => {
-                    (true, "Guarantee validated through deterministic build verification".to_string(), None)
-                }
+                _ => (
+                    true,
+                    "Guarantee validated through deterministic build verification".to_string(),
+                    None,
+                ),
             }
         } else {
-            let details = format!("Determinism verification failed: {} differences found", result.differences.len());
+            let details = format!(
+                "Determinism verification failed: {} differences found",
+                result.differences.len()
+            );
             let evidence = if let Some(diff) = result.differences.first() {
-                Some(format!("First difference at byte {}: SHA-256 {} vs {}", 
+                Some(format!(
+                    "First difference at byte {}: SHA-256 {} vs {}",
                     diff.first_difference_byte.unwrap_or(0),
                     diff.hash_difference.sha256_1,
-                    diff.hash_difference.sha256_2))
+                    diff.hash_difference.sha256_2
+                ))
             } else {
                 None
             };
@@ -353,18 +399,23 @@ impl DeterminismGuaranteeValidator {
 
         // Wait for all threads
         for handle in handles {
-            handle.join().map_err(|_| BuildError::Other("Thread join failed".to_string()))?;
+            handle
+                .join()
+                .map_err(|_| BuildError::Other("Thread join failed".to_string()))?;
         }
 
         let thread_results = results.lock().unwrap();
-        let all_deterministic = thread_results.iter().all(|r| r.as_ref().map_or(false, |res| res.is_deterministic));
-        
+        let all_deterministic = thread_results
+            .iter()
+            .all(|r| r.as_ref().map_or(false, |res| res.is_deterministic));
+
         if all_deterministic && thread_results.len() == 4 {
             // Verify all threads produced identical outputs
             let first_hash = &thread_results[0].as_ref().unwrap().hashes[0];
-            let all_identical = thread_results.iter().skip(1).all(|r| {
-                r.as_ref().map_or(false, |res| &res.hashes[0] == first_hash)
-            });
+            let all_identical = thread_results
+                .iter()
+                .skip(1)
+                .all(|r| r.as_ref().map_or(false, |res| &res.hashes[0] == first_hash));
 
             if all_identical {
                 Ok(GuaranteeValidationResult {
@@ -387,9 +438,11 @@ impl DeterminismGuaranteeValidator {
             Ok(GuaranteeValidationResult {
                 guarantee: guarantee.clone(),
                 passed: false,
-                details: format!("Thread safety test failed: {}/{} threads succeeded", 
+                details: format!(
+                    "Thread safety test failed: {}/{} threads succeeded",
                     thread_results.iter().filter(|r| r.is_ok()).count(),
-                    thread_results.len()),
+                    thread_results.len()
+                ),
                 evidence: None,
                 timestamp,
             })
@@ -405,7 +458,8 @@ impl DeterminismGuaranteeValidator {
         if !matches!(guarantee, DeterminismGuarantee::PlatformIndependence) {
             return Err(BuildError::DeterminismGuaranteeViolated {
                 guarantee: format!("{:?}", guarantee),
-                details: "Cross-platform validation only supports PlatformIndependence guarantee".to_string(),
+                details: "Cross-platform validation only supports PlatformIndependence guarantee"
+                    .to_string(),
             });
         }
 
@@ -464,7 +518,8 @@ impl DeterminismGuaranteeValidator {
         if !matches!(guarantee, DeterminismGuarantee::MemoryIndependence) {
             return Err(BuildError::DeterminismGuaranteeViolated {
                 guarantee: format!("{:?}", guarantee),
-                details: "Stress test validation only supports MemoryIndependence guarantee".to_string(),
+                details: "Stress test validation only supports MemoryIndependence guarantee"
+                    .to_string(),
             });
         }
 
@@ -484,8 +539,8 @@ impl DeterminismGuaranteeValidator {
         let normal_result = verifier.verify(request, 3)?;
 
         let both_deterministic = stressed_result.is_deterministic && normal_result.is_deterministic;
-        let outputs_identical = both_deterministic && 
-            stressed_result.hashes[0] == normal_result.hashes[0];
+        let outputs_identical =
+            both_deterministic && stressed_result.hashes[0] == normal_result.hashes[0];
 
         Ok(GuaranteeValidationResult {
             guarantee: guarantee.clone(),
@@ -495,9 +550,11 @@ impl DeterminismGuaranteeValidator {
             } else {
                 "Output differs between memory pressure and normal conditions".to_string()
             },
-            evidence: Some(format!("Stressed hash: {}, Normal hash: {}", 
+            evidence: Some(format!(
+                "Stressed hash: {}, Normal hash: {}",
                 stressed_result.hashes.get(0).unwrap_or(&"N/A".to_string()),
-                normal_result.hashes.get(0).unwrap_or(&"N/A".to_string()))),
+                normal_result.hashes.get(0).unwrap_or(&"N/A".to_string())
+            )),
             timestamp,
         })
     }
@@ -507,10 +564,10 @@ impl DeterminismGuaranteeValidator {
 pub fn validate_no_hashmap_usage() -> Result<(), BuildError> {
     // This would typically be enforced by clippy rules in clippy.toml
     // For now, we'll assume it's properly configured
-    
+
     // In a real implementation, you might use static analysis tools
     // or runtime checks to ensure IndexMap is used everywhere
-    
+
     Ok(())
 }
 
@@ -518,7 +575,7 @@ pub fn validate_no_hashmap_usage() -> Result<(), BuildError> {
 pub fn validate_deterministic_sorting() -> Result<(), BuildError> {
     // This would be validated through code analysis to ensure
     // all sorting operations use deterministic comparators
-    
+
     Ok(())
 }
 
@@ -529,13 +586,13 @@ pub fn generate_guarantee_report(
 ) -> Result<GuaranteeReport, BuildError> {
     let validator = DeterminismGuaranteeValidator::new(config.clone());
     let results = validator.validate_all_guarantees(request)?;
-    
+
     let passed_count = results.iter().filter(|r| r.passed).count();
     let total_count = results.len();
-    let success_rate = if total_count > 0 { 
-        (passed_count as f64 / total_count as f64) * 100.0 
-    } else { 
-        0.0 
+    let success_rate = if total_count > 0 {
+        (passed_count as f64 / total_count as f64) * 100.0
+    } else {
+        0.0
     };
 
     Ok(GuaranteeReport {
@@ -582,17 +639,29 @@ impl GuaranteeReport {
     /// Generate human-readable summary
     pub fn summary(&self) -> String {
         if self.overall_pass {
-            format!("✓ All {} determinism guarantees passed (100%)", self.total_guarantees)
+            format!(
+                "✓ All {} determinism guarantees passed (100%)",
+                self.total_guarantees
+            )
         } else {
             let failed = self.total_guarantees - self.passed_guarantees;
             let critical_failed = self.critical_failures().len();
-            
+
             if critical_failed > 0 {
-                format!("✗ {}/{} guarantees failed ({:.1}%) - {} CRITICAL failures", 
-                    failed, self.total_guarantees, 100.0 - self.success_rate, critical_failed)
+                format!(
+                    "✗ {}/{} guarantees failed ({:.1}%) - {} CRITICAL failures",
+                    failed,
+                    self.total_guarantees,
+                    100.0 - self.success_rate,
+                    critical_failed
+                )
             } else {
-                format!("⚠ {}/{} guarantees failed ({:.1}%) - no critical failures", 
-                    failed, self.total_guarantees, 100.0 - self.success_rate)
+                format!(
+                    "⚠ {}/{} guarantees failed ({:.1}%) - no critical failures",
+                    failed,
+                    self.total_guarantees,
+                    100.0 - self.success_rate
+                )
             }
         }
     }

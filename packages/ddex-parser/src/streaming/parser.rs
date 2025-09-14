@@ -1,13 +1,16 @@
 // src/streaming/parser.rs
 //! Core streaming DDEX parser implementation
 
-use super::{StreamingConfig, StreamingProgress, ParsedElement};
-use super::state::{ParsingContext, ParserState, PartialRelease, PartialResource, PartialParty, PartialDeal, PartialMessageHeader};
 use super::element::HeaderBuilder;
-use crate::error::{ParseError, ErrorLocation};
+use super::state::{
+    ParserState, ParsingContext, PartialDeal, PartialMessageHeader, PartialParty, PartialRelease,
+    PartialResource,
+};
+use super::{ParsedElement, StreamingConfig, StreamingProgress};
+use crate::error::{ErrorLocation, ParseError};
 use ddex_core::models::{graph::*, versions::ERNVersion};
-use ddex_core::models::{Identifier, LocalizedString, IdentifierType};
-use quick_xml::{Reader, events::Event};
+use ddex_core::models::{Identifier, IdentifierType, LocalizedString};
+use quick_xml::{events::Event, Reader};
 use std::io::BufRead;
 use std::time::Instant;
 
@@ -57,7 +60,7 @@ impl<R: BufRead> StreamingDDEXParser<R> {
     /// Set progress callback
     pub fn with_progress_callback<F>(mut self, callback: F) -> Self
     where
-        F: FnMut(StreamingProgress) + Send + 'static
+        F: FnMut(StreamingProgress) + Send + 'static,
     {
         self.progress_callback = Some(Box::new(callback));
         self
@@ -130,7 +133,10 @@ impl<R: BufRead> StreamingDDEXParser<R> {
     }
 
     /// Handle start element event
-    fn handle_start_element(&mut self, element: &quick_xml::events::BytesStart) -> Result<(), ParseError> {
+    fn handle_start_element(
+        &mut self,
+        element: &quick_xml::events::BytesStart,
+    ) -> Result<(), ParseError> {
         let name_bytes = element.name();
         let name = std::str::from_utf8(name_bytes.as_ref())?;
         self.context.push_element(name);
@@ -141,7 +147,9 @@ impl<R: BufRead> StreamingDDEXParser<R> {
             let attr = attr?;
             let key = std::str::from_utf8(attr.key.as_ref())?;
             let value = std::str::from_utf8(&attr.value)?;
-            self.context.attributes.insert(key.to_string(), value.to_string());
+            self.context
+                .attributes
+                .insert(key.to_string(), value.to_string());
         }
 
         self.context.clear_text_buffer();
@@ -209,7 +217,7 @@ impl<R: BufRead> StreamingDDEXParser<R> {
     /// Handle nested start elements within current parsing state
     fn handle_nested_start_element(&mut self, name: &str) -> Result<(), ParseError> {
         match &mut self.context.state {
-            ParserState::InHeader {  .. } => {
+            ParserState::InHeader { .. } => {
                 // Handle header nested elements
                 match name {
                     "MessageId" => {
@@ -226,7 +234,7 @@ impl<R: BufRead> StreamingDDEXParser<R> {
                     }
                 }
             }
-            ParserState::InRelease {  .. } => {
+            ParserState::InRelease { .. } => {
                 // Handle release nested elements
                 match name {
                     "ReleaseId" | "ReleaseTitle" | "DisplayArtist" | "Genre" => {
@@ -237,7 +245,7 @@ impl<R: BufRead> StreamingDDEXParser<R> {
                     }
                 }
             }
-            ParserState::InResource {  .. } => {
+            ParserState::InResource { .. } => {
                 // Handle resource nested elements
                 match name {
                     "ResourceId" | "Title" | "DisplayArtist" | "Duration" | "Genre" => {
@@ -262,7 +270,10 @@ impl<R: BufRead> StreamingDDEXParser<R> {
     }
 
     /// Handle end element event
-    fn handle_end_element(&mut self, element: &quick_xml::events::BytesEnd) -> Result<Option<ParsedElement>, ParseError> {
+    fn handle_end_element(
+        &mut self,
+        element: &quick_xml::events::BytesEnd,
+    ) -> Result<Option<ParsedElement>, ParseError> {
         let name_bytes = element.name();
         let name = std::str::from_utf8(name_bytes.as_ref())?;
         let text_content = self.context.take_text();
@@ -270,17 +281,23 @@ impl<R: BufRead> StreamingDDEXParser<R> {
         // Handle end element based on current state
         let result = match std::mem::take(&mut self.context.state) {
             ParserState::InHeader { mut header, depth } => {
-                let res = self.handle_header_end_element(name, &text_content, &mut header, depth)?;
+                let res =
+                    self.handle_header_end_element(name, &text_content, &mut header, depth)?;
                 self.context.state = ParserState::InHeader { header, depth };
                 res
             }
             ParserState::InRelease { mut release, depth } => {
-                let res = self.handle_release_end_element(name, &text_content, &mut release, depth)?;
+                let res =
+                    self.handle_release_end_element(name, &text_content, &mut release, depth)?;
                 self.context.state = ParserState::InRelease { release, depth };
                 res
             }
-            ParserState::InResource { mut resource, depth } => {
-                let res = self.handle_resource_end_element(name, &text_content, &mut resource, depth)?;
+            ParserState::InResource {
+                mut resource,
+                depth,
+            } => {
+                let res =
+                    self.handle_resource_end_element(name, &text_content, &mut resource, depth)?;
                 self.context.state = ParserState::InResource { resource, depth };
                 res
             }
@@ -294,7 +311,10 @@ impl<R: BufRead> StreamingDDEXParser<R> {
                 self.context.state = ParserState::InDeal { deal, depth };
                 res
             }
-            ParserState::Skipping { start_depth, current_depth: _ } => {
+            ParserState::Skipping {
+                start_depth,
+                current_depth: _,
+            } => {
                 if self.context.current_depth <= start_depth {
                     self.context.state = ParserState::Initial;
                 }
@@ -351,8 +371,7 @@ impl<R: BufRead> StreamingDDEXParser<R> {
                     }))
                     .created_date_time(header.message_created_date_time.take().unwrap_or_default())
                     .version(self.context.version)
-                    .build()
-                    ?;
+                    .build()?;
 
                 self.context.state = ParserState::Initial;
                 return Ok(Some(element));
@@ -472,9 +491,8 @@ impl<R: BufRead> StreamingDDEXParser<R> {
         if self.context.current_depth > self.config.security.max_element_depth {
             return Err(ParseError::SecurityViolation {
                 message: format!(
-"Nesting depth {} exceeds maximum {}",
-                    self.context.current_depth,
-                    self.config.security.max_element_depth
+                    "Nesting depth {} exceeds maximum {}",
+                    self.context.current_depth, self.config.security.max_element_depth
                 ),
             });
         }
@@ -483,9 +501,8 @@ impl<R: BufRead> StreamingDDEXParser<R> {
         if self.current_memory > self.config.max_memory {
             return Err(ParseError::SecurityViolation {
                 message: format!(
-"Memory usage {} exceeds maximum {}",
-                    self.current_memory,
-                    self.config.max_memory
+                    "Memory usage {} exceeds maximum {}",
+                    self.current_memory, self.config.max_memory
                 ),
             });
         }
@@ -501,14 +518,13 @@ impl<R: BufRead> StreamingDDEXParser<R> {
 
     /// Update progress and call callback if configured
     fn update_progress(&mut self) {
-        if self.config.enable_progress
-            && self.bytes_processed % self.config.progress_interval == 0
+        if self.config.enable_progress && self.bytes_processed % self.config.progress_interval == 0
         {
             if let Some(ref mut callback) = self.progress_callback {
                 let progress = StreamingProgress {
                     bytes_processed: self.bytes_processed,
                     elements_parsed: self.elements_yielded,
-                    releases_parsed: 0, // TODO: Track separately
+                    releases_parsed: 0,  // TODO: Track separately
                     resources_parsed: 0, // TODO: Track separately
                     parties_parsed: 0,
                     deals_parsed: 0,
@@ -525,7 +541,7 @@ impl<R: BufRead> StreamingDDEXParser<R> {
     /// Get current location for error reporting
     fn get_current_location(&self) -> ErrorLocation {
         ErrorLocation {
-            line: 0, // TODO: Track line numbers
+            line: 0,   // TODO: Track line numbers
             column: 0, // TODO: Track column numbers
             byte_offset: Some(self.bytes_processed as usize),
             path: "streaming".to_string(),
@@ -546,40 +562,51 @@ impl<R: BufRead> std::fmt::Debug for StreamingDDEXParser<R> {
 
 impl<R: BufRead> StreamingDDEXParser<R> {
     /// Handle start element by name and attributes (borrow-safe wrapper)
-    fn handle_start_element_by_name_and_attrs(&mut self, name: &str, attrs: std::collections::HashMap<String, String>) -> Result<(), ParseError> {
+    fn handle_start_element_by_name_and_attrs(
+        &mut self,
+        name: &str,
+        attrs: std::collections::HashMap<String, String>,
+    ) -> Result<(), ParseError> {
         self.context.push_element(name);
         self.context.attributes = attrs;
         self.context.clear_text_buffer();
-        
-        // Basic state transitions  
+
+        // Basic state transitions
         match (&self.context.state, name) {
             (ParserState::Initial, "MessageHeader") => {
-                self.context.state = ParserState::InHeader { 
-                    header: crate::streaming::state::PartialMessageHeader::default(), 
-                    depth: self.context.current_depth 
+                self.context.state = ParserState::InHeader {
+                    header: crate::streaming::state::PartialMessageHeader::default(),
+                    depth: self.context.current_depth,
                 };
             }
             (ParserState::Initial, "Release") => {
-                let _reference = self.context.attributes.get("ReleaseReference")
-                    .unwrap_or(&"default".to_string()).clone();
-                self.context.state = ParserState::InRelease { 
-                    release: crate::streaming::state::PartialRelease::default(), 
-                    depth: self.context.current_depth 
+                let _reference = self
+                    .context
+                    .attributes
+                    .get("ReleaseReference")
+                    .unwrap_or(&"default".to_string())
+                    .clone();
+                self.context.state = ParserState::InRelease {
+                    release: crate::streaming::state::PartialRelease::default(),
+                    depth: self.context.current_depth,
                 };
             }
             _ => {} // Handle other elements or skip
         }
-        
+
         Ok(())
     }
-    
+
     /// Handle end element by name (borrow-safe wrapper)
-    fn handle_end_element_by_name(&mut self, name: &str) -> Result<Option<ParsedElement>, ParseError> {
+    fn handle_end_element_by_name(
+        &mut self,
+        name: &str,
+    ) -> Result<Option<ParsedElement>, ParseError> {
         let _text_content = self.context.take_text();
-        
+
         // Simple implementation - just return None for now to get it compiling
         self.context.pop_element();
-        
+
         // Check if we completed a major element
         match name {
             "MessageHeader" => {

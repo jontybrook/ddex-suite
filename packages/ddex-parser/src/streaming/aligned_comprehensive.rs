@@ -1,20 +1,21 @@
 // src/streaming/aligned_comprehensive.rs
 //! Model-aligned comprehensive streaming parser using builders
 
-use crate::error::{ParseError, ErrorLocation};
-use ddex_core::models::{graph::*, versions::ERNVersion};
-use ddex_core::models::IdentifierType;
-use ddex_core::models::streaming_types::*;
+#[allow(dead_code)] // Experimental streaming parser implementation
+use crate::error::{ErrorLocation, ParseError};
 use ddex_core::models::streaming_types::builders::*;
-use quick_xml::{Reader, events::Event};
+use ddex_core::models::streaming_types::*;
+use ddex_core::models::IdentifierType;
+use ddex_core::models::{graph::*, versions::ERNVersion};
+use quick_xml::{events::Event, Reader};
+use std::collections::HashMap;
 use std::io::BufRead;
 use std::time::Instant;
-use std::collections::HashMap;
 
 /// Aligned streaming element using proper core types
 #[derive(Debug, Clone)]
 pub enum AlignedStreamingElement {
-    Header(MessageHeader),
+    Header(Box<MessageHeader>),
     Release(Release),
     Resource(Resource),
     Party(Party),
@@ -25,10 +26,10 @@ pub enum AlignedStreamingElement {
 #[derive(Debug)]
 enum AlignedParserState {
     Initial,
-    InHeader(MessageHeaderBuilder),
-    InRelease(ReleaseBuilder),
-    InResource(ResourceBuilder),
-    InParty(PartyBuilder),
+    InHeader(Box<MessageHeaderBuilder>),
+    InRelease(Box<ReleaseBuilder>),
+    InResource(Box<ResourceBuilder>),
+    InParty(Box<PartyBuilder>),
     Complete,
 }
 
@@ -121,23 +122,29 @@ impl<R: BufRead> AlignedStreamingParser<R> {
         // State transitions using builders
         match (&self.state, name) {
             (AlignedParserState::Initial, "MessageHeader") => {
-                self.state = AlignedParserState::InHeader(MessageHeaderBuilder::new());
+                self.state = AlignedParserState::InHeader(Box::new(MessageHeaderBuilder::new()));
             }
             (AlignedParserState::Initial, "Release") => {
-                let reference = self.attributes.get("ReleaseReference")
+                let reference = self
+                    .attributes
+                    .get("ReleaseReference")
                     .cloned()
                     .unwrap_or_else(|| format!("REL_{}", self.elements_yielded));
-                self.state = AlignedParserState::InRelease(ReleaseBuilder::new(reference));
+                self.state =
+                    AlignedParserState::InRelease(Box::new(ReleaseBuilder::new(reference)));
             }
             (AlignedParserState::Initial, "Resource") => {
-                let reference = self.attributes.get("ResourceReference")
+                let reference = self
+                    .attributes
+                    .get("ResourceReference")
                     .cloned()
                     .unwrap_or_else(|| format!("RES_{}", self.elements_yielded));
-                self.state = AlignedParserState::InResource(ResourceBuilder::new(reference));
+                self.state =
+                    AlignedParserState::InResource(Box::new(ResourceBuilder::new(reference)));
             }
             (AlignedParserState::Initial, "Party") => {
                 let reference = self.attributes.get("PartyReference").cloned();
-                self.state = AlignedParserState::InParty(PartyBuilder::new(reference));
+                self.state = AlignedParserState::InParty(Box::new(PartyBuilder::new(reference)));
             }
             _ => {
                 // Continue in current state
@@ -147,7 +154,10 @@ impl<R: BufRead> AlignedStreamingParser<R> {
         Ok(())
     }
 
-    fn handle_end_element_by_name(&mut self, name: &str) -> Result<Option<AlignedStreamingElement>, ParseError> {
+    fn handle_end_element_by_name(
+        &mut self,
+        name: &str,
+    ) -> Result<Option<AlignedStreamingElement>, ParseError> {
         let text_content = self.text_buffer.clone();
 
         let result = match &mut self.state {
@@ -165,7 +175,7 @@ impl<R: BufRead> AlignedStreamingParser<R> {
                         // For simplicity, create a basic sender
                         let sender = create_message_sender(
                             text_content.clone(),
-                            Some(format!("SENDER_{}", self.elements_yielded))
+                            Some(format!("SENDER_{}", self.elements_yielded)),
                         );
                         builder.set_sender(sender);
                         None
@@ -177,15 +187,18 @@ impl<R: BufRead> AlignedStreamingParser<R> {
                     }
                     "MessageHeader" => {
                         // Complete header - use builder to create element
-                        let builder = std::mem::replace(&mut self.state, AlignedParserState::Initial);
+                        let builder =
+                            std::mem::replace(&mut self.state, AlignedParserState::Initial);
                         if let AlignedParserState::InHeader(header_builder) = builder {
                             match header_builder.to_core() {
-                                Ok(header) => Some(AlignedStreamingElement::Header(header)),
+                                Ok(header) => {
+                                    Some(AlignedStreamingElement::Header(Box::new(header)))
+                                }
                                 Err(e) => {
                                     eprintln!("Warning: Header validation failed: {}", e);
                                     // Create a minimal valid header
                                     let header = self.create_fallback_header();
-                                    Some(AlignedStreamingElement::Header(header))
+                                    Some(AlignedStreamingElement::Header(Box::new(header)))
                                 }
                             }
                         } else {
@@ -200,7 +213,7 @@ impl<R: BufRead> AlignedStreamingParser<R> {
                     "ReleaseTitle" => {
                         let title = create_localized_string(
                             text_content,
-                            self.attributes.get("LanguageCode").cloned()
+                            self.attributes.get("LanguageCode").cloned(),
                         );
                         builder.add_title(title);
                         None
@@ -227,7 +240,8 @@ impl<R: BufRead> AlignedStreamingParser<R> {
                     }
                     "Release" => {
                         // Complete release - use builder
-                        let builder = std::mem::replace(&mut self.state, AlignedParserState::Initial);
+                        let builder =
+                            std::mem::replace(&mut self.state, AlignedParserState::Initial);
                         if let AlignedParserState::InRelease(release_builder) = builder {
                             match release_builder.to_core() {
                                 Ok(release) => Some(AlignedStreamingElement::Release(release)),
@@ -248,7 +262,7 @@ impl<R: BufRead> AlignedStreamingParser<R> {
                     "Title" => {
                         let title = create_localized_string(
                             text_content,
-                            self.attributes.get("LanguageCode").cloned()
+                            self.attributes.get("LanguageCode").cloned(),
                         );
                         builder.add_title(title);
                         None
@@ -273,14 +287,15 @@ impl<R: BufRead> AlignedStreamingParser<R> {
                         let identifier = create_identifier(
                             text_content,
                             IdentifierType::ISRC,
-                            Some("ISRC".to_string())
+                            Some("ISRC".to_string()),
                         );
                         builder.add_identifier(identifier);
                         None
                     }
                     "Resource" => {
                         // Complete resource - use builder
-                        let builder = std::mem::replace(&mut self.state, AlignedParserState::Initial);
+                        let builder =
+                            std::mem::replace(&mut self.state, AlignedParserState::Initial);
                         if let AlignedParserState::InResource(resource_builder) = builder {
                             match resource_builder.to_core() {
                                 Ok(resource) => Some(AlignedStreamingElement::Resource(resource)),
@@ -301,7 +316,7 @@ impl<R: BufRead> AlignedStreamingParser<R> {
                     "PartyName" => {
                         let name = create_localized_string(
                             text_content,
-                            self.attributes.get("LanguageCode").cloned()
+                            self.attributes.get("LanguageCode").cloned(),
                         );
                         builder.add_name(name);
                         None
@@ -328,7 +343,8 @@ impl<R: BufRead> AlignedStreamingParser<R> {
                     }
                     "Party" => {
                         // Complete party - use builder
-                        let builder = std::mem::replace(&mut self.state, AlignedParserState::Initial);
+                        let builder =
+                            std::mem::replace(&mut self.state, AlignedParserState::Initial);
                         if let AlignedParserState::InParty(party_builder) = builder {
                             match party_builder.to_core() {
                                 Ok(party) => Some(AlignedStreamingElement::Party(party)),
@@ -496,12 +512,23 @@ mod tests {
         assert!(elements.len() >= 4); // Header, Release, Resource, Party, EndOfStream
 
         // Verify proper type construction
-        let has_header = elements.iter().any(|e| matches!(e, AlignedStreamingElement::Header(_)));
-        let has_release = elements.iter().any(|e| matches!(e, AlignedStreamingElement::Release(_)));
-        let has_resource = elements.iter().any(|e| matches!(e, AlignedStreamingElement::Resource(_)));
-        let has_party = elements.iter().any(|e| matches!(e, AlignedStreamingElement::Party(_)));
+        let has_header = elements
+            .iter()
+            .any(|e| matches!(e, AlignedStreamingElement::Header(_)));
+        let has_release = elements
+            .iter()
+            .any(|e| matches!(e, AlignedStreamingElement::Release(_)));
+        let has_resource = elements
+            .iter()
+            .any(|e| matches!(e, AlignedStreamingElement::Resource(_)));
+        let has_party = elements
+            .iter()
+            .any(|e| matches!(e, AlignedStreamingElement::Party(_)));
 
-        assert!(has_header, "Should parse message header using MessageHeaderBuilder");
+        assert!(
+            has_header,
+            "Should parse message header using MessageHeaderBuilder"
+        );
         assert!(has_release, "Should parse release using ReleaseBuilder");
         assert!(has_resource, "Should parse resource using ResourceBuilder");
         assert!(has_party, "Should parse party using PartyBuilder");

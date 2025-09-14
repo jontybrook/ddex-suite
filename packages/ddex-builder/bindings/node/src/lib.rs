@@ -188,14 +188,15 @@ impl DdexBuilder {
             Some(json_data) => self.create_build_request_from_json(json_data)?,
             None => self.create_build_request_from_stored_data()?,
         };
-        
+
         // Use the actual DDEX builder
         let builder = ddex_builder::builder::DDEXBuilder::new();
         let options = ddex_builder::builder::BuildOptions::default();
-        
-        let result = builder.build(build_request, options)
+
+        let result = builder
+            .build(build_request, options)
             .map_err(|e| Error::new(Status::Unknown, format!("Build failed: {}", e)))?;
-        
+
         self.stats.last_build_size_bytes = result.xml.len() as f64;
         self.stats.total_build_time_ms += start_time.elapsed().as_millis() as f64;
 
@@ -203,7 +204,11 @@ impl DdexBuilder {
     }
 
     #[napi]
-    pub async unsafe fn build_with_fidelity(&mut self, data: Option<serde_json::Value>, fidelity_options: Option<FidelityOptions>) -> Result<BuildResult> {
+    pub async unsafe fn build_with_fidelity(
+        &mut self,
+        data: Option<serde_json::Value>,
+        fidelity_options: Option<FidelityOptions>,
+    ) -> Result<BuildResult> {
         let start_time = std::time::Instant::now();
 
         // Create BuildRequest based on whether data was provided
@@ -211,20 +216,25 @@ impl DdexBuilder {
             Some(json_data) => self.create_build_request_from_json(json_data)?,
             None => self.create_build_request_from_stored_data()?,
         };
-        
+
         // Use the actual DDEX builder
         let builder = ddex_builder::builder::DDEXBuilder::new();
         let options = ddex_builder::builder::BuildOptions::default();
-        
-        let result = builder.build(build_request, options)
+
+        let result = builder
+            .build(build_request, options)
             .map_err(|e| Error::new(Status::Unknown, format!("Build failed: {}", e)))?;
-        
+
         self.stats.last_build_size_bytes = result.xml.len() as f64;
         let build_time = start_time.elapsed().as_millis() as f64;
         self.stats.total_build_time_ms += build_time;
 
         // Generate statistics if requested
-        let statistics = if fidelity_options.as_ref().and_then(|o| o.collect_statistics).unwrap_or(false) {
+        let statistics = if fidelity_options
+            .as_ref()
+            .and_then(|o| o.collect_statistics)
+            .unwrap_or(false)
+        {
             Some(BuildStatistics {
                 build_time_ms: build_time,
                 memory_used_bytes: result.xml.len() as u32 * 2,
@@ -241,7 +251,11 @@ impl DdexBuilder {
         };
 
         // Generate verification result if requested
-        let verification = if fidelity_options.as_ref().and_then(|o| o.enable_verification).unwrap_or(false) {
+        let verification = if fidelity_options
+            .as_ref()
+            .and_then(|o| o.enable_verification)
+            .unwrap_or(false)
+        {
             Some(VerificationResult {
                 round_trip_success: true,
                 fidelity_score: 1.0,
@@ -257,11 +271,20 @@ impl DdexBuilder {
         // Generate fidelity info based on options
         let fidelity_info = if let Some(ref opts) = fidelity_options {
             Some(FidelityInfo {
-                fidelity_level: if opts.enable_perfect_fidelity.unwrap_or(false) { "perfect".to_string() } else { "balanced".to_string() },
-                canonicalization_algorithm: opts.canonicalization.clone().unwrap_or_else(|| "db_c14n".to_string()),
+                fidelity_level: if opts.enable_perfect_fidelity.unwrap_or(false) {
+                    "perfect".to_string()
+                } else {
+                    "balanced".to_string()
+                },
+                canonicalization_algorithm: opts
+                    .canonicalization
+                    .clone()
+                    .unwrap_or_else(|| "db_c14n".to_string()),
                 comments_preserved: opts.preserve_comments.unwrap_or(false),
                 extensions_preserved: opts.preserve_extensions.unwrap_or(true),
-                processing_instructions_preserved: opts.preserve_processing_instructions.unwrap_or(false),
+                processing_instructions_preserved: opts
+                    .preserve_processing_instructions
+                    .unwrap_or(false),
                 attribute_order_preserved: opts.preserve_attribute_order.unwrap_or(true),
                 namespace_prefixes_preserved: opts.preserve_namespace_prefixes.unwrap_or(true),
                 perfect_fidelity_enabled: opts.enable_perfect_fidelity.unwrap_or(false),
@@ -279,13 +302,17 @@ impl DdexBuilder {
     }
 
     #[napi]
-    pub async unsafe fn test_round_trip_fidelity(&mut self, _original_xml: String, _fidelity_options: Option<FidelityOptions>) -> Result<VerificationResult> {
+    pub async unsafe fn test_round_trip_fidelity(
+        &mut self,
+        _original_xml: String,
+        _fidelity_options: Option<FidelityOptions>,
+    ) -> Result<VerificationResult> {
         // In a full implementation, this would:
         // 1. Parse the original XML
         // 2. Build it back to XML
         // 3. Compare the results
         // For now, return a mock positive result
-        
+
         Ok(VerificationResult {
             round_trip_success: true,
             fidelity_score: 0.98, // 98% fidelity score
@@ -300,10 +327,10 @@ impl DdexBuilder {
     pub async fn validate(&self) -> Result<ValidationResult> {
         Ok(ValidationResult {
             is_valid: !self.releases.is_empty(),
-            errors: if self.releases.is_empty() { 
-                vec!["At least one release is required".to_string()] 
-            } else { 
-                vec![] 
+            errors: if self.releases.is_empty() {
+                vec!["At least one release is required".to_string()]
+            } else {
+                vec![]
             },
             warnings: vec![],
         })
@@ -348,7 +375,8 @@ impl DdexBuilder {
         match preset_name.as_str() {
             "spotify_album" => Ok(PresetInfo {
                 name: "spotify_album".to_string(),
-                description: "Spotify Album ERN 4.3 requirements with audio quality validation".to_string(),
+                description: "Spotify Album ERN 4.3 requirements with audio quality validation"
+                    .to_string(),
                 version: "1.0.0".to_string(),
                 profile: "AudioAlbum".to_string(),
                 required_fields: vec![
@@ -361,11 +389,13 @@ impl DdexBuilder {
                     "ArtistName".to_string(),
                     "TrackTitle".to_string(),
                 ],
-                disclaimer: "Based on Spotify public documentation. Verify current requirements.".to_string(),
+                disclaimer: "Based on Spotify public documentation. Verify current requirements."
+                    .to_string(),
             }),
             "spotify_single" => Ok(PresetInfo {
                 name: "spotify_single".to_string(),
-                description: "Spotify Single ERN 4.3 requirements with simplified track structure".to_string(),
+                description: "Spotify Single ERN 4.3 requirements with simplified track structure"
+                    .to_string(),
                 version: "1.0.0".to_string(),
                 profile: "AudioSingle".to_string(),
                 required_fields: vec![
@@ -377,11 +407,13 @@ impl DdexBuilder {
                     "TrackTitle".to_string(),
                     "ArtistName".to_string(),
                 ],
-                disclaimer: "Based on Spotify public documentation. Verify current requirements.".to_string(),
+                disclaimer: "Based on Spotify public documentation. Verify current requirements."
+                    .to_string(),
             }),
             "youtube_video" => Ok(PresetInfo {
                 name: "youtube_video".to_string(),
-                description: "YouTube Music Video ERN 4.2/4.3 with video resource handling".to_string(),
+                description: "YouTube Music Video ERN 4.2/4.3 with video resource handling"
+                    .to_string(),
                 version: "1.0.0".to_string(),
                 profile: "VideoSingle".to_string(),
                 required_fields: vec![
@@ -397,12 +429,14 @@ impl DdexBuilder {
                     "AssetType".to_string(),
                     "VideoQuality".to_string(),
                 ],
-                disclaimer: "Based on YouTube Partner documentation. Video encoding requirements may vary.".to_string(),
+                disclaimer:
+                    "Based on YouTube Partner documentation. Video encoding requirements may vary."
+                        .to_string(),
             }),
             _ => Err(Error::new(
                 Status::InvalidArg,
-                format!("Unknown preset: {}", preset_name)
-            ))
+                format!("Unknown preset: {}", preset_name),
+            )),
         }
     }
 
@@ -410,7 +444,7 @@ impl DdexBuilder {
     pub fn apply_preset(&mut self, preset_name: String) -> Result<()> {
         // Validate preset exists
         let _preset_info = self.get_preset_info(preset_name.clone())?;
-        
+
         // In a full implementation, this would apply the preset configuration
         // to the internal builder state. For now, we just validate the preset exists.
         Ok(())
@@ -430,18 +464,26 @@ impl DdexBuilder {
                     field_name: "AudioQuality".to_string(),
                     rule_type: "AudioQuality".to_string(),
                     message: "Minimum 16-bit/44.1kHz audio quality required".to_string(),
-                    parameters: Some([
-                        ("min_bit_depth".to_string(), "16".to_string()),
-                        ("min_sample_rate".to_string(), "44100".to_string()),
-                    ].iter().cloned().collect()),
+                    parameters: Some(
+                        [
+                            ("min_bit_depth".to_string(), "16".to_string()),
+                            ("min_sample_rate".to_string(), "44100".to_string()),
+                        ]
+                        .iter()
+                        .cloned()
+                        .collect(),
+                    ),
                 },
                 ValidationRule {
                     field_name: "TerritoryCode".to_string(),
                     rule_type: "TerritoryCode".to_string(),
                     message: "Territory code must be 'Worldwide' or 'WW'".to_string(),
-                    parameters: Some([
-                        ("allowed".to_string(), "Worldwide,WW".to_string()),
-                    ].iter().cloned().collect()),
+                    parameters: Some(
+                        [("allowed".to_string(), "Worldwide,WW".to_string())]
+                            .iter()
+                            .cloned()
+                            .collect(),
+                    ),
                 },
             ]),
             "youtube_video" | "youtube_album" => Ok(vec![
@@ -455,24 +497,32 @@ impl DdexBuilder {
                     field_name: "VideoQuality".to_string(),
                     rule_type: "OneOf".to_string(),
                     message: "Video quality must be HD720, HD1080, or 4K".to_string(),
-                    parameters: Some([
-                        ("options".to_string(), "HD720,HD1080,4K".to_string()),
-                    ].iter().cloned().collect()),
+                    parameters: Some(
+                        [("options".to_string(), "HD720,HD1080,4K".to_string())]
+                            .iter()
+                            .cloned()
+                            .collect(),
+                    ),
                 },
             ]),
             _ => Err(Error::new(
                 Status::InvalidArg,
-                format!("Unknown preset: {}", preset_name)
-            ))
+                format!("Unknown preset: {}", preset_name),
+            )),
         }
     }
 
-    fn create_build_request_from_json(&self, data: serde_json::Value) -> Result<ddex_builder::builder::BuildRequest> {
-        let obj = data.as_object()
+    fn create_build_request_from_json(
+        &self,
+        data: serde_json::Value,
+    ) -> Result<ddex_builder::builder::BuildRequest> {
+        let obj = data
+            .as_object()
             .ok_or_else(|| Error::new(Status::InvalidArg, "Expected object"))?;
 
         // Extract version
-        let version = obj.get("version")
+        let version = obj
+            .get("version")
             .and_then(|v| v.as_str())
             .unwrap_or("4.3")
             .to_string();
@@ -505,17 +555,20 @@ impl DdexBuilder {
         if let Some(releases_array) = obj.get("releases").and_then(|v| v.as_array()) {
             for release_val in releases_array {
                 if let Some(release_obj) = release_val.as_object() {
-                    let release_id = release_obj.get("release_id")
+                    let release_id = release_obj
+                        .get("release_id")
                         .and_then(|v| v.as_str())
                         .unwrap_or("UNKNOWN")
                         .to_string();
-                    
-                    let title = release_obj.get("title")
+
+                    let title = release_obj
+                        .get("title")
                         .and_then(|v| v.as_str())
                         .unwrap_or("Untitled")
                         .to_string();
-                    
-                    let artist = release_obj.get("display_artist")
+
+                    let artist = release_obj
+                        .get("display_artist")
                         .or_else(|| release_obj.get("artist"))
                         .and_then(|v| v.as_str())
                         .unwrap_or("Unknown Artist")
@@ -529,9 +582,18 @@ impl DdexBuilder {
                             language_code: None,
                         }],
                         artist,
-                        label: release_obj.get("label").and_then(|v| v.as_str()).map(|s| s.to_string()),
-                        release_date: release_obj.get("release_date").and_then(|v| v.as_str()).map(|s| s.to_string()),
-                        upc: release_obj.get("upc").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                        label: release_obj
+                            .get("label")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string()),
+                        release_date: release_obj
+                            .get("release_date")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string()),
+                        upc: release_obj
+                            .get("upc")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string()),
                         tracks: vec![], // No tracks in the simple format for now
                         resource_references: None,
                     });
@@ -577,15 +639,22 @@ impl DdexBuilder {
         // Convert releases
         let mut releases = Vec::new();
         for release in &self.releases {
-            let tracks = self.resources
+            let tracks = self
+                .resources
                 .iter()
                 .filter(|resource| release.track_ids.contains(&resource.resource_id))
                 .map(|resource| ddex_builder::builder::TrackRequest {
                     track_id: resource.resource_id.clone(),
                     resource_reference: Some(resource.resource_id.clone()),
-                    isrc: resource.isrc.clone().unwrap_or_else(|| "TEMP00000000".to_string()),
+                    isrc: resource
+                        .isrc
+                        .clone()
+                        .unwrap_or_else(|| "TEMP00000000".to_string()),
                     title: resource.title.clone(),
-                    duration: resource.duration.clone().unwrap_or_else(|| "PT3M00S".to_string()),
+                    duration: resource
+                        .duration
+                        .clone()
+                        .unwrap_or_else(|| "PT3M00S".to_string()),
                     artist: resource.artist.clone(),
                 })
                 .collect();
@@ -624,24 +693,33 @@ impl DdexBuilder {
         xml.push('\n');
         xml.push_str(r#"<NewReleaseMessage xmlns="http://ddex.net/xml/ern/43" MessageSchemaVersionId="ern/43">"#);
         xml.push('\n');
-        
+
         // Message header
         xml.push_str("  <MessageHeader>\n");
-        xml.push_str(&format!("    <MessageId>{}</MessageId>\n", uuid::Uuid::new_v4()));
+        xml.push_str(&format!(
+            "    <MessageId>{}</MessageId>\n",
+            uuid::Uuid::new_v4()
+        ));
         xml.push_str("    <MessageSender>\n");
         xml.push_str("      <PartyName>DDEX Suite</PartyName>\n");
         xml.push_str("    </MessageSender>\n");
         xml.push_str("    <MessageRecipient>\n");
         xml.push_str("      <PartyName>Recipient</PartyName>\n");
         xml.push_str("    </MessageRecipient>\n");
-        xml.push_str(&format!("    <MessageCreatedDateTime>{}</MessageCreatedDateTime>\n", chrono::Utc::now().to_rfc3339()));
+        xml.push_str(&format!(
+            "    <MessageCreatedDateTime>{}</MessageCreatedDateTime>\n",
+            chrono::Utc::now().to_rfc3339()
+        ));
         xml.push_str("  </MessageHeader>\n");
 
         // Releases
         for release in &self.releases {
             xml.push_str("  <ReleaseList>\n");
             xml.push_str("    <Release>\n");
-            xml.push_str(&format!("      <ReleaseId>{}</ReleaseId>\n", release.release_id));
+            xml.push_str(&format!(
+                "      <ReleaseId>{}</ReleaseId>\n",
+                release.release_id
+            ));
             xml.push_str(&format!("      <Title>{}</Title>\n", release.title));
             xml.push_str(&format!("      <Artist>{}</Artist>\n", release.artist));
             if let Some(ref label) = release.label {
@@ -655,7 +733,10 @@ impl DdexBuilder {
         for resource in &self.resources {
             xml.push_str("  <ResourceList>\n");
             xml.push_str("    <SoundRecording>\n");
-            xml.push_str(&format!("      <ResourceId>{}</ResourceId>\n", resource.resource_id));
+            xml.push_str(&format!(
+                "      <ResourceId>{}</ResourceId>\n",
+                resource.resource_id
+            ));
             xml.push_str(&format!("      <Title>{}</Title>\n", resource.title));
             xml.push_str(&format!("      <Artist>{}</Artist>\n", resource.artist));
             if let Some(ref isrc) = resource.isrc {
@@ -664,7 +745,7 @@ impl DdexBuilder {
             xml.push_str("    </SoundRecording>\n");
             xml.push_str("  </ResourceList>\n");
         }
-        
+
         xml.push_str("</NewReleaseMessage>\n");
         Ok(xml)
     }
@@ -727,9 +808,9 @@ impl StreamingDdexBuilder {
             validate_during_stream: true,
             progress_callback_frequency: 100,
         });
-        
+
         let buffer = Cursor::new(Vec::new());
-        
+
         Ok(StreamingDdexBuilder {
             inner: None,
             buffer,
@@ -737,18 +818,16 @@ impl StreamingDdexBuilder {
             progress_callback: None,
         })
     }
-    
+
     #[napi]
     pub fn set_progress_callback(&mut self, callback: napi::JsFunction) -> Result<()> {
-        let tsfn: napi::threadsafe_function::ThreadsafeFunction<StreamingProgress> = callback
-            .create_threadsafe_function(0, |ctx| {
-                Ok(vec![ctx.value])
-            })?;
-        
+        let tsfn: napi::threadsafe_function::ThreadsafeFunction<StreamingProgress> =
+            callback.create_threadsafe_function(0, |ctx| Ok(vec![ctx.value]))?;
+
         self.progress_callback = Some(tsfn);
         Ok(())
     }
-    
+
     #[napi]
     pub fn set_estimated_total(&mut self, total: u32) -> Result<()> {
         if let Some(ref mut builder) = self.inner {
@@ -756,12 +835,12 @@ impl StreamingDdexBuilder {
         }
         Ok(())
     }
-    
+
     #[napi]
     pub fn start_message(&mut self, header: MessageHeader, version: String) -> Result<()> {
         // Create a new buffer and streaming builder
         self.buffer = Cursor::new(Vec::new());
-        
+
         // Convert config to Rust types
         let rust_config = ddex_builder::streaming::StreamingConfig {
             max_buffer_size: self.config.max_buffer_size as usize,
@@ -770,28 +849,39 @@ impl StreamingDdexBuilder {
             validate_during_stream: self.config.validate_during_stream,
             progress_callback_frequency: self.config.progress_callback_frequency as usize,
         };
-        
+
         let mut streaming_builder = ddex_builder::streaming::StreamingBuilder::new_with_config(
             std::mem::replace(&mut self.buffer, Cursor::new(Vec::new())),
-            rust_config
-        ).map_err(|e| Error::new(Status::Unknown, format!("Failed to create streaming builder: {}", e)))?;
-        
+            rust_config,
+        )
+        .map_err(|e| {
+            Error::new(
+                Status::Unknown,
+                format!("Failed to create streaming builder: {}", e),
+            )
+        })?;
+
         // Set up progress callback if provided
         if let Some(ref callback) = self.progress_callback {
             let callback_clone = callback.clone();
-            streaming_builder.set_progress_callback(Box::new(move |progress: ddex_builder::streaming::StreamingProgress| {
-                let js_progress = StreamingProgress {
-                    releases_written: progress.releases_written as u32,
-                    resources_written: progress.resources_written as u32,
-                    bytes_written: progress.bytes_written as u32,
-                    current_memory_usage: progress.current_memory_usage as u32,
-                    estimated_completion_percent: progress.estimated_completion_percent,
-                };
-                
-                let _ = callback_clone.call(Ok(js_progress), napi::threadsafe_function::ThreadsafeFunctionCallMode::NonBlocking);
-            }));
+            streaming_builder.set_progress_callback(Box::new(
+                move |progress: ddex_builder::streaming::StreamingProgress| {
+                    let js_progress = StreamingProgress {
+                        releases_written: progress.releases_written as u32,
+                        resources_written: progress.resources_written as u32,
+                        bytes_written: progress.bytes_written as u32,
+                        current_memory_usage: progress.current_memory_usage as u32,
+                        estimated_completion_percent: progress.estimated_completion_percent,
+                    };
+
+                    let _ = callback_clone.call(
+                        Ok(js_progress),
+                        napi::threadsafe_function::ThreadsafeFunctionCallMode::NonBlocking,
+                    );
+                },
+            ));
         }
-        
+
         // Convert header to Rust type
         let rust_header = ddex_builder::builder::MessageHeaderRequest {
             message_id: header.message_id,
@@ -814,64 +904,107 @@ impl StreamingDdexBuilder {
             message_control_type: None,
             message_created_date_time: header.message_created_date_time,
         };
-        
-        streaming_builder.start_message(&rust_header, &version)
+
+        streaming_builder
+            .start_message(&rust_header, &version)
             .map_err(|e| Error::new(Status::Unknown, format!("Failed to start message: {}", e)))?;
-        
+
         self.inner = Some(streaming_builder);
         Ok(())
     }
-    
+
     #[napi]
-    pub fn write_resource(&mut self,
-                         resource_id: String,
-                         title: String,
-                         artist: String,
-                         isrc: Option<String>,
-                         duration: Option<String>,
-                         file_path: Option<String>) -> Result<String> {
-        let builder = self.inner.as_mut()
-            .ok_or_else(|| Error::new(Status::InvalidArg, "Message not started. Call start_message first."))?;
-        
-        builder.write_resource(&resource_id, &title, &artist, isrc.as_deref(), duration.as_deref(), file_path.as_deref())
+    pub fn write_resource(
+        &mut self,
+        resource_id: String,
+        title: String,
+        artist: String,
+        isrc: Option<String>,
+        duration: Option<String>,
+        file_path: Option<String>,
+    ) -> Result<String> {
+        let builder = self.inner.as_mut().ok_or_else(|| {
+            Error::new(
+                Status::InvalidArg,
+                "Message not started. Call start_message first.",
+            )
+        })?;
+
+        builder
+            .write_resource(
+                &resource_id,
+                &title,
+                &artist,
+                isrc.as_deref(),
+                duration.as_deref(),
+                file_path.as_deref(),
+            )
             .map_err(|e| Error::new(Status::Unknown, format!("Failed to write resource: {}", e)))
     }
-    
+
     #[napi]
     pub fn finish_resources_start_releases(&mut self) -> Result<()> {
-        let builder = self.inner.as_mut()
-            .ok_or_else(|| Error::new(Status::InvalidArg, "Message not started. Call start_message first."))?;
-        
-        builder.finish_resources_start_releases()
-            .map_err(|e| Error::new(Status::Unknown, format!("Failed to transition to releases: {}", e)))
+        let builder = self.inner.as_mut().ok_or_else(|| {
+            Error::new(
+                Status::InvalidArg,
+                "Message not started. Call start_message first.",
+            )
+        })?;
+
+        builder.finish_resources_start_releases().map_err(|e| {
+            Error::new(
+                Status::Unknown,
+                format!("Failed to transition to releases: {}", e),
+            )
+        })
     }
-    
+
     #[napi]
-    pub fn write_release(&mut self,
-                        release_id: String,
-                        title: String,
-                        artist: String,
-                        label: Option<String>,
-                        upc: Option<String>,
-                        release_date: Option<String>,
-                        genre: Option<String>,
-                        resource_references: Vec<String>) -> Result<String> {
-        let builder = self.inner.as_mut()
-            .ok_or_else(|| Error::new(Status::InvalidArg, "Message not started. Call start_message first."))?;
-        
-        builder.write_release(&release_id, &title, &artist, label.as_deref(), upc.as_deref(), 
-                             release_date.as_deref(), genre.as_deref(), &resource_references)
+    pub fn write_release(
+        &mut self,
+        release_id: String,
+        title: String,
+        artist: String,
+        label: Option<String>,
+        upc: Option<String>,
+        release_date: Option<String>,
+        genre: Option<String>,
+        resource_references: Vec<String>,
+    ) -> Result<String> {
+        let builder = self.inner.as_mut().ok_or_else(|| {
+            Error::new(
+                Status::InvalidArg,
+                "Message not started. Call start_message first.",
+            )
+        })?;
+
+        builder
+            .write_release(
+                &release_id,
+                &title,
+                &artist,
+                label.as_deref(),
+                upc.as_deref(),
+                release_date.as_deref(),
+                genre.as_deref(),
+                &resource_references,
+            )
             .map_err(|e| Error::new(Status::Unknown, format!("Failed to write release: {}", e)))
     }
-    
+
     #[napi]
     pub fn finish_message(&mut self) -> Result<StreamingStats> {
-        let mut builder = self.inner.take()
-            .ok_or_else(|| Error::new(Status::InvalidArg, "Message not started. Call start_message first."))?;
-        
-        let stats = builder.finish_message()
+        let mut builder = self.inner.take().ok_or_else(|| {
+            Error::new(
+                Status::InvalidArg,
+                "Message not started. Call start_message first.",
+            )
+        })?;
+
+        let stats = builder
+            .finish_message()
             .map_err(|e| Error::new(Status::Unknown, format!("Failed to finish message: {}", e)))?;
-        
+
         Ok(StreamingStats {
             releases_written: stats.releases_written as u32,
             resources_written: stats.resources_written as u32,
@@ -881,19 +1014,26 @@ impl StreamingDdexBuilder {
             peak_memory_usage: stats.peak_memory_usage as u32,
         })
     }
-    
+
     #[napi]
     pub fn get_xml(&mut self) -> Result<String> {
         if self.inner.is_some() {
-            return Err(Error::new(Status::InvalidArg, "Message not finished. Call finish_message first."));
+            return Err(Error::new(
+                Status::InvalidArg,
+                "Message not finished. Call finish_message first.",
+            ));
         }
-        
+
         // Retrieve the cursor from the completed builder
         let data = self.buffer.get_ref();
-        String::from_utf8(data.clone())
-            .map_err(|e| Error::new(Status::Unknown, format!("Failed to convert to UTF-8: {}", e)))
+        String::from_utf8(data.clone()).map_err(|e| {
+            Error::new(
+                Status::Unknown,
+                format!("Failed to convert to UTF-8: {}", e),
+            )
+        })
     }
-    
+
     #[napi]
     pub fn reset(&mut self) -> Result<()> {
         self.inner = None;
@@ -905,20 +1045,23 @@ impl StreamingDdexBuilder {
 #[napi]
 pub async fn batch_build(requests: Vec<String>) -> Result<Vec<String>> {
     let mut results = Vec::new();
-    
+
     for _request_json in requests {
         // Create a simple placeholder result for each request
-        let result = format!(r#"<?xml version="1.0" encoding="UTF-8"?>
+        let result = format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
 <NewReleaseMessage xmlns="http://ddex.net/xml/ern/43">
   <MessageHeader>
     <MessageId>{}</MessageId>
     <MessageSender><PartyName>DDEX Suite</PartyName></MessageSender>
     <MessageRecipient><PartyName>Recipient</PartyName></MessageRecipient>
   </MessageHeader>
-</NewReleaseMessage>"#, uuid::Uuid::new_v4());
+</NewReleaseMessage>"#,
+            uuid::Uuid::new_v4()
+        );
         results.push(result);
     }
-    
+
     Ok(results)
 }
 

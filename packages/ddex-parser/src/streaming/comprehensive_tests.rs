@@ -144,36 +144,50 @@ mod tests {
         println!("Total elements parsed: {}", elements.len());
 
         // Verify we found all expected elements
-        let header_count = elements.iter()
+        let header_count = elements
+            .iter()
             .filter(|e| matches!(e, WorkingStreamingElement::MessageHeader { .. }))
             .count();
-        let release_count = elements.iter()
+        let release_count = elements
+            .iter()
             .filter(|e| matches!(e, WorkingStreamingElement::Release { .. }))
             .count();
-        let sound_recording_count = elements.iter()
+        let sound_recording_count = elements
+            .iter()
             .filter(|e| matches!(e, WorkingStreamingElement::SoundRecording { .. }))
             .count();
-        let video_count = elements.iter()
+        let video_count = elements
+            .iter()
             .filter(|e| matches!(e, WorkingStreamingElement::Video { .. }))
             .count();
-        let image_count = elements.iter()
+        let image_count = elements
+            .iter()
             .filter(|e| matches!(e, WorkingStreamingElement::Image { .. }))
             .count();
 
         assert_eq!(header_count, 1, "Should find exactly 1 message header");
         assert_eq!(release_count, 1, "Should find exactly 1 release");
-        assert_eq!(sound_recording_count, 2, "Should find exactly 2 sound recordings");
+        assert_eq!(
+            sound_recording_count, 2,
+            "Should find exactly 2 sound recordings"
+        );
         assert_eq!(video_count, 1, "Should find exactly 1 video");
         assert_eq!(image_count, 1, "Should find exactly 1 image");
 
         // Verify specific element content
-        if let Some(WorkingStreamingElement::MessageHeader { message_id, .. }) =
-            elements.iter().find(|e| matches!(e, WorkingStreamingElement::MessageHeader { .. })) {
+        if let Some(WorkingStreamingElement::MessageHeader { message_id, .. }) = elements
+            .iter()
+            .find(|e| matches!(e, WorkingStreamingElement::MessageHeader { .. }))
+        {
             assert_eq!(message_id, "MSG-001-COMPREHENSIVE");
         }
 
-        if let Some(WorkingStreamingElement::Release { reference, title, .. }) =
-            elements.iter().find(|e| matches!(e, WorkingStreamingElement::Release { .. })) {
+        if let Some(WorkingStreamingElement::Release {
+            reference, title, ..
+        }) = elements
+            .iter()
+            .find(|e| matches!(e, WorkingStreamingElement::Release { .. }))
+        {
             assert_eq!(reference, "REL-2023-001");
             assert_eq!(title, "Greatest Hits Collection"); // Should extract TitleText
         }
@@ -189,19 +203,24 @@ mod tests {
     #[test]
     fn test_o1_memory_complexity() {
         // Generate XML with many elements to test memory bounds
-        let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
-<ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43">"#);
+        let mut xml = String::from(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43">"#,
+        );
 
-        xml.push_str(r#"
+        xml.push_str(
+            r#"
     <MessageHeader>
         <MessageId>MEMORY-TEST-MSG</MessageId>
         <CreatedDateTime>2023-01-01T00:00:00Z</CreatedDateTime>
     </MessageHeader>
-"#);
+"#,
+        );
 
         // Add many sound recordings to test memory usage
         for i in 1..=100 {
-            xml.push_str(&format!(r#"
+            xml.push_str(&format!(
+                r#"
     <SoundRecording ResourceReference="RES-{:03}">
         <ResourceId>
             <ISRC>TEST{:08}</ISRC>
@@ -213,7 +232,9 @@ mod tests {
         <CreationDate>2023-01-01</CreationDate>
         <LanguageOfPerformance>en</LanguageOfPerformance>
     </SoundRecording>
-"#, i, i, i));
+"#,
+                i, i, i
+            ));
         }
 
         xml.push_str("</ern:NewReleaseMessage>");
@@ -236,19 +257,31 @@ mod tests {
 
             // Verify O(1) memory complexity: memory should not grow linearly with elements
             if element_count > 10 {
-                assert!(stats.current_memory_bytes < 50 * 1024 * 1024,
+                assert!(
+                    stats.current_memory_bytes < 50 * 1024 * 1024,
                     "Memory usage should stay bounded under 50MB, got {} bytes at element {}",
-                    stats.current_memory_bytes, element_count);
+                    stats.current_memory_bytes,
+                    element_count
+                );
             }
         }
 
         println!("Processed {} elements", element_count);
-        println!("Max memory used: {} bytes ({:.2} MB)", max_memory_seen, max_memory_seen as f64 / (1024.0 * 1024.0));
+        println!(
+            "Max memory used: {} bytes ({:.2} MB)",
+            max_memory_seen,
+            max_memory_seen as f64 / (1024.0 * 1024.0)
+        );
 
-        assert!(element_count >= 100, "Should process at least 100 sound recordings");
-        assert!(max_memory_seen < 10 * 1024 * 1024,
+        assert!(
+            element_count >= 100,
+            "Should process at least 100 sound recordings"
+        );
+        assert!(
+            max_memory_seen < 10 * 1024 * 1024,
             "Max memory should be under 10MB for O(1) complexity, got {:.2} MB",
-            max_memory_seen as f64 / (1024.0 * 1024.0));
+            max_memory_seen as f64 / (1024.0 * 1024.0)
+        );
     }
 
     /// Test selective parsing - only extracting specific element types
@@ -297,26 +330,39 @@ mod tests {
         let elements = elements.unwrap();
 
         // Test selective extraction of only sound recordings
-        let sound_recordings: Vec<_> = elements.iter()
+        let sound_recordings: Vec<_> = elements
+            .iter()
             .filter_map(|e| match e {
-                WorkingStreamingElement::SoundRecording { reference, title, duration, .. } => {
-                    Some((reference.clone(), title.clone(), duration.clone()))
-                }
-                _ => None
+                WorkingStreamingElement::SoundRecording {
+                    reference,
+                    title,
+                    duration,
+                    ..
+                } => Some((reference.clone(), title.clone(), duration.clone())),
+                _ => None,
             })
             .collect();
 
-        assert_eq!(sound_recordings.len(), 2, "Should selectively extract 2 sound recordings");
-        assert!(sound_recordings.iter().any(|(ref_, _, _)| ref_ == "RES-AUDIO-001"));
-        assert!(sound_recordings.iter().any(|(ref_, _, _)| ref_ == "RES-AUDIO-002"));
+        assert_eq!(
+            sound_recordings.len(),
+            2,
+            "Should selectively extract 2 sound recordings"
+        );
+        assert!(sound_recordings
+            .iter()
+            .any(|(ref_, _, _)| ref_ == "RES-AUDIO-001"));
+        assert!(sound_recordings
+            .iter()
+            .any(|(ref_, _, _)| ref_ == "RES-AUDIO-002"));
 
         // Test selective extraction of only videos
-        let videos: Vec<_> = elements.iter()
+        let videos: Vec<_> = elements
+            .iter()
             .filter_map(|e| match e {
-                WorkingStreamingElement::Video { reference, title, .. } => {
-                    Some((reference.clone(), title.clone()))
-                }
-                _ => None
+                WorkingStreamingElement::Video {
+                    reference, title, ..
+                } => Some((reference.clone(), title.clone())),
+                _ => None,
             })
             .collect();
 
@@ -325,12 +371,16 @@ mod tests {
         assert_eq!(videos[0].1, "Music Video");
 
         // Test selective extraction of only images
-        let images: Vec<_> = elements.iter()
+        let images: Vec<_> = elements
+            .iter()
             .filter_map(|e| match e {
-                WorkingStreamingElement::Image { reference, width, height, .. } => {
-                    Some((reference.clone(), width.clone(), height.clone()))
-                }
-                _ => None
+                WorkingStreamingElement::Image {
+                    reference,
+                    width,
+                    height,
+                    ..
+                } => Some((reference.clone(), width.clone(), height.clone())),
+                _ => None,
             })
             .collect();
 
@@ -344,10 +394,13 @@ mod tests {
     #[test]
     fn test_performance_benchmarks() {
         // Create a moderately sized XML (similar to real-world releases)
-        let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
-<ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43">"#);
+        let mut xml = String::from(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43">"#,
+        );
 
-        xml.push_str(r#"
+        xml.push_str(
+            r#"
     <MessageHeader>
         <MessageId>PERFORMANCE-TEST</MessageId>
         <CreatedDateTime>2023-01-01T00:00:00Z</CreatedDateTime>
@@ -356,13 +409,15 @@ mod tests {
     <Release ReleaseReference="REL-PERF">
         <ReferenceTitle><TitleText>Performance Test Album</TitleText></ReferenceTitle>
     </Release>
-"#);
+"#,
+        );
 
         // Add 50 tracks (typical album size)
         for i in 1..=50 {
             let minutes = (i * 17) % 60;
             let seconds = (i * 23) % 60;
-            xml.push_str(&format!(r#"
+            xml.push_str(&format!(
+                r#"
     <SoundRecording ResourceReference="TRACK-{:02}">
         <ResourceId><ISRC>PERF{:08}</ISRC></ResourceId>
         <ReferenceTitle><TitleText>Track {}</TitleText></ReferenceTitle>
@@ -370,13 +425,19 @@ mod tests {
         <CreationDate>2023-01-01</CreationDate>
         <LanguageOfPerformance>en</LanguageOfPerformance>
     </SoundRecording>
-"#, i, i, i, minutes, seconds));
+"#,
+                i, i, i, minutes, seconds
+            ));
         }
 
         xml.push_str("</ern:NewReleaseMessage>");
 
         let xml_size = xml.len();
-        println!("Performance test XML size: {} bytes ({:.1} KB)", xml_size, xml_size as f64 / 1024.0);
+        println!(
+            "Performance test XML size: {} bytes ({:.1} KB)",
+            xml_size,
+            xml_size as f64 / 1024.0
+        );
 
         let start = std::time::Instant::now();
         let cursor = Cursor::new(xml.as_bytes());
@@ -394,18 +455,33 @@ mod tests {
         println!("Performance Results:");
         println!("  - Elements processed: {}", element_count);
         println!("  - Time elapsed: {:.2}ms", elapsed.as_millis());
-        println!("  - Throughput: {:.2} MB/s", final_stats.throughput_mb_per_sec);
-        println!("  - Memory efficiency: {:.1}x", final_stats.memory_efficiency());
-        println!("  - Max memory used: {:.2} KB", final_stats.max_memory_used_bytes as f64 / 1024.0);
+        println!(
+            "  - Throughput: {:.2} MB/s",
+            final_stats.throughput_mb_per_sec
+        );
+        println!(
+            "  - Memory efficiency: {:.1}x",
+            final_stats.memory_efficiency()
+        );
+        println!(
+            "  - Max memory used: {:.2} KB",
+            final_stats.max_memory_used_bytes as f64 / 1024.0
+        );
 
         // Performance assertions
-        assert!(elapsed.as_millis() < 100,
+        assert!(
+            elapsed.as_millis() < 100,
             "Should parse typical album in under 100ms, took {}ms",
-            elapsed.as_millis());
-        assert!(final_stats.is_memory_bounded(),
-            "Should maintain O(1) memory usage");
-        assert!(final_stats.throughput_mb_per_sec > 1.0,
-            "Should achieve at least 1 MB/s throughput");
+            elapsed.as_millis()
+        );
+        assert!(
+            final_stats.is_memory_bounded(),
+            "Should maintain O(1) memory usage"
+        );
+        assert!(
+            final_stats.throughput_mb_per_sec > 1.0,
+            "Should achieve at least 1 MB/s throughput"
+        );
         assert!(element_count >= 50, "Should process all 50+ elements");
     }
 
@@ -452,7 +528,10 @@ mod tests {
 
         // Note: Some XML parsers may be lenient, so we allow either error detection or successful parsing
         // The important thing is that the parser doesn't crash or consume excessive resources
-        println!("Malformed XML test completed (error detected: {})", found_error);
+        println!(
+            "Malformed XML test completed (error detected: {})",
+            found_error
+        );
 
         // Test 3: Empty document handling
         let empty_xml = "";
@@ -471,7 +550,9 @@ mod tests {
     /// Test compatibility with different ERN versions
     #[test]
     fn test_ern_version_compatibility() {
-        let base_xml = |version_namespace: &str| format!(r#"<?xml version="1.0" encoding="UTF-8"?>
+        let base_xml = |version_namespace: &str| {
+            format!(
+                r#"<?xml version="1.0" encoding="UTF-8"?>
 <ern:NewReleaseMessage xmlns:ern="{}">
     <MessageHeader>
         <MessageId>VERSION-TEST</MessageId>
@@ -480,7 +561,10 @@ mod tests {
     <Release ReleaseReference="REL-VER">
         <ReferenceTitle><TitleText>Version Test</TitleText></ReferenceTitle>
     </Release>
-</ern:NewReleaseMessage>"#, version_namespace);
+</ern:NewReleaseMessage>"#,
+                version_namespace
+            )
+        };
 
         // Test different ERN versions
         let test_cases = vec![
@@ -495,18 +579,31 @@ mod tests {
             let iterator = WorkingStreamIterator::new(cursor, version);
 
             let elements: Result<Vec<_>, _> = iterator.collect();
-            assert!(elements.is_ok(),
-                "Should successfully parse ERN version {:?}", version);
+            assert!(
+                elements.is_ok(),
+                "Should successfully parse ERN version {:?}",
+                version
+            );
 
             let elements = elements.unwrap();
-            assert!(elements.len() >= 2,
-                "Should find header and release for ERN version {:?}", version);
+            assert!(
+                elements.len() >= 2,
+                "Should find header and release for ERN version {:?}",
+                version
+            );
 
             // Verify version is correctly set in header
-            if let Some(WorkingStreamingElement::MessageHeader { version: header_version, .. }) =
-                elements.iter().find(|e| matches!(e, WorkingStreamingElement::MessageHeader { .. })) {
-                assert_eq!(header_version, &version,
-                    "Header should have correct version");
+            if let Some(WorkingStreamingElement::MessageHeader {
+                version: header_version,
+                ..
+            }) = elements
+                .iter()
+                .find(|e| matches!(e, WorkingStreamingElement::MessageHeader { .. }))
+            {
+                assert_eq!(
+                    header_version, &version,
+                    "Header should have correct version"
+                );
             }
         }
     }

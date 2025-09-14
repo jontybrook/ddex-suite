@@ -1,9 +1,9 @@
 //! XML serialization from AST
 
-use crate::ast::{AST, Element, Node};
+use crate::ast::{Element, Node, AST};
 use crate::determinism::{DeterminismConfig, IndentChar};
-use ddex_core::models::CommentPosition;  // Fixed import
 use crate::error::BuildError;
+use ddex_core::models::CommentPosition; // Fixed import
 use indexmap::IndexMap;
 use std::io::Write;
 
@@ -17,20 +17,26 @@ impl XmlWriter {
     pub fn new(config: DeterminismConfig) -> Self {
         Self { config }
     }
-    
+
     /// Write AST to XML string
     pub fn write(&self, ast: &AST) -> Result<String, BuildError> {
         let mut buffer = Vec::new();
-        
+
         // Write XML declaration
         writeln!(&mut buffer, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>")?;
-        
+
         // Write root element with namespaces
-        self.write_element(&mut buffer, &ast.root, &ast.namespaces, ast.schema_location.as_deref(), 0)?;
-        
+        self.write_element(
+            &mut buffer,
+            &ast.root,
+            &ast.namespaces,
+            ast.schema_location.as_deref(),
+            0,
+        )?;
+
         Ok(String::from_utf8(buffer).map_err(|e| BuildError::Serialization(e.to_string()))?)
     }
-    
+
     fn write_element(
         &self,
         writer: &mut impl Write,
@@ -40,10 +46,10 @@ impl XmlWriter {
         depth: usize,
     ) -> Result<(), BuildError> {
         let indent = self.get_indent(depth);
-        
+
         // Start tag
         write!(writer, "{}<", indent)?;
-        
+
         // Add namespace prefix if needed
         let element_name = if let Some(ns) = &element.namespace {
             format!("{}:{}", ns, element.name)
@@ -57,33 +63,33 @@ impl XmlWriter {
         } else {
             element.name.clone()
         };
-        
+
         write!(writer, "{}", element_name)?;
-        
+
         // Add namespace declarations on root element
         if depth == 0 {
             for (prefix, uri) in namespaces {
                 write!(writer, " xmlns:{}=\"{}\"", prefix, uri)?;
             }
-            
+
             if let Some(location) = schema_location {
                 write!(writer, " xsi:schemaLocation=\"{}\"", location)?;
             }
         }
-        
+
         // Add attributes (in deterministic order)
         for (key, value) in &element.attributes {
             write!(writer, " {}=\"{}\"", key, self.escape_attribute(value))?;
         }
-        
+
         // Check if we have children
         if element.children.is_empty() {
             writeln!(writer, "/>")?;
         } else {
             // Check if we only have text content
-            let only_text = element.children.len() == 1 && 
-                matches!(&element.children[0], Node::Text(_));
-            
+            let only_text =
+                element.children.len() == 1 && matches!(&element.children[0], Node::Text(_));
+
             if only_text {
                 // Inline text content
                 write!(writer, ">")?;
@@ -94,7 +100,7 @@ impl XmlWriter {
             } else {
                 // Has child elements
                 writeln!(writer, ">")?;
-                
+
                 // Write children
                 for child in &element.children {
                     match child {
@@ -114,29 +120,29 @@ impl XmlWriter {
                         }
                     }
                 }
-                
+
                 // Close tag
                 writeln!(writer, "{}</{}>", indent, element_name)?;
             }
         }
-        
+
         Ok(())
     }
-    
+
     fn get_indent(&self, depth: usize) -> String {
         let indent_char = match self.config.indent_char {
-            IndentChar::Space => " ",  // Fixed: removed super::determinism::
-            IndentChar::Tab => "\t",   // Fixed: removed super::determinism::
+            IndentChar::Space => " ", // Fixed: removed super::determinism::
+            IndentChar::Tab => "\t",  // Fixed: removed super::determinism::
         };
         indent_char.repeat(depth * self.config.indent_width)
     }
-    
+
     fn escape_text(&self, text: &str) -> String {
         text.replace('&', "&amp;")
             .replace('<', "&lt;")
             .replace('>', "&gt;")
     }
-    
+
     fn escape_attribute(&self, text: &str) -> String {
         text.replace('&', "&amp;")
             .replace('<', "&lt;")
@@ -144,7 +150,7 @@ impl XmlWriter {
             .replace('"', "&quot;")
             .replace('\'', "&apos;")
     }
-    
+
     /// Write a structured comment with position-aware formatting
     fn write_comment(
         &self,
@@ -166,11 +172,11 @@ impl XmlWriter {
                 String::new()
             }
         };
-        
+
         // Use the comment's XML formatting which handles escaping
         let comment_xml = comment.to_xml();
         writeln!(writer, "{}{}", indent, comment_xml)?;
-        
+
         Ok(())
     }
 }

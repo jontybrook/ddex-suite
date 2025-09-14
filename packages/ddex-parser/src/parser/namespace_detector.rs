@@ -1,16 +1,18 @@
 //! # Namespace Detection and Management for DDEX Parser
-//! 
+//!
 //! This module provides comprehensive namespace detection and storage for DDEX XML parsing,
 //! handling scope inheritance, default namespaces, and custom extensions.
 
-use ddex_core::namespace::{NamespaceRegistry, NamespaceScope, NamespaceInfo, DDEXStandard, NamespaceWarning};
-use ddex_core::models::versions::ERNVersion;
-use indexmap::IndexMap;
-use quick_xml::events::{Event, BytesStart};
-use quick_xml::Reader;
-use std::io::BufRead;
 use crate::error::ParseError;
 use crate::utf8_utils;
+use ddex_core::models::versions::ERNVersion;
+use ddex_core::namespace::{
+    DDEXStandard, NamespaceInfo, NamespaceRegistry, NamespaceScope, NamespaceWarning,
+};
+use indexmap::IndexMap;
+use quick_xml::events::{BytesStart, Event};
+use quick_xml::Reader;
+use std::io::BufRead;
 use tracing::{debug, warn};
 
 /// Comprehensive namespace detection and management
@@ -64,12 +66,22 @@ impl NamespaceDetector {
     }
 
     /// Detect namespaces from XML content with security limits
-    pub fn detect_from_xml<R: BufRead>(&mut self, reader: R) -> Result<NamespaceDetectionResult, ParseError> {
-        self.detect_from_xml_with_security(reader, &crate::parser::security::SecurityConfig::default())
+    pub fn detect_from_xml<R: BufRead>(
+        &mut self,
+        reader: R,
+    ) -> Result<NamespaceDetectionResult, ParseError> {
+        self.detect_from_xml_with_security(
+            reader,
+            &crate::parser::security::SecurityConfig::default(),
+        )
     }
 
     /// Detect namespaces from XML content with custom security config
-    pub fn detect_from_xml_with_security<R: BufRead>(&mut self, reader: R, security_config: &crate::parser::security::SecurityConfig) -> Result<NamespaceDetectionResult, ParseError> {
+    pub fn detect_from_xml_with_security<R: BufRead>(
+        &mut self,
+        reader: R,
+        security_config: &crate::parser::security::SecurityConfig,
+    ) -> Result<NamespaceDetectionResult, ParseError> {
         let mut xml_reader = Reader::from_reader(reader);
         xml_reader.config_mut().trim_text(true);
 
@@ -117,8 +129,10 @@ impl NamespaceDetector {
                         entity_expansions += text.matches("&").count();
                         if entity_expansions > security_config.max_entity_expansions {
                             return Err(ParseError::SecurityViolation {
-                                message: format!("Entity expansions {} exceed maximum allowed {}",
-                                               entity_expansions, security_config.max_entity_expansions),
+                                message: format!(
+                                    "Entity expansions {} exceed maximum allowed {}",
+                                    entity_expansions, security_config.max_entity_expansions
+                                ),
                             });
                         }
                     }
@@ -130,10 +144,12 @@ impl NamespaceDetector {
                 }
                 Ok(Event::Eof) => break,
                 Ok(_) => {} // Ignore other events for namespace detection
-                Err(e) => return Err(ParseError::XmlError {
-                    message: format!("XML parsing error: {}", e),
-                    location: crate::error::ErrorLocation::default(),
-                }),
+                Err(e) => {
+                    return Err(ParseError::XmlError {
+                        message: format!("XML parsing error: {}", e),
+                        location: crate::error::ErrorLocation::default(),
+                    })
+                }
             }
             buf.clear();
         }
@@ -149,64 +165,73 @@ impl NamespaceDetector {
         // Create new scope for this element
         let current_scope = self.scope_stack.last().unwrap().clone();
         let mut new_scope = current_scope.new_child();
-        
+
         // Extract namespace declarations from attributes
         let mut _has_namespace_declarations = false;
-        let mut new_default_namespace = self.default_namespace_stack.last().cloned().unwrap_or(None);
-        
+        let mut new_default_namespace =
+            self.default_namespace_stack.last().cloned().unwrap_or(None);
+
         for attr_result in element.attributes() {
-            let attr = attr_result.map_err(|e| ParseError::XmlError { 
+            let attr = attr_result.map_err(|e| ParseError::XmlError {
                 message: format!("Attribute error: {}", e),
                 location: crate::error::ErrorLocation::default(),
             })?;
             // Use proper UTF-8 decoding for attribute key and value
             let key = utf8_utils::decode_attribute_name(attr.key.as_ref(), 0)?;
             let value = utf8_utils::decode_attribute_value(&attr.value, 0)?;
-            
+
             if key == "xmlns" {
                 // Default namespace declaration
                 debug!("Found default namespace declaration: {}", value);
                 new_default_namespace = Some(value.clone());
                 new_scope.declare_namespace("".to_string(), value.clone());
-                self.detected_namespaces.insert("".to_string(), value.clone());
+                self.detected_namespaces
+                    .insert("".to_string(), value.clone());
                 _has_namespace_declarations = true;
-                
+
                 // Try to detect ERN version
                 if let Some(version) = self.registry.detect_version(&value) {
                     if self.detected_version.is_none() {
                         self.detected_version = Some(version);
-                        debug!("Detected ERN version: {:?} from namespace: {}", version, value);
+                        debug!(
+                            "Detected ERN version: {:?} from namespace: {}",
+                            version, value
+                        );
                     }
                 }
             } else if key.starts_with("xmlns:") {
                 // Prefixed namespace declaration
                 let prefix = key.strip_prefix("xmlns:").unwrap_or("");
                 debug!("Found namespace declaration: {}={}", prefix, value);
-                
+
                 new_scope.declare_namespace(prefix.to_string(), value.clone());
-                self.detected_namespaces.insert(prefix.to_string(), value.clone());
+                self.detected_namespaces
+                    .insert(prefix.to_string(), value.clone());
                 _has_namespace_declarations = true;
-                
+
                 // Track namespace aliases
                 self.namespace_aliases
                     .entry(value.clone())
                     .or_default()
                     .push(prefix.to_string());
-                
+
                 // Try to detect ERN version
                 if let Some(version) = self.registry.detect_version(&value) {
                     if self.detected_version.is_none() {
                         self.detected_version = Some(version);
-                        debug!("Detected ERN version: {:?} from namespace: {}", version, value);
+                        debug!(
+                            "Detected ERN version: {:?} from namespace: {}",
+                            version, value
+                        );
                     }
                 }
             }
         }
-        
+
         // Push new scope and default namespace
         self.scope_stack.push(new_scope);
         self.default_namespace_stack.push(new_default_namespace);
-        
+
         Ok(())
     }
 
@@ -222,7 +247,9 @@ impl NamespaceDetector {
 
     /// Validate detected namespaces against known standards
     fn validate_namespaces(&mut self) {
-        let validation_warnings = self.registry.validate_declarations(&self.detected_namespaces);
+        let validation_warnings = self
+            .registry
+            .validate_declarations(&self.detected_namespaces);
         self.warnings.extend(validation_warnings);
     }
 
@@ -236,7 +263,9 @@ impl NamespaceDetector {
                 let custom_info = NamespaceInfo {
                     uri: uri.clone(),
                     preferred_prefix: prefix.clone(),
-                    alternative_prefixes: self.namespace_aliases.get(uri)
+                    alternative_prefixes: self
+                        .namespace_aliases
+                        .get(uri)
                         .cloned()
                         .unwrap_or_default()
                         .into_iter()
@@ -391,9 +420,7 @@ pub enum ResolvedName {
         prefix: String,
     },
     /// Unqualified name (no namespace)
-    Unqualified {
-        local_name: String,
-    },
+    Unqualified { local_name: String },
     /// Unresolved prefix
     Unresolved {
         local_name: String,
@@ -422,16 +449,19 @@ mod tests {
         <ern:MessageId>MSG001</ern:MessageId>
     </ern:MessageHeader>
 </ern:NewReleaseMessage>"#;
-        
+
         let mut detector = NamespaceDetector::new();
         let cursor = Cursor::new(xml.as_bytes());
         let result = detector.detect_from_xml(cursor).unwrap();
-        
+
         assert_eq!(result.version, Some(ERNVersion::V4_3));
         assert!(result.declarations.contains_key("ern"));
         assert!(result.declarations.contains_key("avs"));
         assert!(result.declarations.contains_key("xsi"));
-        assert_eq!(result.declarations.get("ern"), Some(&"http://ddex.net/xml/ern/43".to_string()));
+        assert_eq!(
+            result.declarations.get("ern"),
+            Some(&"http://ddex.net/xml/ern/43".to_string())
+        );
     }
 
     #[test]
@@ -443,13 +473,16 @@ mod tests {
         <MessageId>MSG001</MessageId>
     </MessageHeader>
 </NewReleaseMessage>"#;
-        
+
         let mut detector = NamespaceDetector::new();
         let cursor = Cursor::new(xml.as_bytes());
         let result = detector.detect_from_xml(cursor).unwrap();
-        
+
         assert_eq!(result.version, Some(ERNVersion::V4_2));
-        assert_eq!(result.default_namespace, Some("http://ddex.net/xml/ern/42".to_string()));
+        assert_eq!(
+            result.default_namespace,
+            Some("http://ddex.net/xml/ern/42".to_string())
+        );
         assert!(result.declarations.contains_key(""));
     }
 
@@ -462,11 +495,11 @@ mod tests {
         <custom:CustomElement>Test</custom:CustomElement>
     </ern:MessageHeader>
 </ern:NewReleaseMessage>"#;
-        
+
         let mut detector = NamespaceDetector::new();
         let cursor = Cursor::new(xml.as_bytes());
         let result = detector.detect_from_xml(cursor).unwrap();
-        
+
         assert_eq!(result.custom_namespaces.len(), 1);
         assert_eq!(result.custom_namespaces[0].uri, "http://example.com/custom");
         assert_eq!(result.custom_namespaces[0].preferred_prefix, "custom");
@@ -482,11 +515,11 @@ mod tests {
         </local:LocalElement>
     </ern:MessageHeader>
 </ern:NewReleaseMessage>"#;
-        
+
         let mut detector = NamespaceDetector::new();
         let cursor = Cursor::new(xml.as_bytes());
         let result = detector.detect_from_xml(cursor).unwrap();
-        
+
         // Both namespaces should be detected
         assert!(result.declarations.contains_key("ern"));
         assert!(result.declarations.contains_key("local"));
@@ -498,16 +531,20 @@ mod tests {
 <ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43" 
                        xmlns:avs="http://ddex.net/xml/avs">
 </ern:NewReleaseMessage>"#;
-        
+
         let mut detector = NamespaceDetector::new();
         let cursor = Cursor::new(xml.as_bytes());
         let result = detector.detect_from_xml(cursor).unwrap();
-        
+
         let context = NamespaceContext::from_detection_result(result);
-        
+
         let resolved = context.resolve_element_name("MessageHeader", Some("ern"));
         match resolved {
-            ResolvedName::Qualified { local_name, namespace_uri, prefix } => {
+            ResolvedName::Qualified {
+                local_name,
+                namespace_uri,
+                prefix,
+            } => {
                 assert_eq!(local_name, "MessageHeader");
                 assert_eq!(namespace_uri, "http://ddex.net/xml/ern/43");
                 assert_eq!(prefix, "ern");

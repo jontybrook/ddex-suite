@@ -2,9 +2,9 @@
 //! XPath-like selector functionality for efficient XML element selection
 
 use crate::error::ParseError;
-use quick_xml::{Reader, events::Event};
-use std::io::BufRead;
+use quick_xml::{events::Event, Reader};
 use std::collections::HashMap;
+use std::io::BufRead;
 
 /// XPath-like selector for extracting specific XML elements and values
 #[derive(Debug, Clone)]
@@ -20,6 +20,7 @@ pub struct XPathSelector {
     /// Skip validation for better performance
     fast_mode: bool,
     /// Pre-compiled element name cache for performance
+    #[allow(dead_code)] // Future optimization feature
     element_cache: std::collections::HashMap<String, String>,
 }
 
@@ -39,10 +40,7 @@ pub enum PathComponent {
         value: Option<String>,
     },
     /// Index selector ([1], [2], etc.)
-    IndexFilter {
-        element: String,
-        index: usize,
-    },
+    IndexFilter { element: String, index: usize },
 }
 
 /// Result of XPath selection
@@ -150,12 +148,10 @@ impl XPathSelector {
 
                     // Extract attributes for potential filtering
                     let mut attr_map = HashMap::new();
-                    for attr_result in e.attributes() {
-                        if let Ok(attr) = attr_result {
-                            let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
-                            let value = String::from_utf8_lossy(&attr.value).to_string();
-                            attr_map.insert(key, value);
-                        }
+                    for attr in e.attributes().flatten() {
+                        let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
+                        let value = String::from_utf8_lossy(&attr.value).to_string();
+                        attr_map.insert(key, value);
                     }
 
                     // Check if this element matches our selector with attribute filtering
@@ -183,20 +179,14 @@ impl XPathSelector {
                     // Check for match on empty element
                     if self.matches_path(&current_path) {
                         let mut attr_map = HashMap::new();
-                        for attr_result in e.attributes() {
-                            if let Ok(attr) = attr_result {
-                                let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
-                                let value = String::from_utf8_lossy(&attr.value).to_string();
-                                attr_map.insert(key, value);
-                            }
+                        for attr in e.attributes().flatten() {
+                            let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
+                            let value = String::from_utf8_lossy(&attr.value).to_string();
+                            attr_map.insert(key, value);
                         }
 
                         // For empty elements, capture attribute values or empty string
-                        let value = if let Some(main_attr) = self.get_main_attribute(&attr_map) {
-                            main_attr
-                        } else {
-                            String::new()
-                        };
+                        let value = self.get_main_attribute(&attr_map).unwrap_or_default();
 
                         results.push(value);
                         paths.push(current_path.join("/"));
@@ -214,7 +204,8 @@ impl XPathSelector {
                         // Use utf8_utils for proper UTF-8 handling
                         let current_pos = xml_reader.buffer_position() as usize;
                         let text = crate::utf8_utils::handle_text_node(e, current_pos)?
-                            .trim().to_string();
+                            .trim()
+                            .to_string();
 
                         if !text.is_empty() {
                             let context = capture_context.last().unwrap();
@@ -292,11 +283,9 @@ impl XPathSelector {
                             current = String::new();
                         }
                         parts.push("//".to_string());
-                    } else {
-                        if !current.is_empty() {
-                            parts.push(current);
-                            current = String::new();
-                        }
+                    } else if !current.is_empty() {
+                        parts.push(current);
+                        current = String::new();
                     }
                 }
                 _ => current.push(ch),
@@ -389,12 +378,23 @@ impl XPathSelector {
     }
 
     /// Check if current path matches with attribute filtering
-    fn matches_path_with_attributes(&self, current: &[String], attributes: &HashMap<String, String>) -> bool {
+    fn matches_path_with_attributes(
+        &self,
+        current: &[String],
+        attributes: &HashMap<String, String>,
+    ) -> bool {
         self.match_components(&self.path, current, 0, 0, attributes)
     }
 
     /// Recursively match path components against current path
-    fn match_components(&self, components: &[PathComponent], current: &[String], comp_idx: usize, path_idx: usize, attributes: &HashMap<String, String>) -> bool {
+    fn match_components(
+        &self,
+        components: &[PathComponent],
+        current: &[String],
+        comp_idx: usize,
+        path_idx: usize,
+        attributes: &HashMap<String, String>,
+    ) -> bool {
         // If we've matched all components, success
         if comp_idx >= components.len() {
             return true;
@@ -409,7 +409,13 @@ impl XPathSelector {
             PathComponent::Element(name) => {
                 if self.element_matches(name, &current[path_idx]) {
                     // Exact match, advance both
-                    self.match_components(components, current, comp_idx + 1, path_idx + 1, attributes)
+                    self.match_components(
+                        components,
+                        current,
+                        comp_idx + 1,
+                        path_idx + 1,
+                        attributes,
+                    )
                 } else {
                     false
                 }
@@ -427,20 +433,36 @@ impl XPathSelector {
                 }
                 false
             }
-            PathComponent::AttributeFilter { element, attribute, value } => {
+            PathComponent::AttributeFilter {
+                element,
+                attribute,
+                value,
+            } => {
                 if self.element_matches(element, &current[path_idx]) {
                     // Check attribute filtering
                     if let Some(attr_value) = attributes.get(attribute) {
                         if let Some(expected_value) = value {
                             // Attribute must have specific value
                             if expected_value == attr_value {
-                                self.match_components(components, current, comp_idx + 1, path_idx + 1, attributes)
+                                self.match_components(
+                                    components,
+                                    current,
+                                    comp_idx + 1,
+                                    path_idx + 1,
+                                    attributes,
+                                )
                             } else {
                                 false
                             }
                         } else {
                             // Attribute just needs to exist
-                            self.match_components(components, current, comp_idx + 1, path_idx + 1, attributes)
+                            self.match_components(
+                                components,
+                                current,
+                                comp_idx + 1,
+                                path_idx + 1,
+                                attributes,
+                            )
                         }
                     } else {
                         false // Attribute doesn't exist
@@ -454,10 +476,22 @@ impl XPathSelector {
                     // For index filtering, we'd need to count elements at this level
                     // For now, just match the first occurrence (index 1)
                     if *index == 1 {
-                        self.match_components(components, current, comp_idx + 1, path_idx + 1, attributes)
+                        self.match_components(
+                            components,
+                            current,
+                            comp_idx + 1,
+                            path_idx + 1,
+                            attributes,
+                        )
                     } else {
                         // More sophisticated index tracking would be needed
-                        self.match_components(components, current, comp_idx + 1, path_idx + 1, attributes)
+                        self.match_components(
+                            components,
+                            current,
+                            comp_idx + 1,
+                            path_idx + 1,
+                            attributes,
+                        )
                     }
                 } else {
                     false
@@ -470,7 +504,7 @@ impl XPathSelector {
     fn element_matches(&self, pattern: &str, actual: &str) -> bool {
         let actual_local = if self.namespace_aware {
             // Extract local name after ':'
-            actual.split(':').last().unwrap_or(actual)
+            actual.split(':').next_back().unwrap_or(actual)
         } else {
             actual
         };
@@ -510,6 +544,7 @@ impl XPathSelector {
 struct CaptureContext {
     path: String,
     attributes: HashMap<String, String>,
+    #[allow(dead_code)] // Future text capture feature
     capture_text: bool,
 }
 
@@ -530,14 +565,20 @@ impl XPathSelector {
     }
 
     /// Select elements with custom XPath
-    pub fn select_with_xpath<R: BufRead>(reader: R, xpath: &str) -> Result<Vec<String>, ParseError> {
+    pub fn select_with_xpath<R: BufRead>(
+        reader: R,
+        xpath: &str,
+    ) -> Result<Vec<String>, ParseError> {
         let selector = Self::new(xpath)?;
         let result = selector.select(reader)?;
         Ok(result.values)
     }
 
     /// High-performance batch selection for multiple XPath expressions
-    pub fn select_multiple<R: BufRead>(reader: R, xpaths: &[&str]) -> Result<Vec<Vec<String>>, ParseError> {
+    pub fn select_multiple<R: BufRead>(
+        reader: R,
+        xpaths: &[&str],
+    ) -> Result<Vec<Vec<String>>, ParseError> {
         let mut selectors = Vec::new();
         for xpath in xpaths {
             selectors.push(Self::new(xpath)?.fast_mode(true));
@@ -561,12 +602,10 @@ impl XPathSelector {
 
                     // Extract attributes once for all selectors
                     let mut attr_map = HashMap::new();
-                    for attr_result in e.attributes() {
-                        if let Ok(attr) = attr_result {
-                            let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
-                            let value = String::from_utf8_lossy(&attr.value).to_string();
-                            attr_map.insert(key, value);
-                        }
+                    for attr in e.attributes().flatten() {
+                        let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
+                        let value = String::from_utf8_lossy(&attr.value).to_string();
+                        attr_map.insert(key, value);
                     }
 
                     // Check against all selectors
@@ -592,7 +631,8 @@ impl XPathSelector {
                     // Use utf8_utils for proper UTF-8 handling
                     let current_pos = xml_reader.buffer_position() as usize;
                     let text = crate::utf8_utils::handle_text_node(e, current_pos)?
-                        .trim().to_string();
+                        .trim()
+                        .to_string();
 
                     if !text.is_empty() {
                         for (i, contexts) in capture_contexts.iter().enumerate() {
@@ -634,7 +674,7 @@ mod tests {
         assert_eq!(selector.path.len(), 3);
 
         match &selector.path[0] {
-            PathComponent::DescendantOrSelf => {},
+            PathComponent::DescendantOrSelf => {}
             _ => panic!("Expected DescendantOrSelf"),
         }
 
@@ -834,7 +874,10 @@ mod tests {
         assert_eq!(result.values.len(), 3);
 
         // Check that we captured both attribute values and text content
-        assert!(result.values.iter().any(|v| v == "test1" || v == "test2" || v == "content"));
+        assert!(result
+            .values
+            .iter()
+            .any(|v| v == "test1" || v == "test2" || v == "content"));
     }
 
     #[test]

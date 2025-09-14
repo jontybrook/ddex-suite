@@ -4,12 +4,11 @@ use crate::error::ParseError;
 use crate::parser::namespace_detector::NamespaceContext;
 use crate::parser::xml_validator::XmlValidator;
 use ddex_core::models::graph::{
-    ERNMessage, MessageHeader, MessageType, MessageSender, MessageRecipient,
-    Release
+    ERNMessage, MessageHeader, MessageRecipient, MessageSender, MessageType, Release,
 };
 use ddex_core::models::versions::ERNVersion;
-use quick_xml::Reader;
 use quick_xml::events::Event;
+use quick_xml::Reader;
 use std::io::BufRead;
 
 pub struct GraphBuilder {
@@ -20,12 +19,22 @@ impl GraphBuilder {
     pub fn new(version: ERNVersion) -> Self {
         Self { version }
     }
-    
-    pub fn build_from_xml<R: BufRead + std::io::Seek>(&self, reader: R) -> Result<ERNMessage, ParseError> {
-        self.build_from_xml_with_security_config(reader, &crate::parser::security::SecurityConfig::default())
+
+    pub fn build_from_xml<R: BufRead + std::io::Seek>(
+        &self,
+        reader: R,
+    ) -> Result<ERNMessage, ParseError> {
+        self.build_from_xml_with_security_config(
+            reader,
+            &crate::parser::security::SecurityConfig::default(),
+        )
     }
 
-    pub fn build_from_xml_with_security_config<R: BufRead + std::io::Seek>(&self, mut reader: R, security_config: &crate::parser::security::SecurityConfig) -> Result<ERNMessage, ParseError> {
+    pub fn build_from_xml_with_security_config<R: BufRead + std::io::Seek>(
+        &self,
+        mut reader: R,
+        _security_config: &crate::parser::security::SecurityConfig,
+    ) -> Result<ERNMessage, ParseError> {
         let mut xml_reader = Reader::from_reader(&mut reader);
 
         // Enable strict XML validation
@@ -37,9 +46,9 @@ impl GraphBuilder {
         let message_header = self.create_minimal_header()?;
         let mut validator = XmlValidator::strict();
         let mut releases = Vec::new();
-        let resources = Vec::new();  // Remove mut
-        let parties = Vec::new();    // Remove mut
-        let deals = Vec::new();      // Remove mut
+        let resources = Vec::new(); // Remove mut
+        let parties = Vec::new(); // Remove mut
+        let deals = Vec::new(); // Remove mut
 
         // Parse with XML validation and depth tracking
         let mut buf = Vec::new();
@@ -65,7 +74,12 @@ impl GraphBuilder {
                                 b"ReleaseList" => in_release_list = true,
                                 b"Release" if in_release_list => {
                                     // Create a minimal release and manually validate the end event
-                                    releases.push(self.parse_minimal_release(&mut xml_reader, &mut validator)?);
+                                    releases.push(
+                                        self.parse_minimal_release(
+                                            &mut xml_reader,
+                                            &mut validator,
+                                        )?,
+                                    );
                                 }
                                 _ => {}
                             }
@@ -93,7 +107,7 @@ impl GraphBuilder {
             }
             buf.clear();
         }
-        
+
         Ok(ERNMessage {
             message_header,
             parties,
@@ -109,18 +123,30 @@ impl GraphBuilder {
             attributes: None,
         })
     }
-    
+
     /// Build graph model from XML with namespace context
-    pub fn build_from_xml_with_context<R: BufRead + std::io::Seek>(&self, reader: R, _context: NamespaceContext) -> Result<ERNMessage, ParseError> {
-        self.build_from_xml_with_context_and_security(reader, _context, &crate::parser::security::SecurityConfig::default())
+    pub fn build_from_xml_with_context<R: BufRead + std::io::Seek>(
+        &self,
+        reader: R,
+        _context: NamespaceContext,
+    ) -> Result<ERNMessage, ParseError> {
+        self.build_from_xml_with_context_and_security(
+            reader,
+            _context,
+            &crate::parser::security::SecurityConfig::default(),
+        )
     }
 
-    pub fn build_from_xml_with_context_and_security<R: BufRead + std::io::Seek>(&self, reader: R, _context: NamespaceContext, security_config: &crate::parser::security::SecurityConfig) -> Result<ERNMessage, ParseError> {
+    pub fn build_from_xml_with_context_and_security<R: BufRead + std::io::Seek>(
+        &self,
+        reader: R,
+        _context: NamespaceContext,
+        security_config: &crate::parser::security::SecurityConfig,
+    ) -> Result<ERNMessage, ParseError> {
         // For now, delegate to the security-aware method
         // In the future, this would use the namespace context for proper element resolution
         self.build_from_xml_with_security_config(reader, security_config)
     }
-    
 
     fn create_minimal_header(&self) -> Result<MessageHeader, ParseError> {
         use chrono::Utc;
@@ -153,14 +179,22 @@ impl GraphBuilder {
             comments: None,
         })
     }
-    
-    fn parse_minimal_release<R: BufRead>(&self, reader: &mut Reader<R>, validator: &mut crate::parser::xml_validator::XmlValidator) -> Result<Release, ParseError> {
+
+    fn parse_minimal_release<R: BufRead>(
+        &self,
+        reader: &mut Reader<R>,
+        validator: &mut crate::parser::xml_validator::XmlValidator,
+    ) -> Result<Release, ParseError> {
         use ddex_core::models::common::LocalizedString;
-        
-        let release = Release {  // Remove mut
+
+        let release = Release {
+            // Remove mut
             release_reference: format!("R_{:?}", self.version),
             release_id: Vec::new(),
-            release_title: vec![LocalizedString::new(format!("Test Release {:?}", self.version))],
+            release_title: vec![LocalizedString::new(format!(
+                "Test Release {:?}",
+                self.version
+            ))],
             release_subtitle: None,
             release_type: None,
             genre: Vec::new(),
@@ -174,7 +208,7 @@ impl GraphBuilder {
             attributes: None,
             comments: None,
         };
-        
+
         // Skip to the end of the Release element, calling validator for each event
         let mut buf = Vec::new();
         let mut depth = 1;
@@ -205,7 +239,7 @@ impl GraphBuilder {
             }
             buf.clear();
         }
-        
+
         Ok(release)
     }
 }

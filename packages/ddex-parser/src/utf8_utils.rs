@@ -6,11 +6,10 @@ use quick_xml::events::BytesText;
 /// Process text content from raw bytes, ensuring valid UTF-8
 #[allow(dead_code)]
 pub fn process_text_content(raw_bytes: &[u8]) -> Result<String, ParseError> {
-    String::from_utf8(raw_bytes.to_vec())
-        .map_err(|e| ParseError::InvalidUtf8 {
-            position: 0,
-            error: e.to_string(),
-        })
+    String::from_utf8(raw_bytes.to_vec()).map_err(|e| ParseError::InvalidUtf8 {
+        position: 0,
+        error: e.to_string(),
+    })
 }
 
 /// Process text content with lossy UTF-8 conversion (replaces invalid sequences)
@@ -32,8 +31,9 @@ pub fn decode_utf8_at_position(bytes: &[u8], position: usize) -> Result<String, 
 /// Handle text node from XML event
 #[allow(dead_code)]
 pub fn handle_text_node(event: &BytesText, position: usize) -> Result<String, ParseError> {
-    let unescaped = event.unescape()
-        .map_err(|e| ParseError::SimpleXmlError(format!("Unescape error at {}: {}", position, e)))?;
+    let unescaped = event.unescape().map_err(|e| {
+        ParseError::SimpleXmlError(format!("Unescape error at {}: {}", position, e))
+    })?;
 
     process_text_content(unescaped.as_bytes())
 }
@@ -48,11 +48,10 @@ pub fn decode_attribute_name(bytes: &[u8], position: usize) -> Result<String, Pa
 #[allow(dead_code)]
 pub fn decode_attribute_value(bytes: &[u8], position: usize) -> Result<String, ParseError> {
     // First decode UTF-8
-    let utf8_str = std::str::from_utf8(bytes)
-        .map_err(|e| ParseError::InvalidUtf8 {
-            position,
-            error: e.to_string(),
-        })?;
+    let utf8_str = std::str::from_utf8(bytes).map_err(|e| ParseError::InvalidUtf8 {
+        position,
+        error: e.to_string(),
+    })?;
 
     // Then unescape XML entities
     quick_xml::escape::unescape(utf8_str)
@@ -62,11 +61,10 @@ pub fn decode_attribute_value(bytes: &[u8], position: usize) -> Result<String, P
 
 /// Validate UTF-8 string without copying
 pub fn validate_utf8(bytes: &[u8]) -> Result<&str, ParseError> {
-    std::str::from_utf8(bytes)
-        .map_err(|e| ParseError::InvalidUtf8 {
-            position: 0,
-            error: e.to_string(),
-        })
+    std::str::from_utf8(bytes).map_err(|e| ParseError::InvalidUtf8 {
+        position: 0,
+        error: e.to_string(),
+    })
 }
 
 /// Validate that a string contains only valid UTF-8 characters

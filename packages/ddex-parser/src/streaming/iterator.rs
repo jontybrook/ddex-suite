@@ -1,7 +1,7 @@
 // src/streaming/iterator.rs
 //! Iterator implementation for streaming DDEX parser
 
-use super::{StreamingDDEXParser, ParsedElement, StreamingConfig, StreamingProgress};
+use super::{ParsedElement, StreamingConfig, StreamingDDEXParser, StreamingProgress};
 use crate::error::ParseError;
 use ddex_core::models::versions::ERNVersion;
 use std::io::BufRead;
@@ -35,7 +35,7 @@ impl<R: BufRead> DDEXStreamIterator<R> {
     /// Add progress callback
     pub fn with_progress_callback<F>(mut self, callback: F) -> Self
     where
-        F: FnMut(StreamingProgress) + Send + 'static
+        F: FnMut(StreamingProgress) + Send + 'static,
     {
         self.parser = self.parser.with_progress_callback(callback);
         self
@@ -143,7 +143,9 @@ impl<R: BufRead> DDEXStreamIterator<R> {
     }
 
     /// Skip to next element of specific type
-    pub fn skip_to_next_release(&mut self) -> Result<Option<ddex_core::models::graph::Release>, ParseError> {
+    pub fn skip_to_next_release(
+        &mut self,
+    ) -> Result<Option<ddex_core::models::graph::Release>, ParseError> {
         for result in self {
             match result {
                 Ok(ParsedElement::Release(release)) => {
@@ -294,12 +296,16 @@ impl<R: BufRead> DDEXStreamIterator<R> {
 
     /// Filter to only resources
     pub fn resources_only(self) -> FilteredDDEXIterator<R, impl Fn(&ParsedElement) -> bool> {
-        FilteredDDEXIterator::new(self, |element| matches!(element, ParsedElement::Resource(_)))
+        FilteredDDEXIterator::new(self, |element| {
+            matches!(element, ParsedElement::Resource(_))
+        })
     }
 
     /// Filter to only headers
     pub fn headers_only(self) -> FilteredDDEXIterator<R, impl Fn(&ParsedElement) -> bool> {
-        FilteredDDEXIterator::new(self, |element| matches!(element, ParsedElement::Header { .. }))
+        FilteredDDEXIterator::new(self, |element| {
+            matches!(element, ParsedElement::Header { .. })
+        })
     }
 
     /// Filter with custom predicate

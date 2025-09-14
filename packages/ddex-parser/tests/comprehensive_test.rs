@@ -1,7 +1,7 @@
 //! Isolated test for comprehensive streaming parser with model alignment
 
-use ddex_parser::streaming::comprehensive::{ComprehensiveStreamIterator, StreamingElement};
 use ddex_core::models::versions::ERNVersion;
+use ddex_parser::streaming::comprehensive::{ComprehensiveStreamIterator, StreamingElement};
 use std::io::Cursor;
 
 #[test]
@@ -26,10 +26,18 @@ fn test_comprehensive_model_alignment() {
     let iterator = ComprehensiveStreamIterator::new(cursor, ERNVersion::V4_3);
 
     let elements: Result<Vec<_>, _> = iterator.collect();
-    assert!(elements.is_ok(), "Parser should not fail: {:?}", elements.err());
+    assert!(
+        elements.is_ok(),
+        "Parser should not fail: {:?}",
+        elements.err()
+    );
 
     let elements = elements.unwrap();
-    assert!(elements.len() >= 3, "Should have at least 3 elements, got {}", elements.len());
+    assert!(
+        elements.len() >= 3,
+        "Should have at least 3 elements, got {}",
+        elements.len()
+    );
 
     let mut header_found = false;
     let mut release_found = false;

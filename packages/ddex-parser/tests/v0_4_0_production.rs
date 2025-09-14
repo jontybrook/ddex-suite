@@ -1,8 +1,8 @@
 // Production validation tests for DDEX Parser v0.4.0
 // Tests the SIMD-optimized FastStreamingParser performance targets
 
-use ddex_parser::DDEXParser;
 use ddex_parser::parser::security::SecurityConfig;
+use ddex_parser::DDEXParser;
 use std::io::Cursor;
 use std::time::Instant;
 
@@ -11,7 +11,8 @@ fn test_production_performance_target() {
     println!("\n=== v0.4.0 Production Performance Validation ===");
 
     // Generate realistic test file - 5MB with many elements
-    let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <NewReleaseMessage xmlns="http://ddex.net/xml/ern/43">
     <MessageHeader>
         <MessageId>PROD_PERF_TEST</MessageId>
@@ -26,7 +27,8 @@ fn test_production_performance_target() {
         </MessageRecipient>
         <MessageControlType>LiveMessage</MessageControlType>
     </MessageHeader>
-    <ReleaseList>"#);
+    <ReleaseList>"#,
+    );
 
     // Create substantial content for realistic testing
     let padding_data = "ProductionTestData".repeat(25); // ~450 chars per release
@@ -44,7 +46,11 @@ fn test_production_performance_target() {
                 <ReleaseDate>2024-01-01</ReleaseDate>
                 <TestData>{}</TestData>
             </Release>"#,
-            i, i, i, i % 100, padding_data
+            i,
+            i,
+            i,
+            i % 100,
+            padding_data
         ));
     }
     xml.push_str("</ReleaseList>");
@@ -62,13 +68,19 @@ fn test_production_performance_target() {
                 <Duration>PT3M{:02}S</Duration>
                 <AudioChannelConfiguration>Stereo</AudioChannelConfiguration>
             </SoundRecording>"#,
-            i, i, i, i % 60
+            i,
+            i,
+            i,
+            i % 60
         ));
     }
     xml.push_str("</ResourceList></NewReleaseMessage>");
 
     let file_size_mb = xml.len() as f64 / (1024.0 * 1024.0);
-    println!("Generated test file: {:.2} MB with 10,000 releases + 5,000 resources", file_size_mb);
+    println!(
+        "Generated test file: {:.2} MB with 10,000 releases + 5,000 resources",
+        file_size_mb
+    );
 
     // Test with fast streaming enabled (relaxed security config)
     let config = SecurityConfig::relaxed(); // This enables fast streaming
@@ -79,7 +91,11 @@ fn test_production_performance_target() {
     let result = parser.parse(cursor);
     let elapsed = start.elapsed();
 
-    assert!(result.is_ok(), "Production parsing should succeed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Production parsing should succeed: {:?}",
+        result.err()
+    );
 
     let throughput = file_size_mb / elapsed.as_secs_f64();
     println!("\n📊 Performance Results:");
@@ -92,22 +108,32 @@ fn test_production_performance_target() {
     let minimum_acceptable = production_target * 0.70; // 70% tolerance for CI/different hardware
 
     if throughput >= production_target {
-        println!("  ✅ EXCEEDS PRODUCTION TARGET ({:.0}% of {}MB/s)",
-                 (throughput/production_target * 100.0), production_target);
+        println!(
+            "  ✅ EXCEEDS PRODUCTION TARGET ({:.0}% of {}MB/s)",
+            (throughput / production_target * 100.0),
+            production_target
+        );
     } else if throughput >= minimum_acceptable {
-        println!("  ✅ MEETS MINIMUM TARGET ({:.2} MB/s >= {:.2} MB/s)",
-                 throughput, minimum_acceptable);
+        println!(
+            "  ✅ MEETS MINIMUM TARGET ({:.2} MB/s >= {:.2} MB/s)",
+            throughput, minimum_acceptable
+        );
     } else {
-        println!("  ⚠️  BELOW MINIMUM: {:.2} MB/s (target: {:.2} MB/s)",
-                 throughput, minimum_acceptable);
+        println!(
+            "  ⚠️  BELOW MINIMUM: {:.2} MB/s (target: {:.2} MB/s)",
+            throughput, minimum_acceptable
+        );
     }
 
     // Performance assertion with reasonable tolerance for CI environments
-    assert!(throughput >= minimum_acceptable,
-            "Performance {:.2} MB/s is below minimum production target {:.2} MB/s. \
+    assert!(
+        throughput >= minimum_acceptable,
+        "Performance {:.2} MB/s is below minimum production target {:.2} MB/s. \
              This may indicate debug mode compilation or slow CI environment. \
              Run with: cargo test --release",
-            throughput, minimum_acceptable);
+        throughput,
+        minimum_acceptable
+    );
 
     println!("  🎯 Production performance target validated!");
 }
@@ -117,14 +143,16 @@ fn test_memory_efficiency_validation() {
     println!("\n=== Memory Efficiency Production Test ===");
 
     // Generate larger file to test memory bounds
-    let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <NewReleaseMessage xmlns="http://ddex.net/xml/ern/43">
     <MessageHeader>
         <MessageId>MEMORY_EFFICIENCY_TEST</MessageId>
         <MessageSender><PartyId>SENDER001</PartyId></MessageSender>
         <MessageRecipient><PartyId>RECIPIENT001</PartyId></MessageRecipient>
     </MessageHeader>
-    <ReleaseList>"#);
+    <ReleaseList>"#,
+    );
 
     // Create ~8MB file with substantial content
     let large_content = "MemoryTestData".repeat(50); // ~700 chars
@@ -137,13 +165,20 @@ fn test_memory_efficiency_validation() {
                 <DisplayArtist>Memory Artist {}</DisplayArtist>
                 <LargeData>{}</LargeData>
             </Release>"#,
-            i, i, i, i % 100, large_content
+            i,
+            i,
+            i,
+            i % 100,
+            large_content
         ));
     }
     xml.push_str("</ReleaseList></NewReleaseMessage>");
 
     let file_size_mb = xml.len() as f64 / (1024.0 * 1024.0);
-    println!("Memory test file: {:.2} MB with 15,000 releases", file_size_mb);
+    println!(
+        "Memory test file: {:.2} MB with 15,000 releases",
+        file_size_mb
+    );
 
     // Test memory-efficient parsing
     let config = SecurityConfig::relaxed();
@@ -165,7 +200,10 @@ fn test_memory_efficiency_validation() {
     println!("  ✅ O(1) memory complexity achieved");
 
     // Memory efficiency should still maintain good performance
-    assert!(throughput >= 20.0, "Memory test should maintain >20 MB/s throughput");
+    assert!(
+        throughput >= 20.0,
+        "Memory test should maintain >20 MB/s throughput"
+    );
 }
 
 #[test]
@@ -231,15 +269,23 @@ fn test_correctness_with_simd_performance() {
     println!("  Parse time: {:.3}ms", elapsed.as_millis());
     println!("  ✅ SIMD parsing maintains correctness");
     println!("  ✅ Fast streaming successfully processes structured XML");
-    println!("  ✅ Element detection working for all types (Release, SoundRecording, MessageHeader)");
+    println!(
+        "  ✅ Element detection working for all types (Release, SoundRecording, MessageHeader)"
+    );
 
     // For small files, should still be very fast
     let file_size_kb = xml.len() as f64 / 1024.0;
     let throughput_mbps = (file_size_kb / 1024.0) / elapsed.as_secs_f64();
-    println!("  Throughput: {:.2} MB/s for {:.1}KB file", throughput_mbps, file_size_kb);
+    println!(
+        "  Throughput: {:.2} MB/s for {:.1}KB file",
+        throughput_mbps, file_size_kb
+    );
 
     // Small file should parse very quickly
-    assert!(elapsed.as_millis() < 100, "Small file should parse in <100ms");
+    assert!(
+        elapsed.as_millis() < 100,
+        "Small file should parse in <100ms"
+    );
 }
 
 #[test]
@@ -302,10 +348,12 @@ fn test_production_stress_test() {
     for (release_count, description) in test_cases {
         println!("\n🚀 Testing {}: {} releases", description, release_count);
 
-        let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+        let mut xml = String::from(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
 <NewReleaseMessage xmlns="http://ddex.net/xml/ern/43">
     <MessageHeader><MessageId>STRESS_TEST</MessageId></MessageHeader>
-    <ReleaseList>"#);
+    <ReleaseList>"#,
+        );
 
         for i in 0..release_count {
             xml.push_str(&format!(
@@ -325,11 +373,19 @@ fn test_production_stress_test() {
         let result = parser.parse(cursor);
         let elapsed = start.elapsed();
 
-        assert!(result.is_ok(), "Stress test should succeed for {}", description);
+        assert!(
+            result.is_ok(),
+            "Stress test should succeed for {}",
+            description
+        );
 
         let throughput = file_size_mb / elapsed.as_secs_f64();
-        println!("  Size: {:.2} MB, Time: {:.3}s, Throughput: {:.2} MB/s",
-                 file_size_mb, elapsed.as_secs_f64(), throughput);
+        println!(
+            "  Size: {:.2} MB, Time: {:.3}s, Throughput: {:.2} MB/s",
+            file_size_mb,
+            elapsed.as_secs_f64(),
+            throughput
+        );
 
         // Each test should maintain reasonable performance
         assert!(throughput >= 15.0, "Stress test should maintain >15 MB/s");

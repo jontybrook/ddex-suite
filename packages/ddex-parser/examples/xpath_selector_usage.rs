@@ -57,8 +57,10 @@ fn basic_element_selection() -> Result<(), Box<dyn std::error::Error>> {
     for (i, title) in result.values.iter().enumerate() {
         println!("     {}. {}", i + 1, title);
     }
-    println!("   Performance: {} elements processed in {:?}",
-        result.stats.elements_processed, result.stats.duration);
+    println!(
+        "   Performance: {} elements processed in {:?}",
+        result.stats.elements_processed, result.stats.duration
+    );
     println!();
 
     Ok(())
@@ -151,11 +153,18 @@ fn attribute_filtering() -> Result<(), Box<dyn std::error::Error>> {
     let result1 = selector1.select(cursor1)?;
 
     println!("   XPath: //item[@type] (attribute exists)");
-    println!("   Found {} items with type attribute:", result1.values.len());
+    println!(
+        "   Found {} items with type attribute:",
+        result1.values.len()
+    );
     for (i, item) in result1.values.iter().enumerate() {
         let attrs = &result1.attributes[i];
-        println!("     {}. {} (type: {})", i + 1, item,
-            attrs.get("type").unwrap_or(&"unknown".to_string()));
+        println!(
+            "     {}. {} (type: {})",
+            i + 1,
+            item,
+            attrs.get("type").unwrap_or(&"unknown".to_string())
+        );
     }
 
     // Find items by specific attribute value
@@ -233,8 +242,8 @@ fn ddex_specific_examples() -> Result<(), Box<dyn std::error::Error>> {
 
     // Example 5.3: Custom XPath for main releases only
     let cursor3 = Cursor::new(ddex_xml.as_bytes());
-    let selector3 = XPathSelector::new("//Release[@IsMainRelease='true']//TitleText")?
-        .namespace_aware(true);
+    let selector3 =
+        XPathSelector::new("//Release[@IsMainRelease='true']//TitleText")?.namespace_aware(true);
     let result3 = selector3.select(cursor3)?;
     println!("   Custom XPath - Main release titles only:");
     for title in &result3.values {
@@ -244,7 +253,10 @@ fn ddex_specific_examples() -> Result<(), Box<dyn std::error::Error>> {
     // Example 5.4: All titles (releases + tracks)
     let cursor4 = Cursor::new(ddex_xml.as_bytes());
     let all_titles = XPathSelector::select_with_xpath(cursor4, "//TitleText")?;
-    println!("   All titles (releases + tracks): {} found", all_titles.len());
+    println!(
+        "   All titles (releases + tracks): {} found",
+        all_titles.len()
+    );
     for (i, title) in all_titles.iter().enumerate() {
         println!("     {}. {}", i + 1, title);
     }
@@ -257,24 +269,32 @@ fn performance_demonstration() -> Result<(), Box<dyn std::error::Error>> {
     println!("6. Performance Demonstration");
 
     // Generate a larger DDEX-like document
-    let mut large_xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut large_xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
     <ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43">
         <ern:MessageHeader>
             <ern:MessageId>PERF_TEST</ern:MessageId>
         </ern:MessageHeader>
-        <ern:ResourceList>"#);
+        <ern:ResourceList>"#,
+    );
 
     // Add many sound recordings
     for i in 0..1000 {
         let isrc = format!("US{:03}{:02}{:05}", i % 1000, 20 + (i % 25), i);
-        large_xml.push_str(&format!(r#"
+        large_xml.push_str(&format!(
+            r#"
             <ern:SoundRecording>
                 <ern:SoundRecordingId Namespace="ISRC">{}</ern:SoundRecordingId>
                 <ern:ReferenceTitle>
                     <ern:TitleText>Track {} Title</ern:TitleText>
                 </ern:ReferenceTitle>
                 <ern:Duration>PT{}M{}S</ern:Duration>
-            </ern:SoundRecording>"#, isrc, i, 3 + (i % 5), 30 + (i % 30)));
+            </ern:SoundRecording>"#,
+            isrc,
+            i,
+            3 + (i % 5),
+            30 + (i % 30)
+        ));
     }
 
     large_xml.push_str("</ern:ResourceList></ern:NewReleaseMessage>");
@@ -292,8 +312,14 @@ fn performance_demonstration() -> Result<(), Box<dyn std::error::Error>> {
     println!("   ISRC Extraction:");
     println!("     - Found: {} ISRCs", isrc_result.values.len());
     println!("     - Time: {:?}", duration1);
-    println!("     - Throughput: {:.2} MB/s", data_size / duration1.as_secs_f64());
-    println!("     - Elements/sec: {:.0}", isrc_result.stats.elements_processed as f64 / duration1.as_secs_f64());
+    println!(
+        "     - Throughput: {:.2} MB/s",
+        data_size / duration1.as_secs_f64()
+    );
+    println!(
+        "     - Elements/sec: {:.0}",
+        isrc_result.stats.elements_processed as f64 / duration1.as_secs_f64()
+    );
 
     // Performance test 2: Extract all track titles
     let cursor2 = Cursor::new(large_xml.as_bytes());
@@ -304,20 +330,26 @@ fn performance_demonstration() -> Result<(), Box<dyn std::error::Error>> {
     println!("   Title Extraction:");
     println!("     - Found: {} titles", title_result.len());
     println!("     - Time: {:?}", duration2);
-    println!("     - Throughput: {:.2} MB/s", data_size / duration2.as_secs_f64());
+    println!(
+        "     - Throughput: {:.2} MB/s",
+        data_size / duration2.as_secs_f64()
+    );
 
     // Performance test 3: Complex filtering
     let cursor3 = Cursor::new(large_xml.as_bytes());
     let start3 = Instant::now();
-    let complex_selector = XPathSelector::new("//SoundRecordingId[@Namespace='ISRC']")?
-        .max_results(100); // Limit results for faster processing
+    let complex_selector =
+        XPathSelector::new("//SoundRecordingId[@Namespace='ISRC']")?.max_results(100); // Limit results for faster processing
     let complex_result = complex_selector.select(cursor3)?;
     let duration3 = start3.elapsed();
 
     println!("   Complex Filtering (first 100 results):");
     println!("     - Found: {} ISRCs", complex_result.values.len());
     println!("     - Time: {:?}", duration3);
-    println!("     - Throughput: {:.2} MB/s", data_size / duration3.as_secs_f64());
+    println!(
+        "     - Throughput: {:.2} MB/s",
+        data_size / duration3.as_secs_f64()
+    );
     println!();
 
     Ok(())

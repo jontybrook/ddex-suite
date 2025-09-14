@@ -8,10 +8,10 @@ use clap_complete::{generate, Shell};
 use console::style;
 use ddex_builder::presets::{DdexVersion, MessageProfile};
 use ddex_builder::*;
+use indexmap::IndexMap;
 use indicatif::{ProgressBar, ProgressStyle};
 use rayon::prelude::*;
 use serde_json::Value as JsonValue;
-use indexmap::IndexMap;
 use std::fs;
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
@@ -550,7 +550,11 @@ fn main() {
     setup_colors(cli.color);
 
     // Load configuration if specified
-    let config = cli.config.as_ref().map(|p| load_config(p)).unwrap_or_default();
+    let config = cli
+        .config
+        .as_ref()
+        .map(|p| load_config(p))
+        .unwrap_or_default();
 
     let result = match cli.command {
         Commands::Build(cmd) => handle_build_command(cmd, &config),
@@ -616,15 +620,19 @@ struct ConfigFile {
     // Configuration options that can be loaded from file
 }
 
-fn handle_build_command(cmd: BuildCommand, _config: &ConfigFile) -> Result<(), Box<dyn std::error::Error>> {
+fn handle_build_command(
+    cmd: BuildCommand,
+    _config: &ConfigFile,
+) -> Result<(), Box<dyn std::error::Error>> {
     let input_data = read_input_data(&cmd.input, cmd.format)?;
-    
+
     // Create builder with optional preset
     let mut builder = Builder::new();
-    
+
     if let Some(preset) = cmd.preset {
         let preset_name = preset_to_string(&preset);
-        builder.apply_preset(&preset_name, false)
+        builder
+            .apply_preset(&preset_name, false)
             .map_err(|e| format!("Failed to apply preset '{}': {}", preset_name, e))?;
     }
 
@@ -657,16 +665,23 @@ fn handle_build_command(cmd: BuildCommand, _config: &ConfigFile) -> Result<(), B
             println!("  Version: {:?}", version);
         }
         if cmd.verify_determinism {
-            println!("  {} Determinism verified with {} iterations", style("✓").green(), cmd.determinism_iterations);
+            println!(
+                "  {} Determinism verified with {} iterations",
+                style("✓").green(),
+                cmd.determinism_iterations
+            );
         }
     }
 
     Ok(())
 }
 
-fn handle_convert_command(cmd: ConvertCommand, _config: &ConfigFile) -> Result<(), Box<dyn std::error::Error>> {
+fn handle_convert_command(
+    cmd: ConvertCommand,
+    _config: &ConfigFile,
+) -> Result<(), Box<dyn std::error::Error>> {
     let input_xml = read_input_string(&cmd.input)?;
-    
+
     let builder = Builder::new();
     let conversion_options = ConversionOptions {
         detailed_reports: true,
@@ -709,7 +724,10 @@ fn handle_convert_command(cmd: ConvertCommand, _config: &ConfigFile) -> Result<(
     Ok(())
 }
 
-fn handle_diff_command(cmd: DiffCommand, _config: &ConfigFile) -> Result<(), Box<dyn std::error::Error>> {
+fn handle_diff_command(
+    cmd: DiffCommand,
+    _config: &ConfigFile,
+) -> Result<(), Box<dyn std::error::Error>> {
     let xml1 = fs::read_to_string(&cmd.file1)?;
     let xml2 = fs::read_to_string(&cmd.file2)?;
 
@@ -722,9 +740,7 @@ fn handle_diff_command(cmd: DiffCommand, _config: &ConfigFile) -> Result<(), Box
     let changeset = diff::types::ChangeSet::new();
 
     let formatted_output = match cmd.format {
-        DiffFormat::Human => {
-            diff::formatter::DiffFormatter::format_summary(&changeset)
-        }
+        DiffFormat::Human => diff::formatter::DiffFormatter::format_summary(&changeset),
         DiffFormat::Json => serde_json::to_string_pretty(&changeset)?,
         DiffFormat::Update => {
             let mut update_generator = messages::UpdateGenerator::new();
@@ -740,20 +756,27 @@ fn handle_diff_command(cmd: DiffCommand, _config: &ConfigFile) -> Result<(), Box
         if changeset.changes.is_empty() {
             println!("{} Files are identical", style("✓").green());
         } else {
-            println!("{} {} differences found", style("!").yellow(), changeset.changes.len());
+            println!(
+                "{} {} differences found",
+                style("!").yellow(),
+                changeset.changes.len()
+            );
         }
     }
 
     Ok(())
 }
 
-fn handle_validate_command(cmd: ValidateCommand, _config: &ConfigFile) -> Result<(), Box<dyn std::error::Error>> {
+fn handle_validate_command(
+    cmd: ValidateCommand,
+    _config: &ConfigFile,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut all_valid = true;
     let mut results = Vec::new();
 
     for file_path in &cmd.files {
         let _xml_content = fs::read_to_string(file_path)?;
-        
+
         let mut builder = Builder::new();
         if let Some(preset) = &cmd.preset {
             let preset_name = preset_to_string(preset);
@@ -761,7 +784,11 @@ fn handle_validate_command(cmd: ValidateCommand, _config: &ConfigFile) -> Result
         }
 
         let validation_config = ValidationConfig {
-            level: if cmd.strict { PreflightLevel::Strict } else { PreflightLevel::Warn },
+            level: if cmd.strict {
+                PreflightLevel::Strict
+            } else {
+                PreflightLevel::Warn
+            },
             profile: cmd.profile.clone(),
             ..Default::default()
         };
@@ -810,13 +837,16 @@ fn handle_validate_command(cmd: ValidateCommand, _config: &ConfigFile) -> Result
     Ok(())
 }
 
-fn handle_schema_command(cmd: SchemaCommand, _config: &ConfigFile) -> Result<(), Box<dyn std::error::Error>> {
+fn handle_schema_command(
+    cmd: SchemaCommand,
+    _config: &ConfigFile,
+) -> Result<(), Box<dyn std::error::Error>> {
     let _schema_config = schema::SchemaConfig {
         include_descriptions: cmd.with_docs,
         ..Default::default()
     };
 
-    // Use a default profile for now - this could be enhanced to support actual profiles  
+    // Use a default profile for now - this could be enhanced to support actual profiles
     let profile = MessageProfile::AudioAlbum;
     let generator = schema::SchemaGenerator::new(cmd.version.into(), profile);
     let schema_result = generator.generate_complete_schema()?;
@@ -837,9 +867,12 @@ fn handle_schema_command(cmd: SchemaCommand, _config: &ConfigFile) -> Result<(),
     Ok(())
 }
 
-fn handle_batch_command(cmd: BatchCommand, _config: &ConfigFile) -> Result<(), Box<dyn std::error::Error>> {
+fn handle_batch_command(
+    cmd: BatchCommand,
+    _config: &ConfigFile,
+) -> Result<(), Box<dyn std::error::Error>> {
     let batch_config = load_batch_config(&cmd.config)?;
-    
+
     // Setup thread pool
     let pool = rayon::ThreadPoolBuilder::new()
         .num_threads(cmd.workers)
@@ -911,19 +944,25 @@ fn handle_batch_command(cmd: BatchCommand, _config: &ConfigFile) -> Result<(), B
     Ok(())
 }
 
-fn handle_guarantees_command(cmd: GuaranteesCommand, _config: &ConfigFile) -> Result<(), Box<dyn std::error::Error>> {
-    use ddex_builder::guarantees::generate_guarantee_report;
-    use ddex_builder::determinism::{DeterminismConfig, DeterminismVerifier};
+fn handle_guarantees_command(
+    cmd: GuaranteesCommand,
+    _config: &ConfigFile,
+) -> Result<(), Box<dyn std::error::Error>> {
     use ddex_builder::builder::BuildRequest;
+    use ddex_builder::determinism::{DeterminismConfig, DeterminismVerifier};
+    use ddex_builder::guarantees::generate_guarantee_report;
 
     // Read and parse input data
     let input_data = read_input_data(&Some(cmd.input.clone()), None)?;
-    
+
     // Parse JSON data into BuildRequest structure
     let request: BuildRequest = serde_json::from_value(input_data)?;
 
     if !is_quiet() {
-        println!("🔍 Validating determinism guarantees for {}", cmd.input.display());
+        println!(
+            "🔍 Validating determinism guarantees for {}",
+            cmd.input.display()
+        );
         if cmd.thorough {
             println!("   Running comprehensive stress tests...");
         }
@@ -934,7 +973,7 @@ fn handle_guarantees_command(cmd: GuaranteesCommand, _config: &ConfigFile) -> Re
         // Run thorough verification with stress tests
         let _verifier = DeterminismVerifier::new(DeterminismConfig::default());
         let _result = DeterminismVerifier::thorough_check(&request, cmd.iterations)?;
-        
+
         // Generate full report
         generate_guarantee_report(&request, &DeterminismConfig::default())?
     } else {
@@ -949,7 +988,8 @@ fn handle_guarantees_command(cmd: GuaranteesCommand, _config: &ConfigFile) -> Re
         }
         GuaranteeFormat::Json => {
             if cmd.failures_only {
-                let failed_results: Vec<_> = report.failed_guarantees().into_iter().cloned().collect();
+                let failed_results: Vec<_> =
+                    report.failed_guarantees().into_iter().cloned().collect();
                 serde_json::to_string_pretty(&failed_results)?
             } else {
                 serde_json::to_string_pretty(&report)?
@@ -957,7 +997,8 @@ fn handle_guarantees_command(cmd: GuaranteesCommand, _config: &ConfigFile) -> Re
         }
         GuaranteeFormat::Yaml => {
             if cmd.failures_only {
-                let failed_results: Vec<_> = report.failed_guarantees().into_iter().cloned().collect();
+                let failed_results: Vec<_> =
+                    report.failed_guarantees().into_iter().cloned().collect();
                 serde_yaml::to_string(&failed_results)?
             } else {
                 serde_yaml::to_string(&report)?
@@ -971,7 +1012,7 @@ fn handle_guarantees_command(cmd: GuaranteesCommand, _config: &ConfigFile) -> Re
     // Print summary if not quiet and using human format
     if !is_quiet() && matches!(cmd.format, GuaranteeFormat::Human) {
         println!("\n{}", report.summary());
-        
+
         if !report.overall_pass {
             let critical_failures = report.critical_failures();
             if !critical_failures.is_empty() {
@@ -993,20 +1034,32 @@ fn handle_guarantees_command(cmd: GuaranteesCommand, _config: &ConfigFile) -> Re
 }
 
 fn format_guarantee_report_human(
-    report: &ddex_builder::guarantees::GuaranteeReport, 
-    failures_only: bool, 
-    include_evidence: bool
+    report: &ddex_builder::guarantees::GuaranteeReport,
+    failures_only: bool,
+    include_evidence: bool,
 ) -> String {
     let mut output = String::new();
-    
+
     output.push_str(&format!("# Determinism Guarantee Report\n"));
-    output.push_str(&format!("Generated: {}\n\n", report.timestamp.format("%Y-%m-%d %H:%M:%S UTC")));
-    
+    output.push_str(&format!(
+        "Generated: {}\n\n",
+        report.timestamp.format("%Y-%m-%d %H:%M:%S UTC")
+    ));
+
     if !failures_only {
         output.push_str(&format!("## Summary\n"));
-        output.push_str(&format!("- Total guarantees: {}\n", report.total_guarantees));
-        output.push_str(&format!("- Passed: {} ({:.1}%)\n", report.passed_guarantees, report.success_rate));
-        output.push_str(&format!("- Failed: {}\n\n", report.total_guarantees - report.passed_guarantees));
+        output.push_str(&format!(
+            "- Total guarantees: {}\n",
+            report.total_guarantees
+        ));
+        output.push_str(&format!(
+            "- Passed: {} ({:.1}%)\n",
+            report.passed_guarantees, report.success_rate
+        ));
+        output.push_str(&format!(
+            "- Failed: {}\n\n",
+            report.total_guarantees - report.passed_guarantees
+        ));
     }
 
     let results_to_show = if failures_only {
@@ -1016,16 +1069,29 @@ fn format_guarantee_report_human(
     };
 
     if !results_to_show.is_empty() {
-        output.push_str(&format!("## {}\n", if failures_only { "Failed Guarantees" } else { "Results" }));
-        
+        output.push_str(&format!(
+            "## {}\n",
+            if failures_only {
+                "Failed Guarantees"
+            } else {
+                "Results"
+            }
+        ));
+
         for result in results_to_show {
             let status = if result.passed { "✅" } else { "❌" };
             let priority = format!("{:?}", result.guarantee.priority()).to_uppercase();
-            
-            output.push_str(&format!("\n### {} {:?} ({})\n", status, result.guarantee, priority));
-            output.push_str(&format!("**Description:** {}\n\n", result.guarantee.description()));
+
+            output.push_str(&format!(
+                "\n### {} {:?} ({})\n",
+                status, result.guarantee, priority
+            ));
+            output.push_str(&format!(
+                "**Description:** {}\n\n",
+                result.guarantee.description()
+            ));
             output.push_str(&format!("**Status:** {}\n\n", result.details));
-            
+
             if include_evidence {
                 if let Some(evidence) = &result.evidence {
                     output.push_str(&format!("**Evidence:** {}\n\n", evidence));
@@ -1037,35 +1103,47 @@ fn format_guarantee_report_human(
     output
 }
 
-fn handle_preset_command(cmd: PresetCommand, _config: &ConfigFile) -> Result<(), Box<dyn std::error::Error>> {
+fn handle_preset_command(
+    cmd: PresetCommand,
+    _config: &ConfigFile,
+) -> Result<(), Box<dyn std::error::Error>> {
     match cmd.operation {
         PresetOperation::List(list_cmd) => {
             // TODO: Implement preset listing from ddex_builder::presets
             let presets = get_available_presets(list_cmd.version, list_cmd.partner)?;
-            
+
             match list_cmd.format {
                 PresetListFormat::Human => {
                     println!("Available DDEX Presets:");
                     println!("{:-<50}", "");
                     for preset in &presets {
-                        println!("{:<20} {:<10} {}", preset.name, preset.version, preset.description);
+                        println!(
+                            "{:<20} {:<10} {}",
+                            preset.name, preset.version, preset.description
+                        );
                     }
-                },
+                }
                 PresetListFormat::Json => {
                     println!("{}", serde_json::to_string_pretty(&presets)?);
-                },
+                }
                 PresetListFormat::Table => {
-                    println!("{:<20} {:<10} {:<15} {}", "Name", "Version", "Partner", "Description");
+                    println!(
+                        "{:<20} {:<10} {:<15} {}",
+                        "Name", "Version", "Partner", "Description"
+                    );
                     println!("{:-<80}", "");
                     for preset in &presets {
-                        println!("{:<20} {:<10} {:<15} {}", preset.name, preset.version, preset.partner, preset.description);
+                        println!(
+                            "{:<20} {:<10} {:<15} {}",
+                            preset.name, preset.version, preset.partner, preset.description
+                        );
                     }
                 }
             }
-        },
+        }
         PresetOperation::Show(show_cmd) => {
             let preset_details = get_preset_details(&show_cmd.preset)?;
-            
+
             match show_cmd.format {
                 PresetShowFormat::Human => {
                     println!("Preset: {}", preset_details.name);
@@ -1076,7 +1154,7 @@ fn handle_preset_command(cmd: PresetCommand, _config: &ConfigFile) -> Result<(),
                         println!("\nConfiguration:");
                         println!("{:#?}", preset_details.config);
                     }
-                },
+                }
                 PresetShowFormat::Json => {
                     if show_cmd.detailed {
                         println!("{}", serde_json::to_string_pretty(&preset_details)?);
@@ -1089,7 +1167,7 @@ fn handle_preset_command(cmd: PresetCommand, _config: &ConfigFile) -> Result<(),
                         };
                         println!("{}", serde_json::to_string_pretty(&summary)?);
                     }
-                },
+                }
                 PresetShowFormat::Yaml => {
                     if show_cmd.detailed {
                         println!("{}", serde_yaml::to_string(&preset_details)?);
@@ -1104,41 +1182,45 @@ fn handle_preset_command(cmd: PresetCommand, _config: &ConfigFile) -> Result<(),
                     }
                 }
             }
-        },
+        }
         PresetOperation::Apply(apply_cmd) => {
             let input_data = read_input_data(&apply_cmd.input, apply_cmd.format)?;
-            
+
             let mut builder = Builder::new();
             builder.apply_preset(&apply_cmd.preset, false)?;
-            
+
             if let Some(version_override) = apply_cmd.version_override {
                 builder.with_version(version_override.into());
             }
-            
+
             let xml_output = build_ddex_xml(&input_data, &builder)?;
-            
+
             if apply_cmd.validate {
                 // TODO: Validate the output
                 if !is_quiet() {
                     println!("{} Validation passed", style("✓").green());
                 }
             }
-            
+
             write_output(&xml_output, &apply_cmd.output)?;
-            
+
             if !is_quiet() {
-                println!("{} Preset '{}' applied successfully", style("✓").green(), apply_cmd.preset);
+                println!(
+                    "{} Preset '{}' applied successfully",
+                    style("✓").green(),
+                    apply_cmd.preset
+                );
             }
         }
     }
-    
+
     Ok(())
 }
 
-fn handle_watch_command(cmd: WatchCommand, _config: &ConfigFile) -> Result<(), Box<dyn std::error::Error>> {
-    
-    
-    
+fn handle_watch_command(
+    cmd: WatchCommand,
+    _config: &ConfigFile,
+) -> Result<(), Box<dyn std::error::Error>> {
     if !is_quiet() {
         println!("👀 Watching {} for changes...", cmd.path.display());
         println!("   Pattern: {}", cmd.pattern);
@@ -1147,7 +1229,7 @@ fn handle_watch_command(cmd: WatchCommand, _config: &ConfigFile) -> Result<(), B
         }
         println!("   Press Ctrl+C to stop");
     }
-    
+
     // Initial build if requested
     if cmd.initial_build {
         if !is_quiet() {
@@ -1155,10 +1237,10 @@ fn handle_watch_command(cmd: WatchCommand, _config: &ConfigFile) -> Result<(), B
         }
         run_watch_build(&cmd)?;
     }
-    
+
     // TODO: Implement file watching using notify crate
     // For now, just simulate watching
-    
+
     // In a real implementation, this would use the notify crate:
     // let (tx, rx) = mpsc::channel::<notify::Event>();
     // let mut watcher = notify::recommended_watcher(move |res| {
@@ -1168,7 +1250,7 @@ fn handle_watch_command(cmd: WatchCommand, _config: &ConfigFile) -> Result<(), B
     //     }
     // })?;
     // watcher.watch(&cmd.path, notify::RecursiveMode::from(cmd.recursive))?;
-    
+
     // Simulate file watching loop (in real implementation, this would be driven by notify events)
     loop {
         // For demo purposes, just exit after showing the setup
@@ -1177,11 +1259,14 @@ fn handle_watch_command(cmd: WatchCommand, _config: &ConfigFile) -> Result<(), B
         }
         break;
     }
-    
+
     Ok(())
 }
 
-fn handle_server_command(cmd: ServerCommand, _config: &ConfigFile) -> Result<(), Box<dyn std::error::Error>> {
+fn handle_server_command(
+    cmd: ServerCommand,
+    _config: &ConfigFile,
+) -> Result<(), Box<dyn std::error::Error>> {
     if !is_quiet() {
         println!("🚀 Starting DDEX Builder HTTP API server...");
         println!("   Address: {}:{}", cmd.bind, cmd.port);
@@ -1197,7 +1282,7 @@ fn handle_server_command(cmd: ServerCommand, _config: &ConfigFile) -> Result<(),
         }
         println!("   Press Ctrl+C to stop");
     }
-    
+
     // TODO: Implement HTTP server using axum or warp
     // Server endpoints would include:
     // POST /build - Build DDEX XML from JSON/YAML/TOML
@@ -1208,7 +1293,7 @@ fn handle_server_command(cmd: ServerCommand, _config: &ConfigFile) -> Result<(),
     // POST /diff - Compare two DDEX files
     // GET /health - Health check endpoint
     // GET /metrics - Prometheus metrics (if enabled)
-    
+
     // For now, just simulate server running
     println!("HTTP API server would start here");
     println!("Available endpoints:");
@@ -1219,16 +1304,16 @@ fn handle_server_command(cmd: ServerCommand, _config: &ConfigFile) -> Result<(),
     println!("  GET  /api/v1/presets/{{id}} - Get preset details");
     println!("  POST /api/v1/diff         - Compare DDEX files");
     println!("  GET  /api/v1/health       - Health check");
-    
+
     // Simulate server running
     std::thread::park();
-    
+
     Ok(())
 }
 
 fn handle_completions_command(cmd: CompletionsCommand) -> Result<(), Box<dyn std::error::Error>> {
     let mut cli = Cli::command();
-    
+
     if let Some(output_path) = cmd.output {
         let mut file = fs::File::create(output_path)?;
         generate(cmd.shell, &mut cli, "ddex-builder", &mut file);
@@ -1241,9 +1326,12 @@ fn handle_completions_command(cmd: CompletionsCommand) -> Result<(), Box<dyn std
 
 // Helper functions
 
-fn read_input_data(input: &Option<PathBuf>, format: Option<InputFormat>) -> Result<JsonValue, Box<dyn std::error::Error>> {
+fn read_input_data(
+    input: &Option<PathBuf>,
+    format: Option<InputFormat>,
+) -> Result<JsonValue, Box<dyn std::error::Error>> {
     let content = read_input_string(input)?;
-    
+
     let detected_format = format.unwrap_or_else(|| {
         if let Some(path) = input {
             detect_input_format(path)
@@ -1324,7 +1412,10 @@ fn validate_input_data(
     Ok(())
 }
 
-fn build_ddex_xml(_data: &JsonValue, _builder: &Builder) -> Result<String, Box<dyn std::error::Error>> {
+fn build_ddex_xml(
+    _data: &JsonValue,
+    _builder: &Builder,
+) -> Result<String, Box<dyn std::error::Error>> {
     // TODO: Implement actual DDEX XML building
     Ok("<xml><!-- DDEX XML would be generated here --></xml>".to_string())
 }
@@ -1333,24 +1424,27 @@ fn print_validation_result_human(file_path: &Path, result: &ValidationResult) {
     if result.errors.is_empty() {
         println!("{} {} - Valid", style("✓").green(), file_path.display());
     } else {
-        println!("{} {} - {} errors, {} warnings", 
-            style("✗").red(), 
+        println!(
+            "{} {} - {} errors, {} warnings",
+            style("✗").red(),
             file_path.display(),
             result.errors.len(),
             result.warnings.len()
         );
-        
+
         for error in &result.errors {
             println!("  {} {:?}", style("Error:").red(), error);
         }
-        
+
         for warning in &result.warnings {
             println!("  {} {:?}", style("Warning:").yellow(), warning);
         }
     }
 }
 
-fn format_junit_results(_results: &[(PathBuf, ValidationResult)]) -> Result<String, Box<dyn std::error::Error>> {
+fn format_junit_results(
+    _results: &[(PathBuf, ValidationResult)],
+) -> Result<String, Box<dyn std::error::Error>> {
     // TODO: Implement JUnit XML format
     Ok("<testsuite><!-- JUnit results would be here --></testsuite>".to_string())
 }
@@ -1407,19 +1501,22 @@ fn get_available_presets(
             name: "youtube_album".to_string(),
             version: "4.3".to_string(),
             partner: "YouTube".to_string(),
-            description: "YouTube Music album preset based on public Partner documentation".to_string(),
+            description: "YouTube Music album preset based on public Partner documentation"
+                .to_string(),
         },
         PresetInfo {
             name: "youtube_video".to_string(),
             version: "4.3".to_string(),
             partner: "YouTube".to_string(),
-            description: "YouTube Music video preset based on public Partner documentation".to_string(),
+            description: "YouTube Music video preset based on public Partner documentation"
+                .to_string(),
         },
         PresetInfo {
             name: "youtube_single".to_string(),
             version: "4.3".to_string(),
             partner: "YouTube".to_string(),
-            description: "YouTube Music single preset based on public Partner documentation".to_string(),
+            description: "YouTube Music single preset based on public Partner documentation"
+                .to_string(),
         },
     ];
 
@@ -1438,7 +1535,7 @@ fn get_available_presets(
     if let Some(partner_filter) = partner_filter {
         let partner_str = match partner_filter {
             PresetChoice::AudioAlbum => "Generic",
-            PresetChoice::AudioSingle => "Generic", 
+            PresetChoice::AudioSingle => "Generic",
             PresetChoice::VideoSingle => "Generic",
             PresetChoice::Compilation => "Generic",
             PresetChoice::YoutubeAlbum => "YouTube",
@@ -1473,9 +1570,13 @@ fn run_watch_build(cmd: &WatchCommand) -> Result<(), Box<dyn std::error::Error>>
             .arg("-c")
             .arg(command)
             .output()?;
-            
+
         if !output.status.success() {
-            return Err(format!("Command failed: {}", String::from_utf8_lossy(&output.stderr)).into());
+            return Err(format!(
+                "Command failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )
+            .into());
         }
     } else {
         // Default build behavior
@@ -1484,7 +1585,7 @@ fn run_watch_build(cmd: &WatchCommand) -> Result<(), Box<dyn std::error::Error>>
         }
         // TODO: Scan for files matching pattern and build them
     }
-    
+
     Ok(())
 }
 
@@ -1493,14 +1594,18 @@ fn verify_build_determinism(
     builder: &Builder,
     iterations: usize,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    use sha2::{Sha256, Digest};
-    
+    use sha2::{Digest, Sha256};
+
     if iterations < 2 {
         return Ok(());
     }
 
     if !is_quiet() {
-        println!("  {} Verifying determinism with {} iterations...", style("→").blue(), iterations);
+        println!(
+            "  {} Verifying determinism with {} iterations...",
+            style("→").blue(),
+            iterations
+        );
     }
 
     let mut outputs = Vec::with_capacity(iterations);
@@ -1509,16 +1614,16 @@ fn verify_build_determinism(
     // Build XML multiple times
     for _i in 0..iterations {
         let xml = build_ddex_xml(data, builder)?;
-        
+
         // Calculate SHA-256 hash
         let mut hasher = Sha256::new();
         hasher.update(xml.as_bytes());
         let hash = hasher.finalize();
         let hash_hex = format!("{:x}", hash);
-        
+
         outputs.push(xml);
         hashes.push(hash_hex);
-        
+
         if !is_quiet() && iterations > 3 {
             print!(".");
             io::stdout().flush().unwrap_or_default();
@@ -1532,14 +1637,17 @@ fn verify_build_determinism(
     // Compare all outputs byte-for-byte
     let first_output = &outputs[0];
     let first_hash = &hashes[0];
-    
+
     for (i, (output, hash)) in outputs[1..].iter().zip(hashes[1..].iter()).enumerate() {
         if output != first_output || hash != first_hash {
-            eprintln!("{} Determinism verification failed!", style("✗").red().bold());
+            eprintln!(
+                "{} Determinism verification failed!",
+                style("✗").red().bold()
+            );
             eprintln!("  Output from iteration 1 differs from iteration {}", i + 2);
             eprintln!("  Hash 1: {}", first_hash);
             eprintln!("  Hash {}: {}", i + 2, hash);
-            
+
             // Show byte-level differences for first 1000 characters
             let diff_start = find_first_difference(first_output, output);
             if let Some(pos) = diff_start {
@@ -1550,13 +1658,19 @@ fn verify_build_determinism(
                 eprintln!("  Output 1: {:?}", &first_output[start..end]);
                 eprintln!("  Output {}: {:?}", i + 2, &output[start..end]);
             }
-            
-            return Err("Determinism verification failed - outputs differ between iterations".into());
+
+            return Err(
+                "Determinism verification failed - outputs differ between iterations".into(),
+            );
         }
     }
 
     if !is_quiet() {
-        println!("  {} All {} iterations produced identical output", style("✓").green(), iterations);
+        println!(
+            "  {} All {} iterations produced identical output",
+            style("✓").green(),
+            iterations
+        );
         println!("  SHA-256: {}", first_hash);
     }
 
@@ -1564,7 +1678,9 @@ fn verify_build_determinism(
 }
 
 fn find_first_difference(a: &str, b: &str) -> Option<usize> {
-    a.bytes().zip(b.bytes()).position(|(x, y)| x != y)
+    a.bytes()
+        .zip(b.bytes())
+        .position(|(x, y)| x != y)
         .or_else(|| {
             if a.len() != b.len() {
                 Some(std::cmp::min(a.len(), b.len()))

@@ -1,13 +1,13 @@
 // core/src/parser/stream.rs
 //! Streaming parser for large DDEX files
 
-use crate::error::{ParseError, ErrorLocation};
-use ddex_core::models::graph::{ERNMessage, Release, Resource, Deal, Party, MessageHeader};
-use ddex_core::models::flat::ParsedERNMessage;
-use ddex_core::models::versions::ERNVersion;
+use crate::error::{ErrorLocation, ParseError};
 use crate::parser::ParseOptions;
 use crate::transform::flatten::Flattener;
 use crate::utf8_utils;
+use ddex_core::models::flat::ParsedERNMessage;
+use ddex_core::models::graph::{Deal, ERNMessage, MessageHeader, Party, Release, Resource};
+use ddex_core::models::versions::ERNVersion;
 use quick_xml::events::Event;
 use quick_xml::Reader;
 use std::io::BufRead;
@@ -44,10 +44,18 @@ pub struct StreamingParser<R: BufRead> {
 
 impl<R: BufRead> StreamingParser<R> {
     pub fn new(reader: R, version: ERNVersion) -> Self {
-        Self::new_with_security_config(reader, version, &crate::parser::security::SecurityConfig::default())
+        Self::new_with_security_config(
+            reader,
+            version,
+            &crate::parser::security::SecurityConfig::default(),
+        )
     }
 
-    pub fn new_with_security_config(reader: R, version: ERNVersion, security_config: &crate::parser::security::SecurityConfig) -> Self {
+    pub fn new_with_security_config(
+        reader: R,
+        version: ERNVersion,
+        security_config: &crate::parser::security::SecurityConfig,
+    ) -> Self {
         let mut xml_reader = Reader::from_reader(reader);
         xml_reader.config_mut().trim_text(true);
         xml_reader.config_mut().check_end_names = true;
@@ -68,25 +76,25 @@ impl<R: BufRead> StreamingParser<R> {
             max_depth: security_config.max_element_depth,
         }
     }
-    
-    pub fn with_progress_callback<F>(mut self, callback: F) -> Self 
+
+    pub fn with_progress_callback<F>(mut self, callback: F) -> Self
     where
-        F: FnMut(ParseProgress) + Send + 'static
+        F: FnMut(ParseProgress) + Send + 'static,
     {
         self.progress_callback = Some(Box::new(callback));
         self
     }
-    
+
     pub fn with_chunk_size(mut self, size: usize) -> Self {
         self.chunk_size = size;
         self
     }
-    
+
     pub fn with_max_memory(mut self, max: usize) -> Self {
         self.max_memory = max;
         self
     }
-    
+
     fn update_progress(&mut self) {
         if let Some(ref mut callback) = self.progress_callback {
             let progress = ParseProgress {
@@ -99,15 +107,15 @@ impl<R: BufRead> StreamingParser<R> {
             callback(progress);
         }
     }
-    
+
     fn update_byte_position(&mut self) {
         self.bytes_processed = self.reader.buffer_position();
     }
-    
+
     /// Parse the message header
     pub fn parse_header(&mut self) -> Result<MessageHeader, ParseError> {
         self.buffer.clear();
-        
+
         // Skip to MessageHeader element
         loop {
             match self.reader.read_event_into(&mut self.buffer) {
@@ -153,10 +161,10 @@ impl<R: BufRead> StreamingParser<R> {
             self.buffer.clear();
         }
     }
-    
+
     fn parse_message_header_element(&mut self) -> Result<MessageHeader, ParseError> {
-        use ddex_core::models::graph::{MessageType, MessageSender, MessageRecipient};
-        
+        use ddex_core::models::graph::{MessageRecipient, MessageSender, MessageType};
+
         let mut message_id = String::new();
         let message_type = MessageType::NewReleaseMessage;
         let mut created_date_time = chrono::Utc::now();
@@ -176,32 +184,30 @@ impl<R: BufRead> StreamingParser<R> {
             attributes: None,
             comments: None,
         };
-        
+
         self.buffer.clear();
         loop {
             match self.reader.read_event_into(&mut self.buffer) {
-                Ok(Event::Start(ref e)) => {
-                    match e.name().as_ref() {
-                        b"MessageId" => {
-                            message_id = self.read_text_element()?;
-                        }
-                        b"MessageCreatedDateTime" => {
-                            let text = self.read_text_element()?;
-                            created_date_time = chrono::DateTime::parse_from_rfc3339(&text)
-                                .map(|dt| dt.with_timezone(&chrono::Utc))
-                                .unwrap_or_else(|_| chrono::Utc::now());
-                        }
-                        b"MessageSender" => {
-                            sender = self.parse_message_sender()?;
-                        }
-                        b"MessageRecipient" => {
-                            recipient = self.parse_message_recipient()?;
-                        }
-                        _ => {
-                            self.skip_element()?;
-                        }
+                Ok(Event::Start(ref e)) => match e.name().as_ref() {
+                    b"MessageId" => {
+                        message_id = self.read_text_element()?;
                     }
-                }
+                    b"MessageCreatedDateTime" => {
+                        let text = self.read_text_element()?;
+                        created_date_time = chrono::DateTime::parse_from_rfc3339(&text)
+                            .map(|dt| dt.with_timezone(&chrono::Utc))
+                            .unwrap_or_else(|_| chrono::Utc::now());
+                    }
+                    b"MessageSender" => {
+                        sender = self.parse_message_sender()?;
+                    }
+                    b"MessageRecipient" => {
+                        recipient = self.parse_message_recipient()?;
+                    }
+                    _ => {
+                        self.skip_element()?;
+                    }
+                },
                 Ok(Event::End(ref e)) if e.name().as_ref() == b"MessageHeader" => {
                     break;
                 }
@@ -221,7 +227,7 @@ impl<R: BufRead> StreamingParser<R> {
             }
             self.buffer.clear();
         }
-        
+
         Ok(MessageHeader {
             message_id,
             message_type,
@@ -235,10 +241,12 @@ impl<R: BufRead> StreamingParser<R> {
             comments: None,
         })
     }
-    
-    fn parse_message_sender(&mut self) -> Result<ddex_core::models::graph::MessageSender, ParseError> {
+
+    fn parse_message_sender(
+        &mut self,
+    ) -> Result<ddex_core::models::graph::MessageSender, ParseError> {
         use ddex_core::models::common::{Identifier, LocalizedString};
-        
+
         let mut sender = ddex_core::models::graph::MessageSender {
             party_id: Vec::new(),
             party_name: Vec::new(),
@@ -247,29 +255,27 @@ impl<R: BufRead> StreamingParser<R> {
             attributes: None,
             comments: None,
         };
-        
+
         self.buffer.clear();
         loop {
             match self.reader.read_event_into(&mut self.buffer) {
-                Ok(Event::Start(ref e)) => {
-                    match e.name().as_ref() {
-                        b"PartyId" => {
-                            let value = self.read_text_element()?;
-                            sender.party_id.push(Identifier {
-                                id_type: ddex_core::models::common::IdentifierType::Proprietary,
-                                namespace: None,
-                                value,
-                            });
-                        }
-                        b"PartyName" => {
-                            let text = self.read_text_element()?;
-                            sender.party_name.push(LocalizedString::new(text));
-                        }
-                        _ => {
-                            self.skip_element()?;
-                        }
+                Ok(Event::Start(ref e)) => match e.name().as_ref() {
+                    b"PartyId" => {
+                        let value = self.read_text_element()?;
+                        sender.party_id.push(Identifier {
+                            id_type: ddex_core::models::common::IdentifierType::Proprietary,
+                            namespace: None,
+                            value,
+                        });
                     }
-                }
+                    b"PartyName" => {
+                        let text = self.read_text_element()?;
+                        sender.party_name.push(LocalizedString::new(text));
+                    }
+                    _ => {
+                        self.skip_element()?;
+                    }
+                },
                 Ok(Event::End(ref e)) if e.name().as_ref() == b"MessageSender" => {
                     break;
                 }
@@ -277,14 +283,16 @@ impl<R: BufRead> StreamingParser<R> {
             }
             self.buffer.clear();
         }
-        
+
         Ok(sender)
     }
-    
-    fn parse_message_recipient(&mut self) -> Result<ddex_core::models::graph::MessageRecipient, ParseError> {
+
+    fn parse_message_recipient(
+        &mut self,
+    ) -> Result<ddex_core::models::graph::MessageRecipient, ParseError> {
         // Similar to parse_message_sender
         use ddex_core::models::common::{Identifier, LocalizedString};
-        
+
         let mut recipient = ddex_core::models::graph::MessageRecipient {
             party_id: Vec::new(),
             party_name: Vec::new(),
@@ -293,29 +301,27 @@ impl<R: BufRead> StreamingParser<R> {
             attributes: None,
             comments: None,
         };
-        
+
         self.buffer.clear();
         loop {
             match self.reader.read_event_into(&mut self.buffer) {
-                Ok(Event::Start(ref e)) => {
-                    match e.name().as_ref() {
-                        b"PartyId" => {
-                            let value = self.read_text_element()?;
-                            recipient.party_id.push(Identifier {
-                                id_type: ddex_core::models::common::IdentifierType::Proprietary,
-                                namespace: None,
-                                value,
-                            });
-                        }
-                        b"PartyName" => {
-                            let text = self.read_text_element()?;
-                            recipient.party_name.push(LocalizedString::new(text));
-                        }
-                        _ => {
-                            self.skip_element()?;
-                        }
+                Ok(Event::Start(ref e)) => match e.name().as_ref() {
+                    b"PartyId" => {
+                        let value = self.read_text_element()?;
+                        recipient.party_id.push(Identifier {
+                            id_type: ddex_core::models::common::IdentifierType::Proprietary,
+                            namespace: None,
+                            value,
+                        });
                     }
-                }
+                    b"PartyName" => {
+                        let text = self.read_text_element()?;
+                        recipient.party_name.push(LocalizedString::new(text));
+                    }
+                    _ => {
+                        self.skip_element()?;
+                    }
+                },
                 Ok(Event::End(ref e)) if e.name().as_ref() == b"MessageRecipient" => {
                     break;
                 }
@@ -323,30 +329,30 @@ impl<R: BufRead> StreamingParser<R> {
             }
             self.buffer.clear();
         }
-        
+
         Ok(recipient)
     }
-    
+
     /// Stream releases one at a time for memory efficiency
     pub fn stream_releases(&mut self) -> ReleaseIterator<'_, R> {
         ReleaseIterator::new(self)
     }
-    
+
     /// Stream resources one at a time
     pub fn stream_resources(&mut self) -> ResourceIterator<'_, R> {
         ResourceIterator::new(self)
     }
-    
+
     /// Stream parties
     pub fn stream_parties(&mut self) -> PartyIterator<'_, R> {
         PartyIterator::new(self)
     }
-    
+
     /// Stream deals
     pub fn stream_deals(&mut self) -> DealIterator<'_, R> {
         DealIterator::new(self)
     }
-    
+
     /// Helper to read text content of current element
     fn read_text_element(&mut self) -> Result<String, ParseError> {
         let mut text = String::new();
@@ -381,10 +387,10 @@ impl<R: BufRead> StreamingParser<R> {
             }
             self.buffer.clear();
         }
-        
+
         Ok(text)
     }
-    
+
     /// Skip an element and all its children
     fn skip_element(&mut self) -> Result<(), ParseError> {
         let mut local_depth = 1;
@@ -422,7 +428,7 @@ impl<R: BufRead> StreamingParser<R> {
 
         Ok(())
     }
-    
+
     fn get_current_location(&self) -> ErrorLocation {
         ErrorLocation {
             line: 0, // Would need line tracking
@@ -451,24 +457,22 @@ impl<'a, R: BufRead> ReleaseIterator<'a, R> {
             in_release_list: false,
         }
     }
-    
+
     fn find_next_release(&mut self) -> Result<Option<Release>, ParseError> {
         loop {
             self.parser.buffer.clear();
             match self.parser.reader.read_event_into(&mut self.parser.buffer) {
-                Ok(Event::Start(ref e)) => {
-                    match e.name().as_ref() {
-                        b"ReleaseList" => {
-                            self.in_release_list = true;
-                        }
-                        b"Release" if self.in_release_list => {
-                            return self.parse_release_element();
-                        }
-                        _ => {
-                            self.parser.skip_element()?;
-                        }
+                Ok(Event::Start(ref e)) => match e.name().as_ref() {
+                    b"ReleaseList" => {
+                        self.in_release_list = true;
                     }
-                }
+                    b"Release" if self.in_release_list => {
+                        return self.parse_release_element();
+                    }
+                    _ => {
+                        self.parser.skip_element()?;
+                    }
+                },
                 Ok(Event::End(ref e)) if e.name().as_ref() == b"ReleaseList" => {
                     self.done = true;
                     return Ok(None);
@@ -487,10 +491,10 @@ impl<'a, R: BufRead> ReleaseIterator<'a, R> {
             }
         }
     }
-    
+
     fn parse_release_element(&mut self) -> Result<Option<Release>, ParseError> {
         use ddex_core::models::common::LocalizedString;
-        
+
         let mut release = Release {
             release_reference: String::new(),
             release_id: Vec::new(),
@@ -508,24 +512,22 @@ impl<'a, R: BufRead> ReleaseIterator<'a, R> {
             attributes: None,
             comments: None,
         };
-        
+
         self.parser.buffer.clear();
         loop {
             match self.parser.reader.read_event_into(&mut self.parser.buffer) {
-                Ok(Event::Start(ref e)) => {
-                    match e.name().as_ref() {
-                        b"ReleaseReference" => {
-                            release.release_reference = self.parser.read_text_element()?;
-                        }
-                        b"ReferenceTitle" | b"Title" => {
-                            let text = self.parser.read_text_element()?;
-                            release.release_title.push(LocalizedString::new(text));
-                        }
-                        _ => {
-                            self.parser.skip_element()?;
-                        }
+                Ok(Event::Start(ref e)) => match e.name().as_ref() {
+                    b"ReleaseReference" => {
+                        release.release_reference = self.parser.read_text_element()?;
                     }
-                }
+                    b"ReferenceTitle" | b"Title" => {
+                        let text = self.parser.read_text_element()?;
+                        release.release_title.push(LocalizedString::new(text));
+                    }
+                    _ => {
+                        self.parser.skip_element()?;
+                    }
+                },
                 Ok(Event::End(ref e)) if e.name().as_ref() == b"Release" => {
                     break;
                 }
@@ -533,36 +535,39 @@ impl<'a, R: BufRead> ReleaseIterator<'a, R> {
             }
             self.parser.buffer.clear();
         }
-        
+
         self.parser.releases_parsed += 1;
         self.parser.update_byte_position();
         self.parser.update_progress();
-        
+
         // Check memory limit
         let estimated_size = std::mem::size_of::<Release>() * self.parser.releases_parsed;
         if estimated_size > self.parser.max_memory {
             return Err(ParseError::SecurityViolation {
-                message: format!("Memory limit exceeded: {} > {}", estimated_size, self.parser.max_memory),
+                message: format!(
+                    "Memory limit exceeded: {} > {}",
+                    estimated_size, self.parser.max_memory
+                ),
             });
         }
-        
+
         // Yield control periodically
         if self.parser.releases_parsed % self.parser.chunk_size == 0 {
             std::thread::yield_now();
         }
-        
+
         Ok(Some(release))
     }
 }
 
 impl<'a, R: BufRead> Iterator for ReleaseIterator<'a, R> {
     type Item = Result<Release, ParseError>;
-    
+
     fn next(&mut self) -> Option<Self::Item> {
         if self.done {
             return None;
         }
-        
+
         match self.find_next_release() {
             Ok(Some(release)) => Some(Ok(release)),
             Ok(None) => None,
@@ -590,7 +595,7 @@ impl<'a, R: BufRead> ResourceIterator<'a, R> {
 
 impl<'a, R: BufRead> Iterator for ResourceIterator<'a, R> {
     type Item = Result<Resource, ParseError>;
-    
+
     fn next(&mut self) -> Option<Self::Item> {
         // Similar implementation to ReleaseIterator
         None // Placeholder
@@ -613,7 +618,7 @@ impl<'a, R: BufRead> PartyIterator<'a, R> {
 
 impl<'a, R: BufRead> Iterator for PartyIterator<'a, R> {
     type Item = Result<Party, ParseError>;
-    
+
     fn next(&mut self) -> Option<Self::Item> {
         None // Placeholder
     }
@@ -635,7 +640,7 @@ impl<'a, R: BufRead> DealIterator<'a, R> {
 
 impl<'a, R: BufRead> Iterator for DealIterator<'a, R> {
     type Item = Result<Deal, ParseError>;
-    
+
     fn next(&mut self) -> Option<Self::Item> {
         None // Placeholder
     }
@@ -654,37 +659,37 @@ pub fn parse_streaming<R: BufRead>(
 
     // Parse header first
     let message_header = parser.parse_header()?;
-    
+
     // Collect releases in chunks to limit memory
     let mut releases = Vec::new();
     let mut resources = Vec::new();
     let mut parties = Vec::new();
     let mut deals = Vec::new();
-    
+
     // Stream releases
     for release_result in parser.stream_releases() {
         let release = release_result?;
         releases.push(release);
     }
-    
+
     // Stream resources
     for resource_result in parser.stream_resources() {
         let resource = resource_result?;
         resources.push(resource);
     }
-    
+
     // Stream parties
     for party_result in parser.stream_parties() {
         let party = party_result?;
         parties.push(party);
     }
-    
+
     // Stream deals
     for deal_result in parser.stream_deals() {
         let deal = deal_result?;
         deals.push(deal);
     }
-    
+
     // Build ERNMessage
     let graph = ERNMessage {
         message_header,
@@ -700,9 +705,13 @@ pub fn parse_streaming<R: BufRead>(
         comments: None,
         attributes: None,
     };
-    
+
     // Flatten to developer-friendly model
     let flat = Flattener::flatten(graph.clone());
-    
-    Ok(ParsedERNMessage { graph, flat, extensions: None })
+
+    Ok(ParsedERNMessage {
+        graph,
+        flat,
+        extensions: None,
+    })
 }

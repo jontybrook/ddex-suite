@@ -1,13 +1,13 @@
 //! Parallel processing optimizations for DDEX Builder
-//! 
+//!
 //! This module provides parallel validation, resource processing, and XML generation
 //! using rayon for CPU-bound operations to achieve sub-10ms build times.
 
 use crate::ast::{Element, Node};
 use crate::builder::{BuildRequest, ReleaseRequest, TrackRequest};
 use crate::error::BuildError;
-use crate::optimized_strings::BuildContext;
 use crate::memory_optimization::BuildMemoryManager;
+use crate::optimized_strings::BuildContext;
 use rayon::prelude::*;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
@@ -55,13 +55,13 @@ impl ParallelProcessor {
                 .build()
                 .map_err(|e| BuildError::Parallel(e.to_string()))?
         };
-        
+
         Ok(Self {
             config,
             thread_pool,
         })
     }
-    
+
     /// Process a build request with parallel optimizations
     pub fn process_build_parallel(
         &self,
@@ -70,35 +70,33 @@ impl ParallelProcessor {
         memory_manager: &BuildMemoryManager,
     ) -> Result<ParallelBuildResult, BuildError> {
         let start_time = Instant::now();
-        
+
         // Determine if we should use parallel processing
-        let total_tracks: usize = request.releases.iter()
-            .map(|r| r.tracks.len())
-            .sum();
-        
+        let total_tracks: usize = request.releases.iter().map(|r| r.tracks.len()).sum();
+
         let use_parallel = total_tracks >= self.config.parallel_threshold;
-        
+
         let result = if use_parallel {
             self.process_parallel_impl(request, context, memory_manager)?
         } else {
             self.process_sequential_impl(request, context, memory_manager)?
         };
-        
+
         let processing_time = start_time.elapsed();
-        
+
         Ok(ParallelBuildResult {
             elements: result,
             processing_time,
             used_parallel: use_parallel,
-            thread_count: if use_parallel { 
-                self.thread_pool.current_num_threads() 
-            } else { 
-                1 
+            thread_count: if use_parallel {
+                self.thread_pool.current_num_threads()
+            } else {
+                1
             },
             total_tracks,
         })
     }
-    
+
     /// Parallel implementation for large builds
     fn process_parallel_impl(
         &self,
@@ -108,18 +106,19 @@ impl ParallelProcessor {
     ) -> Result<Vec<ProcessedElement>, BuildError> {
         self.thread_pool.install(|| {
             // Process releases in parallel
-            let processed_releases: Result<Vec<_>, BuildError> = request.releases
+            let processed_releases: Result<Vec<_>, BuildError> = request
+                .releases
                 .par_iter()
                 .map(|release| self.process_release_parallel(release))
                 .collect();
-            
+
             let releases = processed_releases?;
-            
+
             // Combine results
             Ok(releases.into_iter().flatten().collect())
         })
     }
-    
+
     /// Sequential implementation for small builds
     fn process_sequential_impl(
         &self,
@@ -128,33 +127,37 @@ impl ParallelProcessor {
         _memory_manager: &BuildMemoryManager,
     ) -> Result<Vec<ProcessedElement>, BuildError> {
         let mut results = Vec::new();
-        
+
         for release in &request.releases {
             let processed = self.process_release_sequential(release)?;
             results.extend(processed);
         }
-        
+
         Ok(results)
     }
-    
+
     /// Process a single release in parallel
-    fn process_release_parallel(&self, release: &ReleaseRequest) -> Result<Vec<ProcessedElement>, BuildError> {
+    fn process_release_parallel(
+        &self,
+        release: &ReleaseRequest,
+    ) -> Result<Vec<ProcessedElement>, BuildError> {
         // Process tracks in parallel if there are enough of them
         if release.tracks.len() >= self.config.parallel_threshold {
-            let processed_tracks: Result<Vec<_>, BuildError> = release.tracks
+            let processed_tracks: Result<Vec<_>, BuildError> = release
+                .tracks
                 .par_iter()
                 .map(|track| self.process_track(track))
                 .collect();
-            
+
             let tracks = processed_tracks?;
-            
+
             // Create release element
             let release_element = ProcessedElement {
                 name: "Release".to_string(),
                 processing_time: std::time::Duration::from_nanos(1), // Minimal for structure
                 element_count: 1 + tracks.len(),
             };
-            
+
             let mut result = vec![release_element];
             result.extend(tracks);
             Ok(result)
@@ -162,11 +165,14 @@ impl ParallelProcessor {
             self.process_release_sequential(release)
         }
     }
-    
+
     /// Process a single release sequentially
-    fn process_release_sequential(&self, release: &ReleaseRequest) -> Result<Vec<ProcessedElement>, BuildError> {
+    fn process_release_sequential(
+        &self,
+        release: &ReleaseRequest,
+    ) -> Result<Vec<ProcessedElement>, BuildError> {
         let mut results = Vec::new();
-        
+
         // Process release
         let release_element = ProcessedElement {
             name: "Release".to_string(),
@@ -174,59 +180,59 @@ impl ParallelProcessor {
             element_count: 1,
         };
         results.push(release_element);
-        
+
         // Process tracks
         for track in &release.tracks {
             results.push(self.process_track(track)?);
         }
-        
+
         Ok(results)
     }
-    
+
     /// Process a single track
     fn process_track(&self, track: &TrackRequest) -> Result<ProcessedElement, BuildError> {
         let start_time = Instant::now();
-        
+
         // Simulate track processing work
         // In reality, this would do validation, resource linking, etc.
         let _validated = self.validate_track(track)?;
-        
+
         let processing_time = start_time.elapsed();
-        
+
         Ok(ProcessedElement {
             name: format!("Track_{}", track.track_id),
             processing_time,
             element_count: 1,
         })
     }
-    
+
     /// Validate a track (can be called in parallel)
     fn validate_track(&self, track: &TrackRequest) -> Result<ValidatedTrack, BuildError> {
         // ISRC validation
         if track.isrc.len() != 12 {
             return Err(BuildError::Validation(format!(
-                "Invalid ISRC length for track {}: expected 12 characters, got {}", 
-                track.track_id, 
+                "Invalid ISRC length for track {}: expected 12 characters, got {}",
+                track.track_id,
                 track.isrc.len()
             )));
         }
-        
+
         // Duration validation (basic ISO 8601 check)
         if !track.duration.starts_with("PT") {
             return Err(BuildError::Validation(format!(
-                "Invalid duration format for track {}: must start with 'PT'", 
+                "Invalid duration format for track {}: must start with 'PT'",
                 track.track_id
             )));
         }
-        
+
         // Title validation
         if track.title.trim().is_empty() {
             return Err(BuildError::Validation(format!(
-                "Track title cannot be empty for track {}", 
+                "Track title cannot be empty for track {}",
                 track.track_id
             )));
         }
-        
+
         Ok(ValidatedTrack {
             track_id: track.track_id.clone(),
             isrc: track.isrc.clone(),
@@ -235,7 +241,7 @@ impl ParallelProcessor {
             artist: track.artist.clone(),
         })
     }
-    
+
     /// Parallel XML section generation for large elements
     pub fn generate_xml_sections_parallel(
         &self,
@@ -245,20 +251,21 @@ impl ParallelProcessor {
         if elements.len() < self.config.parallel_threshold || !self.config.parallel_xml_generation {
             return self.generate_xml_sections_sequential(elements, context);
         }
-        
+
         self.thread_pool.install(|| {
-            elements.par_iter()
+            elements
+                .par_iter()
                 .map(|element| {
                     // Each thread gets its own temporary context to avoid contention
                     let mut local_context = BuildContext::new();
-                    
+
                     // Generate XML for this element
                     self.element_to_xml_string(element, &mut local_context)
                 })
                 .collect()
         })
     }
-    
+
     /// Sequential XML section generation
     fn generate_xml_sections_sequential(
         &self,
@@ -266,34 +273,38 @@ impl ParallelProcessor {
         context: &Arc<Mutex<BuildContext>>,
     ) -> Result<Vec<String>, BuildError> {
         let mut results = Vec::with_capacity(elements.len());
-        
+
         for element in elements {
             let mut context = context.lock().unwrap();
             let xml = self.element_to_xml_string(element, &mut context)?;
             results.push(xml);
         }
-        
+
         Ok(results)
     }
-    
+
     /// Convert element to XML string (simplified for example)
-    fn element_to_xml_string(&self, element: &Element, context: &mut BuildContext) -> Result<String, BuildError> {
+    fn element_to_xml_string(
+        &self,
+        element: &Element,
+        context: &mut BuildContext,
+    ) -> Result<String, BuildError> {
         // Get buffer from context
         let mut buffer = context.get_xml_buffer(256);
-        
+
         buffer.push('<');
         buffer.push_str(&element.name);
-        
+
         // Add attributes
         for (key, value) in &element.attributes {
             buffer.push_str(&format!(" {}=\"{}\"", key, value));
         }
-        
+
         if element.children.is_empty() {
             buffer.push_str("/>");
         } else {
             buffer.push('>');
-            
+
             // Handle children (simplified)
             for child in &element.children {
                 match child {
@@ -310,16 +321,16 @@ impl ParallelProcessor {
                     }
                 }
             }
-            
+
             buffer.push_str(&format!("</{}>", element.name));
         }
-        
+
         let result = buffer.clone();
         context.return_xml_buffer(buffer);
-        
+
         Ok(result)
     }
-    
+
     /// Parallel validation of multiple items
     pub fn validate_items_parallel<T, F>(
         &self,
@@ -333,14 +344,15 @@ impl ParallelProcessor {
         if items.len() < self.config.parallel_threshold || !self.config.parallel_validation {
             return self.validate_items_sequential(items, validator);
         }
-        
+
         let validation_results: Vec<ValidationResult> = self.thread_pool.install(|| {
-            items.par_iter()
+            items
+                .par_iter()
                 .map(|item| {
                     let start_time = Instant::now();
                     let result = validator(item);
                     let processing_time = start_time.elapsed();
-                    
+
                     ValidationResult {
                         success: result.is_ok(),
                         error: result.err(),
@@ -349,7 +361,7 @@ impl ParallelProcessor {
                 })
                 .collect()
         });
-        
+
         // Check for errors
         for result in &validation_results {
             if !result.success {
@@ -358,10 +370,10 @@ impl ParallelProcessor {
                 }
             }
         }
-        
+
         Ok(validation_results)
     }
-    
+
     /// Sequential validation fallback
     fn validate_items_sequential<T, F>(
         &self,
@@ -372,19 +384,19 @@ impl ParallelProcessor {
         F: Fn(&T) -> Result<(), BuildError>,
     {
         let mut results = Vec::with_capacity(items.len());
-        
+
         for item in items {
             let start_time = Instant::now();
             let result = validator(item);
             let processing_time = start_time.elapsed();
-            
+
             results.push(ValidationResult {
                 success: result.is_ok(),
                 error: result.err(),
                 processing_time,
             });
         }
-        
+
         Ok(results)
     }
 }
@@ -408,12 +420,12 @@ impl ParallelBuildResult {
     /// Check if build met performance targets
     pub fn meets_performance_target(&self) -> bool {
         match self.total_tracks {
-            1 => self.processing_time.as_millis() < 5,      // Single track: <5ms
+            1 => self.processing_time.as_millis() < 5, // Single track: <5ms
             2..=20 => self.processing_time.as_millis() < 10, // Album: <10ms
-            _ => self.processing_time.as_millis() < 50,      // Large: <50ms
+            _ => self.processing_time.as_millis() < 50, // Large: <50ms
         }
     }
-    
+
     /// Get performance summary
     pub fn performance_summary(&self) -> String {
         format!(
@@ -477,17 +489,17 @@ impl WorkloadAnalyzer {
     /// Analyze a build request and suggest parallel configuration
     pub fn analyze_workload(request: &BuildRequest) -> WorkloadAnalysis {
         let total_releases = request.releases.len();
-        let total_tracks: usize = request.releases.iter()
-            .map(|r| r.tracks.len())
-            .sum();
-        
-        let max_tracks_per_release = request.releases.iter()
+        let total_tracks: usize = request.releases.iter().map(|r| r.tracks.len()).sum();
+
+        let max_tracks_per_release = request
+            .releases
+            .iter()
             .map(|r| r.tracks.len())
             .max()
             .unwrap_or(0);
-        
+
         let complexity_score = Self::calculate_complexity_score(request);
-        
+
         WorkloadAnalysis {
             total_releases,
             total_tracks,
@@ -496,31 +508,29 @@ impl WorkloadAnalyzer {
             recommended_config: Self::recommend_config(total_tracks, complexity_score),
         }
     }
-    
+
     /// Calculate complexity score for the build
     fn calculate_complexity_score(request: &BuildRequest) -> f32 {
         let mut score = 0.0;
-        
+
         // Base score from track count
-        let total_tracks: usize = request.releases.iter()
-            .map(|r| r.tracks.len())
-            .sum();
+        let total_tracks: usize = request.releases.iter().map(|r| r.tracks.len()).sum();
         score += total_tracks as f32 * 1.0;
-        
+
         // Add complexity for multiple releases
         score += request.releases.len() as f32 * 0.5;
-        
+
         // Add complexity for deals
         score += request.deals.len() as f32 * 2.0; // Deals are more complex
-        
+
         // Add complexity for extensions
         if request.extensions.is_some() {
             score += 1.0;
         }
-        
+
         score
     }
-    
+
     /// Recommend parallel configuration based on workload
     fn recommend_config(total_tracks: usize, complexity_score: f32) -> ParallelConfig {
         let parallel_threshold = if complexity_score > 20.0 {
@@ -530,7 +540,7 @@ impl WorkloadAnalyzer {
         } else {
             10 // Even higher threshold for small builds
         };
-        
+
         let max_threads = if total_tracks > 100 {
             None // Use all available cores for very large builds
         } else if total_tracks > 20 {
@@ -538,7 +548,7 @@ impl WorkloadAnalyzer {
         } else {
             Some(2) // Only 2 cores for small builds
         };
-        
+
         ParallelConfig {
             parallel_threshold,
             max_threads,
@@ -566,15 +576,15 @@ pub struct WorkloadAnalysis {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::builder::{LocalizedStringRequest, PartyRequest, MessageHeaderRequest};
-    
+    use crate::builder::{LocalizedStringRequest, MessageHeaderRequest, PartyRequest};
+
     #[test]
     fn test_parallel_processor_creation() {
         let config = ParallelConfig::default();
         let processor = ParallelProcessor::new(config);
         assert!(processor.is_ok());
     }
-    
+
     #[test]
     fn test_workload_analysis() {
         let request = BuildRequest {
@@ -605,17 +615,17 @@ mod tests {
             deals: vec![],
             extensions: None,
         };
-        
+
         let analysis = WorkloadAnalyzer::analyze_workload(&request);
         assert_eq!(analysis.total_tracks, 0);
         assert_eq!(analysis.total_releases, 0);
     }
-    
+
     #[test]
     fn test_track_validation() {
         let config = ParallelConfig::default();
         let processor = ParallelProcessor::new(config).unwrap();
-        
+
         let valid_track = TrackRequest {
             track_id: "T001".to_string(),
             resource_reference: Some("A001".to_string()),
@@ -624,23 +634,23 @@ mod tests {
             duration: "PT3M30S".to_string(),
             artist: "Test Artist".to_string(),
         };
-        
+
         let result = processor.validate_track(&valid_track);
         assert!(result.is_ok());
-        
+
         let invalid_track = TrackRequest {
             track_id: "T002".to_string(),
             resource_reference: None,
-            isrc: "INVALID".to_string(), // Too short
-            title: "".to_string(), // Empty
+            isrc: "INVALID".to_string(),  // Too short
+            title: "".to_string(),        // Empty
             duration: "3:30".to_string(), // Wrong format
             artist: "Test Artist".to_string(),
         };
-        
+
         let result = processor.validate_track(&invalid_track);
         assert!(result.is_err());
     }
-    
+
     #[test]
     fn test_performance_target_checking() {
         let result = ParallelBuildResult {
@@ -650,9 +660,9 @@ mod tests {
             thread_count: 1,
             total_tracks: 1,
         };
-        
+
         assert!(result.meets_performance_target()); // 3ms < 5ms target for single track
-        
+
         let slow_result = ParallelBuildResult {
             elements: vec![],
             processing_time: std::time::Duration::from_millis(15),
@@ -660,7 +670,7 @@ mod tests {
             thread_count: 4,
             total_tracks: 12,
         };
-        
+
         assert!(!slow_result.meets_performance_target()); // 15ms > 10ms target for album
     }
 }
