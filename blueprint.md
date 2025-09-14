@@ -1818,7 +1818,7 @@ interface DeterminismConfig {
 - [x] Documentation updates (API, migration guide, examples)
 - [x] Performance guarantees documented and achieved
 - [x] Final testing and verification
-- [x] Publish v0.4.0 with production-ready streaming
+- [ ] Publish v0.4.0 with production-ready streaming
 
 #### Phase 4.5 Performance & Scale
 - [ ] Implement fuzz testing (deferred from security)

@@ -48,6 +48,12 @@ pub enum ParserState {
     Error(String),
 }
 
+impl Default for ParserState {
+    fn default() -> Self {
+        ParserState::Initial
+    }
+}
+
 /// Parsing context that tracks current state
 #[derive(Debug)]
 pub struct ParsingContext {
@@ -221,9 +227,9 @@ impl PartialResource {
     pub fn estimate_memory(&self) -> usize {
         let mut size = std::mem::size_of::<PartialResource>();
         size += self.resource_reference.as_ref().map_or(0, |s| s.len());
-        size += self.resource_type.as_ref().map_or(0, |s| s.len());
+        size += self.resource_type.as_ref().map_or(0, |_| std::mem::size_of::<ResourceType>());
         size += self.resource_id.len() * std::mem::size_of::<Identifier>();
-        size += self.title.len() * std::mem::size_of::<LocalizedString>();
+        size += self.reference_title.len() * std::mem::size_of::<LocalizedString>();
         size
     }
 

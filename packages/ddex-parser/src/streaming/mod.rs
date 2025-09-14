@@ -10,11 +10,37 @@ pub mod comprehensive;
 pub mod fixed_comprehensive;
 pub mod aligned_comprehensive;
 pub mod verification;
+pub mod working_impl;
+pub mod zero_copy_parser;
+pub mod fast_zero_copy;
+pub mod parallel_parser;
+
+#[cfg(test)]
+pub mod comprehensive_tests;
+
+#[cfg(test)]
+pub mod debug_test;
+
+#[cfg(test)]
+pub mod perf_analysis;
+
+#[cfg(test)]
+pub mod zero_copy_benchmark;
+
+#[cfg(test)]
+pub mod parallel_benchmark;
+
+#[cfg(test)]
+pub mod consistency_test;
 
 pub use parser::StreamingDDEXParser;
 pub use state::{ParserState, ParsingContext};
 pub use element::ParsedElement;
 pub use iterator::DDEXStreamIterator;
+pub use working_impl::{WorkingStreamingParser, WorkingStreamingElement, WorkingStreamIterator, WorkingStreamingStats};
+pub use zero_copy_parser::{ZeroCopyParser, ZeroCopyElement, ZeroCopyStreamIterator};
+pub use fast_zero_copy::{FastZeroCopyParser, FastZeroCopyIterator};
+pub use parallel_parser::{ParallelStreamingParser, ParallelStreamingIterator, ParallelBenchmark};
 
 use crate::parser::security::SecurityConfig;
 

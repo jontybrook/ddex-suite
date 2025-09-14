@@ -11,7 +11,12 @@ pub use ddex_core::models::versions::ERNVersion;
 
 use serde::{Deserialize, Serialize};
 use parser::security::SecurityConfig;
-use streaming::{DDEXStreamIterator, ParsedElement};
+use streaming::{WorkingStreamIterator, WorkingStreamingElement, StreamingConfig};
+
+#[cfg(feature = "zero-copy")]
+use streaming::fast_zero_copy::FastZeroCopyIterator;
+
+use streaming::parallel_parser::ParallelStreamingIterator;
 
 /// Main DDEX Parser
 #[derive(Debug, Clone)]
@@ -62,36 +67,78 @@ impl DDEXParser {
     pub fn stream<R: std::io::BufRead>(
         &self,
         reader: R,
-    ) -> DDEXStreamIterator<R> {
+    ) -> WorkingStreamIterator<R> {
         // For streaming, we can't detect version from reader without consuming it
         // So we default to V4_3
         let version = ddex_core::models::versions::ERNVersion::V4_3;
 
-        let streaming_config = streaming::StreamingConfig {
-            security: self.config.clone(),
-            ..Default::default()
-        };
-
-        DDEXStreamIterator::with_config(reader, version, streaming_config)
+        WorkingStreamIterator::new(reader, version)
     }
 
     /// Stream parse with version detection (consumes some input to detect version)
     pub fn stream_with_version_detection<R: std::io::BufRead + std::io::Seek>(
         &self,
         mut reader: R,
-    ) -> Result<DDEXStreamIterator<R>, error::ParseError> {
+    ) -> Result<WorkingStreamIterator<R>, error::ParseError> {
         // Detect version first
         let version = parser::detector::VersionDetector::detect(&mut reader)?;
         reader.seek(std::io::SeekFrom::Start(0))?;
 
-        let streaming_config = streaming::StreamingConfig {
-            security: self.config.clone(),
-            ..Default::default()
-        };
-
-        Ok(DDEXStreamIterator::with_config(reader, version, streaming_config))
+        Ok(WorkingStreamIterator::new(reader, version))
     }
-    
+
+    /// High-performance zero-copy streaming parser (280+ MB/s)
+    #[cfg(feature = "zero-copy")]
+    pub fn stream_zero_copy<R: std::io::BufRead>(
+        &self,
+        reader: R,
+    ) -> FastZeroCopyIterator<R> {
+        let version = ddex_core::models::versions::ERNVersion::V4_3;
+        FastZeroCopyIterator::new(reader, version)
+    }
+
+    /// Zero-copy streaming with version detection
+    #[cfg(feature = "zero-copy")]
+    pub fn stream_zero_copy_with_version_detection<R: std::io::BufRead + std::io::Seek>(
+        &self,
+        mut reader: R,
+    ) -> Result<FastZeroCopyIterator<R>, error::ParseError> {
+        let version = parser::detector::VersionDetector::detect(&mut reader)?;
+        reader.seek(std::io::SeekFrom::Start(0))?;
+
+        Ok(FastZeroCopyIterator::new(reader, version))
+    }
+
+    /// Multi-core parallel streaming parser for maximum throughput (target: 280+ MB/s)
+    pub fn stream_parallel<R: std::io::BufRead>(
+        &self,
+        reader: R,
+    ) -> ParallelStreamingIterator<R> {
+        let version = ddex_core::models::versions::ERNVersion::V4_3;
+        ParallelStreamingIterator::new(reader, version)
+    }
+
+    /// Parallel streaming with custom thread count
+    pub fn stream_parallel_with_threads<R: std::io::BufRead>(
+        &self,
+        reader: R,
+        threads: usize,
+    ) -> ParallelStreamingIterator<R> {
+        let version = ddex_core::models::versions::ERNVersion::V4_3;
+        ParallelStreamingIterator::with_threads(reader, version, threads)
+    }
+
+    /// Parallel streaming with version detection
+    pub fn stream_parallel_with_version_detection<R: std::io::BufRead + std::io::Seek>(
+        &self,
+        mut reader: R,
+    ) -> Result<ParallelStreamingIterator<R>, error::ParseError> {
+        let version = parser::detector::VersionDetector::detect(&mut reader)?;
+        reader.seek(std::io::SeekFrom::Start(0))?;
+
+        Ok(ParallelStreamingIterator::new(reader, version))
+    }
+
     /// Detect DDEX version from XML
     pub fn detect_version<R: std::io::BufRead>(
         &self,
@@ -133,10 +180,13 @@ pub mod bench_report;
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_parser_creation() {
         let parser = DDEXParser::new();
         assert!(parser.config.disable_external_entities);
     }
 }
+
+#[cfg(test)]
+mod api_integration_test;

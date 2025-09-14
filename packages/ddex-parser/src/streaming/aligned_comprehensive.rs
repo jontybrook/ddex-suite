@@ -68,32 +68,31 @@ impl<R: BufRead> AlignedStreamingParser<R> {
 
     pub fn parse_next(&mut self) -> Result<Option<AlignedStreamingElement>, ParseError> {
         loop {
-            let event = self.reader.read_event_into(&mut self.buffer);
+            self.buffer.clear();
+            let event = self.reader.read_event_into(&mut self.buffer)?;
             match event {
-                Ok(Event::Start(e)) => {
-                    self.handle_start_element(&e)?;
+                Event::Start(e) => {
+                    let name_bytes = e.name();
+                    let name = std::str::from_utf8(name_bytes.as_ref())?.to_string();
+                    self.handle_start_element_by_name(&name)?;
                 }
-                Ok(Event::End(e)) => {
-                    if let Some(element) = self.handle_end_element(&e)? {
+                Event::End(e) => {
+                    let name_bytes = e.name();
+                    let name = std::str::from_utf8(name_bytes.as_ref())?.to_string();
+                    if let Some(element) = self.handle_end_element_by_name(&name)? {
                         self.elements_yielded += 1;
                         return Ok(Some(element));
                     }
                 }
-                Ok(Event::Text(e)) => {
+                Event::Text(e) => {
                     let text = std::str::from_utf8(&e)?;
                     self.text_buffer.push_str(text.trim());
                 }
-                Ok(Event::Eof) => {
+                Event::Eof => {
                     return Ok(Some(AlignedStreamingElement::EndOfStream));
                 }
-                Ok(_) => {
+                _ => {
                     // Skip other events
-                }
-                Err(e) => {
-                    return Err(ParseError::XmlError {
-                        message: format!("XML parsing error: {}", e),
-                        location: self.get_current_location(),
-                    });
                 }
             }
 
@@ -110,20 +109,12 @@ impl<R: BufRead> AlignedStreamingParser<R> {
         }
     }
 
-    fn handle_start_element(&mut self, element: &quick_xml::events::BytesStart) -> Result<(), ParseError> {
-        let name_bytes = element.name();
-        let name = std::str::from_utf8(name_bytes.as_ref())?;
+    fn handle_start_element_by_name(&mut self, name: &str) -> Result<(), ParseError> {
         self.current_path.push(name.to_string());
         self.current_depth += 1;
 
-        // Extract attributes
+        // Clear attributes (simplified for now)
         self.attributes.clear();
-        for attr in element.attributes() {
-            let attr = attr?;
-            let key = std::str::from_utf8(attr.key.as_ref())?;
-            let value = std::str::from_utf8(&attr.value)?;
-            self.attributes.insert(key.to_string(), value.to_string());
-        }
 
         self.text_buffer.clear();
 
@@ -156,9 +147,7 @@ impl<R: BufRead> AlignedStreamingParser<R> {
         Ok(())
     }
 
-    fn handle_end_element(&mut self, element: &quick_xml::events::BytesEnd) -> Result<Option<AlignedStreamingElement>, ParseError> {
-        let name_bytes = element.name();
-        let name = std::str::from_utf8(name_bytes.as_ref())?;
+    fn handle_end_element_by_name(&mut self, name: &str) -> Result<Option<AlignedStreamingElement>, ParseError> {
         let text_content = self.text_buffer.clone();
 
         let result = match &mut self.state {

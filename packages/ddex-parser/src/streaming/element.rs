@@ -59,8 +59,8 @@ impl ParsedElement {
         match self {
             ParsedElement::Release(r) => Some(&r.release_reference),
             ParsedElement::Resource(r) => Some(&r.resource_reference),
-            ParsedElement::Party(p) => Some(&p.party_reference),
-            ParsedElement::Deal(d) => Some(&d.deal_reference),
+            ParsedElement::Party(p) => p.party_id.first().map(|id| id.value.as_str()),
+            ParsedElement::Deal(d) => d.deal_reference.as_deref(),
             _ => None,
         }
     }
@@ -69,12 +69,12 @@ impl ParsedElement {
     pub fn is_complete(&self) -> bool {
         match self {
             ParsedElement::Header { sender, message_id, .. } => {
-                !sender.sender_name.is_empty() && !message_id.value.is_empty()
+                !sender.party_name.is_empty() && !message_id.value.is_empty()
             }
             ParsedElement::Release(r) => !r.release_reference.is_empty() && !r.release_title.is_empty(),
-            ParsedElement::Resource(r) => !r.resource_reference.is_empty() && !r.title.is_empty(),
-            ParsedElement::Party(p) => !p.party_reference.is_empty() && !p.party_name.is_empty(),
-            ParsedElement::Deal(d) => !d.deal_reference.is_empty(),
+            ParsedElement::Resource(r) => !r.resource_reference.is_empty() && !r.reference_title.is_empty(),
+            ParsedElement::Party(p) => !p.party_id.is_empty() && !p.party_name.is_empty(),
+            ParsedElement::Deal(d) => d.deal_reference.as_ref().map_or(false, |r| !r.is_empty()),
             ParsedElement::EndOfStream => true,
         }
     }
@@ -87,7 +87,7 @@ fn estimate_release_size(release: &Release) -> usize {
     size += release.release_id.len() * std::mem::size_of::<Identifier>();
     size += release.release_title.len() * 100; // Estimate for LocalizedString
     size += release.display_artist.len() * std::mem::size_of::<Artist>();
-    size += release.genre.iter().map(|g| g.len()).sum::<usize>();
+    size += release.genre.iter().map(|g| g.genre_text.len()).sum::<usize>();
     size += release.release_resource_reference_list.len() * std::mem::size_of::<ReleaseResourceReference>();
     size
 }
@@ -96,18 +96,16 @@ fn estimate_release_size(release: &Release) -> usize {
 fn estimate_resource_size(resource: &Resource) -> usize {
     let mut size = std::mem::size_of::<Resource>();
     size += resource.resource_reference.len();
-    size += resource.resource_type.len();
+    size += std::mem::size_of::<ResourceType>();
     size += resource.resource_id.len() * std::mem::size_of::<Identifier>();
-    size += resource.title.len() * 100; // Estimate for LocalizedString
-    size += resource.display_artist.len() * std::mem::size_of::<Artist>();
-    size += resource.genre.iter().map(|g| g.len()).sum::<usize>();
+    size += resource.reference_title.len() * 100; // Estimate for LocalizedString
     size
 }
 
 /// Rough memory estimation for party
 fn estimate_party_size(party: &Party) -> usize {
     let mut size = std::mem::size_of::<Party>();
-    size += party.party_reference.len();
+    size += party.party_id.iter().map(|id| id.value.len()).sum::<usize>();
     size += party.party_name.len() * 100; // Estimate for LocalizedString
     size += party.party_id.len() * std::mem::size_of::<Identifier>();
     size
@@ -116,14 +114,12 @@ fn estimate_party_size(party: &Party) -> usize {
 /// Rough memory estimation for deal
 fn estimate_deal_size(deal: &Deal) -> usize {
     let mut size = std::mem::size_of::<Deal>();
-    size += deal.deal_reference.len();
-    size += deal.commercial_model_type.iter().map(|c| c.len()).sum::<usize>();
-    size += deal.use_type.iter().map(|u| u.len()).sum::<usize>();
-    size += deal.territory_code.iter().map(|t| t.len()).sum::<usize>();
-    // Add DealTerms size estimate if present
-    if deal.deal_terms.is_some() {
-        size += 1024; // Rough estimate for DealTerms
-    }
+    size += deal.deal_reference.as_ref().map_or(0, |r| r.len());
+    size += deal.deal_terms.commercial_model_type.len() * std::mem::size_of::<CommercialModelType>();
+    size += deal.deal_terms.use_type.len() * std::mem::size_of::<UseType>();
+    size += deal.deal_terms.territory_code.iter().map(|t| t.len()).sum::<usize>();
+    // Add DealTerms size estimate
+    size += std::mem::size_of::<DealTerms>();
     size
 }
 

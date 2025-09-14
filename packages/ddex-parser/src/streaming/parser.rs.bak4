@@ -69,28 +69,12 @@ impl<R: BufRead> StreamingDDEXParser<R> {
         loop {
             self.buffer.clear();
             let event = self.reader.read_event_into(&mut self.buffer)?;
-
-            // Extract data from event first, then process without holding borrow
             match event {
                 Event::Start(e) | Event::Empty(e) => {
-                    let name_bytes = e.name();
-                    let name = std::str::from_utf8(name_bytes.as_ref())?.to_string();
-                    // Extract attributes into temp storage first
-                    let mut temp_attributes = std::collections::HashMap::new();
-                    for attr_result in e.attributes() {
-                        let attr = attr_result?;
-                        let key = std::str::from_utf8(attr.key.as_ref())?;
-                        let value = std::str::from_utf8(&attr.value)?;
-                        temp_attributes.insert(key.to_string(), value.to_string());
-                    }
-                    // Now safe to call method since we're not holding borrow
-                    self.handle_start_element_by_name_and_attrs(&name, temp_attributes)?;
+                    self.handle_start_element(&e)?;
                 }
                 Event::End(e) => {
-                    let name_bytes = e.name();
-                    let name = std::str::from_utf8(name_bytes.as_ref())?.to_string();
-                    // Now safe to call method since we're not holding borrow
-                    if let Some(element) = self.handle_end_element_by_name(&name)? {
+                    if let Some(element) = self.handle_end_element(&e)? {
                         self.elements_yielded += 1;
                         self.update_progress();
                         return Ok(Some(element));
@@ -473,7 +457,7 @@ impl<R: BufRead> StreamingDDEXParser<R> {
         if self.context.current_depth > self.config.security.max_element_depth {
             return Err(ParseError::SecurityViolation {
                 message: format!(
-"Nesting depth {} exceeds maximum {}",
+" {} exceeds maximum {}",
                     self.context.current_depth,
                     self.config.security.max_element_depth
                 ),
@@ -484,7 +468,7 @@ impl<R: BufRead> StreamingDDEXParser<R> {
         if self.current_memory > self.config.max_memory {
             return Err(ParseError::SecurityViolation {
                 message: format!(
-"Memory usage {} exceeds maximum {}",
+" {} exceeds maximum {}",
                     self.current_memory,
                     self.config.max_memory
                 ),
@@ -542,66 +526,5 @@ impl<R: BufRead> std::fmt::Debug for StreamingDDEXParser<R> {
             .field("current_depth", &self.context.current_depth)
             .field("current_memory", &self.current_memory)
             .finish()
-    }
-}
-
-impl<R: BufRead> StreamingDDEXParser<R> {
-    /// Handle start element by name and attributes (borrow-safe wrapper)
-    fn handle_start_element_by_name_and_attrs(&mut self, name: &str, attrs: std::collections::HashMap<String, String>) -> Result<(), ParseError> {
-        self.context.push_element(name);
-        self.context.attributes = attrs;
-        self.context.clear_text_buffer();
-        
-        // Basic state transitions  
-        match (&self.context.state, name) {
-            (ParserState::Initial, "MessageHeader") => {
-                self.context.state = ParserState::InHeader { 
-                    header: crate::streaming::state::PartialMessageHeader::default(), 
-                    depth: self.context.current_depth 
-                };
-            }
-            (ParserState::Initial, "Release") => {
-                let reference = self.context.attributes.get("ReleaseReference")
-                    .unwrap_or(&"default".to_string()).clone();
-                self.context.state = ParserState::InRelease { 
-                    release: crate::streaming::state::PartialRelease::default(), 
-                    depth: self.context.current_depth 
-                };
-            }
-            _ => {} // Handle other elements or skip
-        }
-        
-        Ok(())
-    }
-    
-    /// Handle end element by name (borrow-safe wrapper) 
-    fn handle_end_element_by_name(&mut self, name: &str) -> Result<Option<ParsedElement>, ParseError> {
-        let text_content = self.context.take_text();
-        
-        // Simple implementation - just return None for now to get it compiling
-        self.context.pop_element();
-        
-        // Check if we completed a major element
-        match name {
-            "MessageHeader" => {
-                if matches!(self.context.state, ParserState::InHeader { .. }) {
-                    self.context.state = ParserState::Initial;
-                    // Return a simple header element for now
-                    return Ok(None); // Simplified for compilation
-                }
-            }
-            "Release" => {
-                if matches!(self.context.state, ParserState::InRelease { .. }) {
-                    self.context.state = ParserState::Initial;
-                    // Return a simple release element for now
-                    return Ok(None); // Simplified for compilation
-                }
-            }
-            _ => {
-                // Handle other elements
-            }
-        }
-
-        Ok(None)
     }
 }

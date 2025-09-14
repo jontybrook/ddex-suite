@@ -148,3 +148,31 @@ impl From<quick_xml::events::attributes::AttrError> for ParseError {
         }
     }
 }
+
+impl From<quick_xml::Error> for ParseError {
+    fn from(err: quick_xml::Error) -> Self {
+        ParseError::XmlError {
+            message: format!("XML parsing error: {}", err),
+            location: ErrorLocation {
+                line: 0,
+                column: 0,
+                byte_offset: None,
+                path: "parser".to_string(),
+            },
+        }
+    }
+}
+
+impl From<String> for ParseError {
+    fn from(err: String) -> Self {
+        ParseError::XmlError {
+            message: err,
+            location: ErrorLocation {
+                line: 0,
+                column: 0,
+                byte_offset: None,
+                path: "parser".to_string(),
+            },
+        }
+    }
+}

@@ -65,13 +65,19 @@ impl<R: BufRead> MinimalStreamingParser<R> {
     pub fn parse_next(&mut self) -> Result<Option<MinimalElement>, ParseError> {
         loop {
             self.buffer.clear();
-            let event = self.reader.read_event_into(&mut self.buffer)?;
+            let event = self.reader.read_event_into(&mut self.buffer).map_err(|e| ParseError::XmlError {
+                message: format!("XML parsing error: {}", e),
+                location: self.get_location(),
+            })?;
             match event {
                 Event::Start(e) => {
                     self.current_depth += 1;
                     let name_bytes = e.name();
                     let name = std::str::from_utf8(name_bytes.as_ref())
-                        ?;
+                        .map_err(|e| ParseError::XmlError {
+                            message: format!("Invalid UTF-8: {}", e),
+                            location: self.get_location(),
+                        })?;
 
                     self.in_element = Some(name.to_string());
                     self.text_buffer.clear();
@@ -86,17 +92,24 @@ impl<R: BufRead> MinimalStreamingParser<R> {
                 Event::End(e) => {
                     self.current_depth = self.current_depth.saturating_sub(1);
                     let name_bytes = e.name();
-                    let name = std::str::from_utf8(name_bytes.as_ref())?.to_string();
+                    let name = std::str::from_utf8(name_bytes.as_ref())
+                        .map_err(|e| ParseError::XmlError {
+                            message: format!("Invalid UTF-8: {}", e),
+                            location: self.get_location(),
+                        })?;
 
                     // Check if we completed an element we care about
-                    if let Some(element) = self.check_completed_element(&name)? {
+                    if let Some(element) = self.check_completed_element(name)? {
                         self.elements_yielded += 1;
                         return Ok(Some(element));
                     }
                 }
                 Event::Text(e) => {
                     let text = std::str::from_utf8(&e)
-                        ?;
+                        .map_err(|e| ParseError::XmlError {
+                            message: format!("Invalid UTF-8: {}", e),
+                            location: self.get_location(),
+                        })?;
                     self.text_buffer.push_str(text.trim());
                 }
                 Event::Eof => {
@@ -142,7 +155,6 @@ impl<R: BufRead> MinimalStreamingParser<R> {
             line: 0,
             column: 0,
             byte_offset: Some(self.bytes_processed as usize),
-            path: "streaming".to_string(),
         }
     }
 
