@@ -9,25 +9,30 @@ pub enum BuildError {
     /// Invalid format
     #[error("Invalid format in {field}: {message}")]
     InvalidFormat {
+        /// Field that failed validation
         field: String,
+        /// Error message describing the issue
         message: String,
     },
     
     /// Missing required field
     #[error("Missing required field: {field}")]
     MissingRequired {
+        /// Field that failed validation
         field: String,
     },
     
     /// Invalid reference
     #[error("Invalid reference: {reference}")]
     InvalidReference {
+        /// Reference that could not be resolved
         reference: String,
     },
     
     /// Validation failed
     #[error("Validation failed: {}", errors.join(", "))]
     ValidationFailed {
+        /// List of validation errors
         errors: Vec<String>,
     },
     
@@ -46,13 +51,16 @@ pub enum BuildError {
     /// Determinism verification failed
     #[error("Determinism verification failed: {message}")]
     DeterminismFailed {
+        /// General error message
         message: String,
     },
     
     /// Determinism guarantee violation
     #[error("Determinism guarantee violated: {guarantee} - {details}")]
     DeterminismGuaranteeViolated {
+        /// Guarantee that failed
         guarantee: String,
+        /// Details about the failure
         details: String,
     },
     
@@ -98,7 +106,10 @@ impl From<quick_xml::Error> for BuildError {
 /// Build warning (non-fatal)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BuildWarning {
+    /// Error code for categorization
     pub code: String,
+    /// Human-readable error message
     pub message: String,
+    /// Optional location information
     pub location: Option<String>,
 }

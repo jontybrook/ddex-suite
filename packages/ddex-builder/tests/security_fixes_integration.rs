@@ -8,10 +8,9 @@
 //! - Performance impact is minimal
 
 use ddex_builder::security::{
-    PathValidator, PathValidationConfig, ErrorSanitizer, SanitizerConfig, 
-    ErrorMode, ErrorContext, EntityClassifier, ClassifierConfig,
-    create_entity, create_external_entity, create_parameter_entity,
-    sanitize_io_error, sanitize_security_error
+    PathValidator, ErrorSanitizer, SanitizerConfig, 
+    ErrorMode, ErrorContext, EntityClassifier,
+    create_entity, create_external_entity, create_parameter_entity
 };
 use std::io::{Error, ErrorKind};
 use std::time::Instant;

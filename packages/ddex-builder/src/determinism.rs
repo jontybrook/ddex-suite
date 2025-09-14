@@ -132,21 +132,28 @@ pub struct DeterminismConfig {
     
     /// Formatting options
     pub output_mode: OutputMode,
+    /// Line ending style for output
     pub line_ending: LineEnding,
+    /// Character used for indentation
     pub indent_char: IndentChar,
+    /// Number of indent characters per level
     pub indent_width: usize,
-    
+
     /// String normalization
     pub unicode_normalization: UnicodeNormalization,
+    /// Policy for handling special XML characters
     pub xml_character_policy: XmlCharacterPolicy,
+    /// Quote style for attributes
     pub quote_style: QuoteStyle,
-    
+
     /// Date/Time handling
     pub time_zone_policy: TimeZonePolicy,
+    /// Format for date/time values
     pub date_time_format: DateTimeFormat,
-    
+
     /// Reproducibility options
     pub emit_reproducibility_banner: bool,
+    /// Number of iterations to verify determinism (None = disabled)
     pub verify_determinism: Option<usize>,
 }
 
@@ -303,60 +310,90 @@ pub enum DateTimeFormat {
 /// Determinism verification result
 #[derive(Debug, Clone, PartialEq)]
 pub struct DeterminismResult {
+    /// Whether output is deterministic
     pub is_deterministic: bool,
+    /// Number of iterations tested
     pub iterations: usize,
+    /// Generated outputs for comparison
     pub outputs: Vec<String>,
+    /// SHA-256 hashes of outputs
     pub hashes: Vec<String>,
+    /// Differences found between iterations
     pub differences: Vec<DeterminismDifference>,
+    /// Runtime statistics
     pub runtime_stats: DeterminismStats,
 }
 
 /// Information about a determinism difference
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DeterminismDifference {
+    /// First iteration where difference occurred
     pub iteration1: usize,
+    /// Second iteration where difference occurred
     pub iteration2: usize,
+    /// Byte position of first difference
     pub first_difference_byte: Option<usize>,
+    /// Hash comparison details
     pub hash_difference: HashDifference,
+    /// Length comparison details
     pub length_difference: LengthDifference,
+    /// Context around the difference
     pub context: Option<DifferenceContext>,
 }
 
 /// Hash comparison details
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HashDifference {
+    /// SHA-256 hash from first iteration
     pub sha256_1: String,
+    /// SHA-256 hash from second iteration
     pub sha256_2: String,
+    /// BLAKE3 hash from first iteration
     pub blake3_1: String,
+    /// BLAKE3 hash from second iteration
     pub blake3_2: String,
 }
 
 /// Length comparison details
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LengthDifference {
+    /// Length in first iteration
     pub length_1: usize,
+    /// Length in second iteration
     pub length_2: usize,
+    /// Difference in bytes (negative if second is shorter)
     pub diff: i64,
 }
 
 /// Context around a difference
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DifferenceContext {
+    /// Byte position where difference occurred
     pub position: usize,
+    /// Content before the difference
     pub before: String,
+    /// Content after in first iteration
     pub after_1: String,
+    /// Content after in second iteration
     pub after_2: String,
+    /// Line number if applicable
     pub line_number: Option<usize>,
+    /// Column number if applicable
     pub column_number: Option<usize>,
 }
 
 /// Runtime statistics for determinism verification
 #[derive(Debug, Clone, PartialEq)]
 pub struct DeterminismStats {
+    /// Total time for all iterations in milliseconds
     pub total_time_ms: u64,
+    /// Average build time per iteration
     pub avg_build_time_ms: u64,
+    /// Minimum build time observed
     pub min_build_time_ms: u64,
+    /// Maximum build time observed
     pub max_build_time_ms: u64,
+    /// Overhead percentage from determinism checking
     pub overhead_percentage: f64,
 }
 

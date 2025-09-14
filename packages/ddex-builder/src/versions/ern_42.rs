@@ -206,8 +206,8 @@ pub fn get_xml_template() -> &'static str {
 
 /// ERN 4.2 specific element builders
 pub mod builders {
-    use super::*;
-    use crate::ast::{Element, Node};
+    
+    use crate::ast::Element;
     
     /// Build ERN 4.2 enhanced message header
     pub fn build_enhanced_message_header(
@@ -517,7 +517,7 @@ pub mod builders {
 
 /// ERN 4.2 validation functions
 pub mod validation {
-    use super::*;
+    
     use regex::Regex;
     use once_cell::sync::Lazy;
     

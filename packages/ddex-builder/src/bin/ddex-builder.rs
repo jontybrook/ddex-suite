@@ -4,7 +4,7 @@
 //! with deterministic output and support for various partner presets.
 
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
-use clap_complete::{generate, Generator, Shell};
+use clap_complete::{generate, Shell};
 use console::style;
 use ddex_builder::presets::{DdexVersion, MessageProfile};
 use ddex_builder::*;
@@ -1136,8 +1136,8 @@ fn handle_preset_command(cmd: PresetCommand, _config: &ConfigFile) -> Result<(),
 }
 
 fn handle_watch_command(cmd: WatchCommand, _config: &ConfigFile) -> Result<(), Box<dyn std::error::Error>> {
-    use std::sync::mpsc;
-    use std::time::Duration;
+    
+    
     
     if !is_quiet() {
         println!("👀 Watching {} for changes...", cmd.path.display());

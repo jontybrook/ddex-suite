@@ -3,7 +3,7 @@
 
 use crate::error::{ParseError, ErrorLocation};
 use ddex_core::models::{graph::*, versions::ERNVersion};
-use ddex_core::models::{Identifier, LocalizedString, IdentifierType};
+use ddex_core::models::IdentifierType;
 use ddex_core::models::streaming_types::*;
 use ddex_core::models::streaming_types::builders::*;
 use quick_xml::{Reader, events::Event};

@@ -2,6 +2,7 @@
 // Remove unused imports and variables
 use crate::error::ParseError;
 use crate::parser::namespace_detector::NamespaceContext;
+use crate::parser::xml_validator::XmlValidator;
 use ddex_core::models::graph::{
     ERNMessage, MessageHeader, MessageType, MessageSender, MessageRecipient,
     Release
@@ -20,39 +21,75 @@ impl GraphBuilder {
         Self { version }
     }
     
-    pub fn build_from_xml<R: BufRead>(&self, reader: R) -> Result<ERNMessage, ParseError> {
-        let mut xml_reader = Reader::from_reader(reader);
+    pub fn build_from_xml<R: BufRead + std::io::Seek>(&self, reader: R) -> Result<ERNMessage, ParseError> {
+        self.build_from_xml_with_security_config(reader, &crate::parser::security::SecurityConfig::default())
+    }
+
+    pub fn build_from_xml_with_security_config<R: BufRead + std::io::Seek>(&self, mut reader: R, security_config: &crate::parser::security::SecurityConfig) -> Result<ERNMessage, ParseError> {
+        let mut xml_reader = Reader::from_reader(&mut reader);
+
+        // Enable strict XML validation
         xml_reader.config_mut().trim_text(true);
-        
-        let message_header = self.parse_header(&mut xml_reader)?;
+        xml_reader.config_mut().check_end_names = true;
+        xml_reader.config_mut().expand_empty_elements = false;
+
+        // Start with a minimal header - we'll parse it inline during the main loop
+        let message_header = self.create_minimal_header()?;
+        let mut validator = XmlValidator::strict();
         let mut releases = Vec::new();
         let resources = Vec::new();  // Remove mut
         let parties = Vec::new();    // Remove mut
         let deals = Vec::new();      // Remove mut
-        
-        // Simple parsing to extract at least one release
+
+        // Parse with XML validation and depth tracking
         let mut buf = Vec::new();
         let mut in_release_list = false;
-        
+
         loop {
             match xml_reader.read_event_into(&mut buf) {
-                Ok(Event::Start(ref e)) => {
-                    match e.name().as_ref() {
-                        b"ReleaseList" => in_release_list = true,
-                        b"Release" if in_release_list => {
-                            // Create a minimal release
-                            releases.push(self.parse_minimal_release(&mut xml_reader)?);
+                Ok(ref event) => {
+                    // Validate XML structure
+                    validator.validate_event(event, &xml_reader)?;
+
+                    // Check depth limit
+                    if validator.get_depth() > 100 {
+                        return Err(ParseError::DepthLimitExceeded {
+                            depth: validator.get_depth(),
+                            max: 100,
+                        });
+                    }
+
+                    match event {
+                        Event::Start(ref e) => {
+                            match e.name().as_ref() {
+                                b"ReleaseList" => in_release_list = true,
+                                b"Release" if in_release_list => {
+                                    // Create a minimal release
+                                    releases.push(self.parse_minimal_release(&mut xml_reader)?);
+                                }
+                                _ => {}
+                            }
                         }
+                        Event::End(ref e) => {
+                            if e.name().as_ref() == b"ReleaseList" {
+                                in_release_list = false;
+                            }
+                        }
+                        Event::Eof => break,
                         _ => {}
                     }
                 }
-                Ok(Event::End(ref e)) => {
-                    if e.name().as_ref() == b"ReleaseList" {
-                        in_release_list = false;
-                    }
+                Err(e) => {
+                    return Err(ParseError::XmlError {
+                        message: format!("XML parsing error: {}", e),
+                        location: crate::error::ErrorLocation {
+                            line: 0,
+                            column: 0,
+                            byte_offset: Some(xml_reader.buffer_position() as usize),
+                            path: "parser".to_string(),
+                        },
+                    });
                 }
-                Ok(Event::Eof) => break,
-                _ => {}
             }
             buf.clear();
         }
@@ -74,16 +111,21 @@ impl GraphBuilder {
     }
     
     /// Build graph model from XML with namespace context
-    pub fn build_from_xml_with_context<R: BufRead>(&self, reader: R, _context: NamespaceContext) -> Result<ERNMessage, ParseError> {
-        // For now, delegate to the existing method
+    pub fn build_from_xml_with_context<R: BufRead + std::io::Seek>(&self, reader: R, _context: NamespaceContext) -> Result<ERNMessage, ParseError> {
+        self.build_from_xml_with_context_and_security(reader, _context, &crate::parser::security::SecurityConfig::default())
+    }
+
+    pub fn build_from_xml_with_context_and_security<R: BufRead + std::io::Seek>(&self, reader: R, _context: NamespaceContext, security_config: &crate::parser::security::SecurityConfig) -> Result<ERNMessage, ParseError> {
+        // For now, delegate to the security-aware method
         // In the future, this would use the namespace context for proper element resolution
-        self.build_from_xml(reader)
+        self.build_from_xml_with_security_config(reader, security_config)
     }
     
-    fn parse_header<R: BufRead>(&self, _reader: &mut Reader<R>) -> Result<MessageHeader, ParseError> {
+
+    fn create_minimal_header(&self) -> Result<MessageHeader, ParseError> {
         use chrono::Utc;
-        
-        // Return a minimal valid header
+
+        // Return a minimal valid header without parsing
         Ok(MessageHeader {
             message_id: format!("MSG_{:?}", self.version),
             message_type: MessageType::NewReleaseMessage,

@@ -236,15 +236,22 @@ impl<W: IoWrite> BufferManager<W> {
     }
 }
 
-/// Statistics about buffer usage
-#[derive(Debug, Clone)]
+/// Statistics for buffer management
+#[derive(Debug, Default)]
 pub struct BufferStats {
+    /// Current memory usage in bytes
     pub current_memory_usage: usize,
+    /// Peak memory usage reached
     pub peak_memory_usage: usize,
+    /// Total bytes written through buffers
     pub total_bytes_written: usize,
+    /// Number of times buffers were flushed
     pub total_flushes: usize,
+    /// Number of buffers currently queued
     pub queued_buffers: usize,
+    /// Size of the current active buffer
     pub current_buffer_size: usize,
+    /// Whether we're near memory capacity
     pub is_near_capacity: bool,
 }
 

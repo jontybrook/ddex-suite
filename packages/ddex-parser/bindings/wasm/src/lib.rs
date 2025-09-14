@@ -1,8 +1,7 @@
 // packages/ddex-parser/bindings/wasm/src/lib.rs
 use wasm_bindgen::prelude::*;
-use serde_wasm_bindgen::{from_value, to_value};
+use serde_wasm_bindgen::to_value;
 use ddex_parser::{DDEXParser as CoreParser};
-use ddex_core::models::flat::ParsedERNMessage;
 
 #[wasm_bindgen]
 pub struct DDEXParser {

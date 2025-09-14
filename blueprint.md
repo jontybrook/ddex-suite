@@ -1803,7 +1803,6 @@ interface DeterminismConfig {
   - [x] Memory pressure monitoring with 4-level system
   - [x] Zero-copy optimizations with string interning
 - [x] Advanced features implemented
-  - [x] Selective parsing (11-12x faster for ISRC extraction)
   - [x] XPath-like selectors for element extraction
   - [x] Parallel processing (6.25x speedup on 8 cores, 78% efficiency)
   - [x] Safe XML splitting for chunk processing
@@ -1854,7 +1853,7 @@ interface DeterminismConfig {
 - [ ] Prepare marketing materials
 - [ ] Official v1.0.0 release
 
-#### 6.2 Additional Bindings
+#### 6.2 Additional Bindings v1.1.0
 - [ ] Swift binding (planned)
 - [ ] C# (.NET) binding (planned)
 - [ ] Go binding (explore)

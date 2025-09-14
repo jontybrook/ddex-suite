@@ -143,8 +143,8 @@ impl BuildVerifier {
     /// Verify round-trip capability: XML → Parse → Build → Compare
     fn verify_round_trip(
         &self,
-        xml_output: &str,
-        fidelity_options: &FidelityOptions,
+        _xml_output: &str,
+        _fidelity_options: &FidelityOptions,
     ) -> Result<RoundTripVerificationResult, BuildError> {
         // This would integrate with the ddex-parser to test round-trip
         // For now, we'll simulate the verification
@@ -539,7 +539,7 @@ impl Default for VerificationStatistics {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::FidelityOptions;
+    
 
     #[test]
     fn test_verification_config_default() {

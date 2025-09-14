@@ -201,8 +201,13 @@ pub enum ValidationRuleType {
     Pattern,
     /// Enum value validation
     Enum,
-    /// Length validation
-    Length { min: Option<usize>, max: Option<usize> },
+    /// Length validation constraint
+    Length {
+        /// Minimum length (inclusive)
+        min: Option<usize>,
+        /// Maximum length (inclusive)
+        max: Option<usize>
+    },
     /// Custom validation function
     Custom(String),
 }
@@ -251,8 +256,8 @@ pub fn get_xml_template() -> &'static str {
 
 /// ERN 3.8.2 specific element builders
 pub mod builders {
-    use super::*;
-    use crate::ast::{Element, Node};
+    
+    use crate::ast::Element;
     
     /// Build ERN 3.8.2 message header
     pub fn build_message_header(
@@ -488,7 +493,7 @@ pub mod builders {
 
 /// ERN 3.8.2 validation functions
 pub mod validation {
-    use super::*;
+    
     use regex::Regex;
     use once_cell::sync::Lazy;
     

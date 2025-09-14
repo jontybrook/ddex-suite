@@ -9,7 +9,7 @@
 use crate::error::ParseError;
 use crate::streaming::{WorkingStreamingElement, WorkingStreamingStats};
 use ddex_core::models::versions::ERNVersion;
-use std::io::{BufRead, Read};
+use std::io::BufRead;
 use std::time::Instant;
 use std::collections::HashMap;
 

@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# Simple XML for depth testing
+cat > /tmp/depth_test.xml << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<NewReleaseMessage xmlns="http://ddex.net/xml/ern/43">
+    <MessageHeader><MessageId>MSG123</MessageId></MessageHeader>
+    <ReleaseList>
+        <Release><ReleaseId>R1</ReleaseId></Release>
+        <Release><ReleaseId>R2</ReleaseId></Release>
+        <Release><ReleaseId>R3</ReleaseId></Release>
+    </ReleaseList>
+</NewReleaseMessage>
+EOF
+
+echo "=== XML Content ==="
+cat /tmp/depth_test.xml
+
+echo ""
+echo "=== Testing with DDEX Parser ==="
+cd /Users/kevinmoo/Desktop/localrepo/ddex-suite/packages/ddex-parser
+cargo run --bin ddex-parser -- parse /tmp/depth_test.xml

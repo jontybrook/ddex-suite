@@ -15,8 +15,13 @@ pub enum DiffResult {
     Modified,
     /// Content was removed
     Removed,
-    /// Content was moved to a different location
-    Moved { from: DiffPath, to: DiffPath },
+    /// Element was moved
+    Moved {
+        /// Original path
+        from: DiffPath,
+        /// New path
+        to: DiffPath
+    },
 }
 
 /// Complete set of changes between two DDEX documents

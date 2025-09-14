@@ -7,7 +7,6 @@ use crate::error::ParseError;
 use crate::streaming::{WorkingStreamingElement, WorkingStreamingStats};
 use crate::streaming::fast_zero_copy::FastZeroCopyParser;
 use ddex_core::models::versions::ERNVersion;
-use rayon::prelude::*;
 use std::io::BufRead;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;

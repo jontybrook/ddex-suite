@@ -14,6 +14,7 @@ pub const XML_DECLARATION: &str = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
 /// Comprehensive namespace prefix lock tables for all ERN versions
 pub struct NamespacePrefixLock {
     /// Registry for namespace management
+    #[allow(dead_code)]
     registry: NamespaceRegistry,
     /// Locked prefixes for specific versions
     version_locks: IndexMap<String, IndexMap<String, String>>, // version -> (uri -> prefix)

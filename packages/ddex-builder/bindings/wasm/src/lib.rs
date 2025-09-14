@@ -574,7 +574,7 @@ impl WasmDdexBuilder {
     }
 
     #[wasm_bindgen(js_name = testRoundTripFidelity)]
-    pub async fn test_round_trip_fidelity(&mut self, original_xml: String, fidelity_options: Option<FidelityOptions>) -> Result<VerificationResult, JsValue> {
+    pub async fn test_round_trip_fidelity(&mut self, _original_xml: String, fidelity_options: Option<FidelityOptions>) -> Result<VerificationResult, JsValue> {
         // Mock round-trip testing for WASM
         let fidelity_score = if let Some(ref options) = fidelity_options {
             if options.enable_perfect_fidelity { 0.99 } else { 0.90 }
@@ -886,7 +886,7 @@ pub async fn batch_build(requests: JsValue) -> Result<Vec<String>, JsValue> {
     let length = array.length();
     let mut results = Vec::new();
     
-    for i in 0..length {
+    for _i in 0..length {
         // Create a simple placeholder result for each request
         let result = format!(r#"<?xml version="1.0" encoding="UTF-8"?>
 <NewReleaseMessage xmlns="http://ddex.net/xml/ern/43">

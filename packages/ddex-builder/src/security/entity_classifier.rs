@@ -13,8 +13,7 @@
 //! - Metrics collection for security monitoring
 //! - Performance-optimized caching system
 
-use crate::error::BuildError;
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexSet;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -76,12 +75,16 @@ pub enum EntityClass {
     CustomLocal,
     /// Entities that match suspicious patterns but aren't confirmed malicious
     Suspicious {
+        /// Reason for suspicious classification
         reason: String,
+        /// Confidence level (0.0-1.0)
         confidence: f64,
     },
     /// Confirmed malicious entities
     Malicious {
+        /// Type of attack detected
         attack_type: AttackType,
+        /// Reason for malicious classification
         reason: String,
     },
 }
@@ -103,6 +106,25 @@ pub enum AttackType {
     ParameterEntity,
     /// Generic entity bomb
     EntityBomb,
+}
+
+/// Classification result
+#[derive(Debug)]
+pub enum ClassificationResult {
+    /// Entity is safe
+    Safe {
+        /// Reason for safe classification
+        reason: String,
+        /// Confidence level (0.0-1.0)
+        confidence: f64,
+    },
+    /// Entity is potentially malicious
+    Malicious {
+        /// Type of attack detected
+        attack_type: AttackType,
+        /// Reason for classification
+        reason: String,
+    },
 }
 
 /// Entity definition for analysis

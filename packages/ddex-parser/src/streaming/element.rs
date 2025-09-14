@@ -2,9 +2,8 @@
 //! Parsed element types for streaming interface
 
 use ddex_core::models::graph::*;
-use ddex_core::models::{Identifier, LocalizedString};
+use ddex_core::models::Identifier;
 use ddex_core::models::versions::ERNVersion;
-use std::borrow::Cow;
 
 /// Element yielded by streaming parser
 #[derive(Debug, Clone)]

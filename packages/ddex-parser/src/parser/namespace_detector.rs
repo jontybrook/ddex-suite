@@ -10,6 +10,7 @@ use quick_xml::events::{Event, BytesStart};
 use quick_xml::Reader;
 use std::io::BufRead;
 use crate::error::ParseError;
+use crate::utf8_utils;
 use tracing::{debug, warn};
 
 /// Comprehensive namespace detection and management
@@ -89,9 +90,9 @@ impl NamespaceDetector {
 
                     // Check maximum nesting depth
                     if depth > security_config.max_element_depth {
-                        return Err(ParseError::SecurityViolation {
-                            message: format!("XML nesting depth {} exceeds maximum allowed depth of {}",
-                                           depth, security_config.max_element_depth),
+                        return Err(ParseError::DepthLimitExceeded {
+                            depth,
+                            max: security_config.max_element_depth,
                         });
                     }
 
@@ -107,8 +108,11 @@ impl NamespaceDetector {
                     depth = depth.saturating_sub(1);
                 }
                 Ok(Event::Text(ref e)) => {
+                    // Use proper UTF-8 decoding for text content
+                    let current_pos = xml_reader.buffer_position() as usize;
+                    let text = utf8_utils::decode_utf8_at_position(e, current_pos)?;
+
                     // Check for potential entity expansions (simple heuristic)
-                    let text = std::str::from_utf8(e).unwrap_or("");
                     if text.contains("&") {
                         entity_expansions += text.matches("&").count();
                         if entity_expansions > security_config.max_entity_expansions {
@@ -155,8 +159,9 @@ impl NamespaceDetector {
                 message: format!("Attribute error: {}", e),
                 location: crate::error::ErrorLocation::default(),
             })?;
-            let key = String::from_utf8_lossy(attr.key.as_ref());
-            let value = String::from_utf8_lossy(&attr.value).to_string();
+            // Use proper UTF-8 decoding for attribute key and value
+            let key = utf8_utils::decode_attribute_name(attr.key.as_ref(), 0)?;
+            let value = utf8_utils::decode_attribute_value(&attr.value, 0)?;
             
             if key == "xmlns" {
                 // Default namespace declaration

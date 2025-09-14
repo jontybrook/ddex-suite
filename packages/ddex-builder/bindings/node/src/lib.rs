@@ -2,7 +2,7 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::io::{Write, Cursor};
+use std::io::Cursor;
 
 #[napi(object)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -279,7 +279,7 @@ impl DdexBuilder {
     }
 
     #[napi]
-    pub async unsafe fn test_round_trip_fidelity(&mut self, original_xml: String, fidelity_options: Option<FidelityOptions>) -> Result<VerificationResult> {
+    pub async unsafe fn test_round_trip_fidelity(&mut self, _original_xml: String, _fidelity_options: Option<FidelityOptions>) -> Result<VerificationResult> {
         // In a full implementation, this would:
         // 1. Parse the original XML
         // 2. Build it back to XML

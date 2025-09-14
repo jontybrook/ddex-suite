@@ -82,6 +82,7 @@ pub mod rules;
 /// DB-C14N/1.0 canonicalizer
 #[allow(non_camel_case_types)]  // Allow non-standard naming for DB-C14N
 pub struct DB_C14N {
+    #[allow(dead_code)]
     config: super::determinism::DeterminismConfig,
     version: String,
 }
@@ -89,15 +90,15 @@ pub struct DB_C14N {
 impl DB_C14N {
     /// Create a new canonicalizer
     pub fn new(config: super::determinism::DeterminismConfig) -> Self {
-        Self { 
-            config,
+        Self {
+            config: config,
             version: "4.3".to_string(), // Default to latest
         }
     }
     
     /// Create a new canonicalizer with specific ERN version
     pub fn with_version(config: super::determinism::DeterminismConfig, version: String) -> Self {
-        Self { config, version }
+        Self { config: config, version }
     }
     
     /// Detect ERN version from XML content
@@ -491,6 +492,7 @@ pub fn create_test_canonicalizer() -> DB_C14N {
     DB_C14N::new(config)
 }
 
+/// Create a test canonicalizer with specific DDEX version for testing
 #[cfg(test)]
 pub fn create_test_canonicalizer_with_version(version: &str) -> DB_C14N {
     let config = super::determinism::DeterminismConfig::default();

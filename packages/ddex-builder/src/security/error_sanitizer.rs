@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::fmt;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use tracing::{error, warn, debug};
+use tracing::error;
 use uuid::Uuid;
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
@@ -35,21 +35,34 @@ pub enum ErrorLevel {
     Debug,
 }
 
-/// Context information for error classification
+/// Context where error occurred
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ErrorContext {
+    /// File open operation
     FileOpen,
+    /// File read operation
     FileRead,
+    /// File write operation
     FileWrite,
+    /// Network request
     NetworkRequest,
+    /// XML parsing
     XmlParsing,
+    /// XML building
     XmlBuilding,
+    /// Security validation
     SecurityValidation,
+    /// Entity classification
     EntityClassification,
+    /// Path validation
     PathValidation,
+    /// Memory allocation
     MemoryAllocation,
+    /// Database connection
     DatabaseConnection,
+    /// Authentication check
     Authentication,
+    /// Authorization check
     Authorization,
 }
 
@@ -524,8 +537,11 @@ impl ErrorSanitizer {
 /// Statistics about the error sanitizer
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SanitizerStatistics {
+    /// Current error handling mode
     pub mode: ErrorMode,
+    /// Number of active sanitization rules
     pub active_rules: usize,
+    /// Number of errors stored for analysis
     pub stored_errors: usize,
 }
 
@@ -598,6 +614,7 @@ where
     with_global_sanitizer(|sanitizer| sanitizer.sanitize(error, context))
 }
 
+/// Sanitize IO error for safe external reporting
 pub fn sanitize_io_error<E>(error: E, context: ErrorContext) -> SanitizedError
 where
     E: std::error::Error + fmt::Display + fmt::Debug,
@@ -605,6 +622,7 @@ where
     with_global_sanitizer(|sanitizer| sanitizer.sanitize_io_error(error, context))
 }
 
+/// Sanitize parse error for safe external reporting
 pub fn sanitize_parse_error<E>(error: E) -> SanitizedError
 where
     E: std::error::Error + fmt::Display + fmt::Debug,
@@ -612,6 +630,7 @@ where
     with_global_sanitizer(|sanitizer| sanitizer.sanitize_parse_error(error))
 }
 
+/// Sanitize build error for safe external reporting
 pub fn sanitize_build_error<E>(error: E) -> SanitizedError
 where
     E: std::error::Error + fmt::Display + fmt::Debug,
@@ -619,6 +638,7 @@ where
     with_global_sanitizer(|sanitizer| sanitizer.sanitize_build_error(error))
 }
 
+/// Sanitize security error for safe external reporting
 pub fn sanitize_security_error<E>(error: E) -> SanitizedError
 where
     E: std::error::Error + fmt::Display + fmt::Debug,

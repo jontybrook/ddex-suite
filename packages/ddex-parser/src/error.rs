@@ -47,6 +47,47 @@ pub enum ParseError {
     Io {
         message: String,
     },
+
+    #[error("XML depth limit exceeded: {depth} > {max}")]
+    DepthLimitExceeded { depth: usize, max: usize },
+
+    #[error("Invalid UTF-8 encoding at position {position}: {error}")]
+    InvalidUtf8 { position: usize, error: String },
+
+    #[error("Mismatched XML tags: expected '{expected}', found '{found}' at position {position}")]
+    MismatchedTags {
+        expected: String,
+        found: String,
+        position: usize,
+    },
+
+    #[error("Unexpected closing tag '{tag}' at position {position}")]
+    UnexpectedClosingTag {
+        tag: String,
+        position: usize,
+    },
+
+    #[error("Unclosed XML tags at end of document: {tags:?} at position {position}")]
+    UnclosedTags {
+        tags: Vec<String>,
+        position: usize,
+    },
+
+    #[error("Malformed XML: {message} at position {position}")]
+    MalformedXml {
+        message: String,
+        position: usize,
+    },
+
+    #[error("Invalid XML attribute: {message} at position {position}")]
+    InvalidAttribute {
+        message: String,
+        position: usize,
+    },
+
+    /// Simple XML error variant for compatibility with utf8_utils
+    #[error("XML parsing error: {0}")]
+    SimpleXmlError(String),
 }
 
 impl From<ParseError> for FFIError {
@@ -108,6 +149,94 @@ impl From<ParseError> for FFIError {
                 severity: FFIErrorSeverity::Error,
                 hint: None,
                 category: FFIErrorCategory::Io,
+            },
+            ParseError::DepthLimitExceeded { depth, max } => FFIError {
+                code: "DEPTH_LIMIT_EXCEEDED".to_string(),
+                message: format!("XML depth limit exceeded: {} > {}", depth, max),
+                location: None,
+                severity: FFIErrorSeverity::Error,
+                hint: Some("Reduce XML nesting depth to prevent stack overflow".to_string()),
+                category: FFIErrorCategory::Validation,
+            },
+            ParseError::InvalidUtf8 { position, error } => FFIError {
+                code: "INVALID_UTF8".to_string(),
+                message: format!("Invalid UTF-8 encoding at position {}: {}", position, error),
+                location: Some(ddex_core::ffi::FFIErrorLocation {
+                    line: 0,
+                    column: 0,
+                    path: "parser".to_string(),
+                }),
+                severity: FFIErrorSeverity::Error,
+                hint: Some("Ensure the XML file is properly encoded as UTF-8".to_string()),
+                category: FFIErrorCategory::XmlParsing,
+            },
+            ParseError::MismatchedTags { expected, found, position } => FFIError {
+                code: "MISMATCHED_TAGS".to_string(),
+                message: format!("Mismatched XML tags: expected '{}', found '{}' at position {}", expected, found, position),
+                location: Some(ddex_core::ffi::FFIErrorLocation {
+                    line: 0,
+                    column: 0,
+                    path: "parser".to_string(),
+                }),
+                severity: FFIErrorSeverity::Error,
+                hint: Some(format!("Ensure opening tag '{}' has matching closing tag", expected)),
+                category: FFIErrorCategory::XmlParsing,
+            },
+            ParseError::UnexpectedClosingTag { tag, position } => FFIError {
+                code: "UNEXPECTED_CLOSING_TAG".to_string(),
+                message: format!("Unexpected closing tag '{}' at position {}", tag, position),
+                location: Some(ddex_core::ffi::FFIErrorLocation {
+                    line: 0,
+                    column: 0,
+                    path: "parser".to_string(),
+                }),
+                severity: FFIErrorSeverity::Error,
+                hint: Some("Remove the unexpected closing tag or add the missing opening tag".to_string()),
+                category: FFIErrorCategory::XmlParsing,
+            },
+            ParseError::UnclosedTags { tags, position } => FFIError {
+                code: "UNCLOSED_TAGS".to_string(),
+                message: format!("Unclosed XML tags at end of document: {:?} at position {}", tags, position),
+                location: Some(ddex_core::ffi::FFIErrorLocation {
+                    line: 0,
+                    column: 0,
+                    path: "parser".to_string(),
+                }),
+                severity: FFIErrorSeverity::Error,
+                hint: Some(format!("Add closing tags for: {}", tags.join(", "))),
+                category: FFIErrorCategory::XmlParsing,
+            },
+            ParseError::MalformedXml { message, position } => FFIError {
+                code: "MALFORMED_XML".to_string(),
+                message: format!("Malformed XML: {} at position {}", message, position),
+                location: Some(ddex_core::ffi::FFIErrorLocation {
+                    line: 0,
+                    column: 0,
+                    path: "parser".to_string(),
+                }),
+                severity: FFIErrorSeverity::Error,
+                hint: Some("Check XML syntax and structure".to_string()),
+                category: FFIErrorCategory::XmlParsing,
+            },
+            ParseError::InvalidAttribute { message, position } => FFIError {
+                code: "INVALID_ATTRIBUTE".to_string(),
+                message: format!("Invalid XML attribute: {} at position {}", message, position),
+                location: Some(ddex_core::ffi::FFIErrorLocation {
+                    line: 0,
+                    column: 0,
+                    path: "parser".to_string(),
+                }),
+                severity: FFIErrorSeverity::Error,
+                hint: Some("Check attribute name and value syntax".to_string()),
+                category: FFIErrorCategory::XmlParsing,
+            },
+            ParseError::SimpleXmlError(message) => FFIError {
+                code: "XML_ERROR".to_string(),
+                message,
+                location: None,
+                severity: FFIErrorSeverity::Error,
+                hint: Some("Check XML syntax".to_string()),
+                category: FFIErrorCategory::XmlParsing,
             },
         }
     }

@@ -507,7 +507,7 @@ impl Default for DiffEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::{Element, Node};
+    use crate::ast::Element;
     
     fn create_test_element(name: &str, text: &str) -> Element {
         Element::new(name).with_text(text)

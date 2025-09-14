@@ -14,6 +14,7 @@ pub mod working_impl;
 pub mod zero_copy_parser;
 pub mod fast_zero_copy;
 pub mod parallel_parser;
+pub mod fast_streaming_parser;
 
 #[cfg(test)]
 pub mod comprehensive_tests;
@@ -41,6 +42,7 @@ pub use working_impl::{WorkingStreamingParser, WorkingStreamingElement, WorkingS
 pub use zero_copy_parser::{ZeroCopyParser, ZeroCopyElement, ZeroCopyStreamIterator};
 pub use fast_zero_copy::{FastZeroCopyParser, FastZeroCopyIterator};
 pub use parallel_parser::{ParallelStreamingParser, ParallelStreamingIterator, ParallelBenchmark};
+pub use fast_streaming_parser::{FastStreamingParser, FastStreamingElement, FastElementType, FastStreamingIterator, FastParsingStats, create_fast_parser};
 
 use crate::parser::security::SecurityConfig;
 

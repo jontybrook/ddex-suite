@@ -5,6 +5,7 @@
 //! documents containing proprietary extensions.
 
 use ddex_core::models::{Extensions, XmlFragment, ProcessingInstruction, Comment, CommentPosition, extensions::utils};
+use crate::utf8_utils;
 use quick_xml::{Reader, events::{Event, BytesStart, BytesEnd, BytesText}};
 use indexmap::IndexMap;
 
@@ -137,20 +138,22 @@ impl ExtensionCaptureContext {
 
         self.extension_depth += 1;
         self.extension_buffer.push('<');
-        self.extension_buffer.push_str(std::str::from_utf8(event.name().as_ref()).unwrap_or("unknown"));
+        let element_name = utf8_utils::process_text_content_lossy(event.name().as_ref());
+        self.extension_buffer.push_str(&element_name);
 
         // Add attributes
         for attr in event.attributes().flatten() {
             self.extension_buffer.push(' ');
-            self.extension_buffer.push_str(std::str::from_utf8(attr.key.as_ref()).unwrap_or("unknown"));
+            let key = utf8_utils::process_text_content_lossy(attr.key.as_ref());
+            let value = utf8_utils::process_text_content_lossy(&attr.value);
+
+            self.extension_buffer.push_str(&key);
             self.extension_buffer.push_str("=\"");
-            self.extension_buffer.push_str(&String::from_utf8_lossy(&attr.value));
+            self.extension_buffer.push_str(&value);
             self.extension_buffer.push('"');
 
             // Store attribute in current extension
             if let Some(ref mut ext) = self.current_extension {
-                let key = std::str::from_utf8(attr.key.as_ref()).unwrap_or("unknown").to_string();
-                let value = String::from_utf8_lossy(&attr.value).to_string();
                 ext.add_attribute(key, value);
             }
         }

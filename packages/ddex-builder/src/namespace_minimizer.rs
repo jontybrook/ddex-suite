@@ -3,13 +3,13 @@
 //! This module provides functionality to minimize namespace declarations in generated XML,
 //! hoisting declarations to the root when possible and applying locked prefixes.
 
-use ddex_core::namespace::{NamespaceRegistry, NamespaceScope, ConflictResolution};
+use ddex_core::namespace::{NamespaceRegistry, ConflictResolution};
 use ddex_core::models::versions::ERNVersion;
 use crate::canonical::rules::CanonicalNamespaceManager;
 use crate::ast::{AST, Element, Node};
 use indexmap::{IndexMap, IndexSet};
 use std::collections::HashMap;
-use tracing::{debug, warn};
+use tracing::debug;
 
 /// Namespace minimization result
 #[derive(Debug, Clone)]
@@ -99,7 +99,7 @@ impl NamespaceMinimizer {
         let mut attribute_namespaces = IndexSet::new();
 
         // Add namespaces already declared in AST
-        for (prefix, uri) in &ast.namespaces {
+        for (_prefix, uri) in &ast.namespaces {
             used_namespaces.insert(uri.clone());
             namespace_elements.entry(uri.clone()).or_insert_with(IndexSet::new);
         }
@@ -303,7 +303,7 @@ impl NamespaceMinimizer {
                 
                 // If this namespace is already declared at root with same prefix, remove it
                 if root_namespaces.get(prefix).map(|root_uri| root_uri == uri).unwrap_or(false) {
-                    element.attributes.remove(&xmlns_key);
+                    element.attributes.shift_remove(&xmlns_key);
                     debug!("Removed duplicate namespace declaration: {} from element {}", xmlns_key, element.name);
                 }
             }
@@ -336,6 +336,7 @@ pub struct AdvancedNamespaceMinimizer {
 }
 
 impl AdvancedNamespaceMinimizer {
+    /// Create a new namespace minimizer with specified version and strategy
     pub fn new(version: ERNVersion, strategy: OptimizationStrategy) -> Self {
         Self {
             base_minimizer: NamespaceMinimizer::new(version),
@@ -343,6 +344,7 @@ impl AdvancedNamespaceMinimizer {
         }
     }
 
+    /// Minimize namespaces in the AST according to the optimization strategy
     pub fn minimize(&self, ast: AST) -> Result<MinimizationResult, String> {
         match self.strategy {
             OptimizationStrategy::Minimal => self.base_minimizer.minimize(ast),
@@ -367,7 +369,7 @@ impl AdvancedNamespaceMinimizer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::{Element, Node};
+    use crate::ast::Element;
 
     #[test]
     fn test_namespace_minimizer_creation() {
@@ -385,7 +387,7 @@ mod tests {
         root.add_child(Element::new("MessageHeader")
             .with_namespace("http://ddex.net/xml/ern/43"));
         
-        let mut ast = AST {
+        let ast = AST {
             root,
             namespaces: {
                 let mut ns = IndexMap::new();

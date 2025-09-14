@@ -10,7 +10,6 @@ use ddex_core::models::{Identifier, LocalizedString, IdentifierType};
 use quick_xml::{Reader, events::Event};
 use std::io::BufRead;
 use std::time::Instant;
-use std::collections::HashMap;
 
 /// High-performance streaming DDEX parser
 pub struct StreamingDDEXParser<R: BufRead> {
@@ -210,7 +209,7 @@ impl<R: BufRead> StreamingDDEXParser<R> {
     /// Handle nested start elements within current parsing state
     fn handle_nested_start_element(&mut self, name: &str) -> Result<(), ParseError> {
         match &mut self.context.state {
-            ParserState::InHeader { header, .. } => {
+            ParserState::InHeader {  .. } => {
                 // Handle header nested elements
                 match name {
                     "MessageId" => {
@@ -227,7 +226,7 @@ impl<R: BufRead> StreamingDDEXParser<R> {
                     }
                 }
             }
-            ParserState::InRelease { release, .. } => {
+            ParserState::InRelease {  .. } => {
                 // Handle release nested elements
                 match name {
                     "ReleaseId" | "ReleaseTitle" | "DisplayArtist" | "Genre" => {
@@ -238,7 +237,7 @@ impl<R: BufRead> StreamingDDEXParser<R> {
                     }
                 }
             }
-            ParserState::InResource { resource, .. } => {
+            ParserState::InResource {  .. } => {
                 // Handle resource nested elements
                 match name {
                     "ResourceId" | "Title" | "DisplayArtist" | "Duration" | "Genre" => {
@@ -295,7 +294,7 @@ impl<R: BufRead> StreamingDDEXParser<R> {
                 self.context.state = ParserState::InDeal { deal, depth };
                 res
             }
-            ParserState::Skipping { start_depth, current_depth } => {
+            ParserState::Skipping { start_depth, current_depth: _ } => {
                 if self.context.current_depth <= start_depth {
                     self.context.state = ParserState::Initial;
                 }
@@ -561,7 +560,7 @@ impl<R: BufRead> StreamingDDEXParser<R> {
                 };
             }
             (ParserState::Initial, "Release") => {
-                let reference = self.context.attributes.get("ReleaseReference")
+                let _reference = self.context.attributes.get("ReleaseReference")
                     .unwrap_or(&"default".to_string()).clone();
                 self.context.state = ParserState::InRelease { 
                     release: crate::streaming::state::PartialRelease::default(), 
@@ -574,9 +573,9 @@ impl<R: BufRead> StreamingDDEXParser<R> {
         Ok(())
     }
     
-    /// Handle end element by name (borrow-safe wrapper) 
+    /// Handle end element by name (borrow-safe wrapper)
     fn handle_end_element_by_name(&mut self, name: &str) -> Result<Option<ParsedElement>, ParseError> {
-        let text_content = self.context.take_text();
+        let _text_content = self.context.take_text();
         
         // Simple implementation - just return None for now to get it compiling
         self.context.pop_element();

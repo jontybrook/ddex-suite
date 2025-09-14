@@ -156,6 +156,7 @@ pub struct SchemaGenerator {
     /// Message profile for constraints
     profile: MessageProfile,
     /// Partner preset for additional validation rules
+    #[allow(dead_code)]
     preset: Option<PartnerPreset>,
     /// Schema configuration
     config: SchemaConfig,

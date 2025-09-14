@@ -5,91 +5,301 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 pub use super::preflight::PreflightLevel;
 
-/// Build request structure
+/// Build request for generating DDEX messages
+///
+/// Contains all the information needed to generate a complete DDEX XML message,
+/// including message header, releases, deals, and any extensions.
+/// The structure is designed for deterministic output with stable ordering.
+///
+/// # Example
+/// ```
+/// use ddex_builder::builder::{BuildRequest, MessageHeaderRequest, PartyRequest, LocalizedStringRequest};
+///
+/// let request = BuildRequest {
+///     header: MessageHeaderRequest {
+///         message_id: Some("MSG123".to_string()),
+///         message_sender: PartyRequest {
+///             party_name: vec![LocalizedStringRequest {
+///                 text: "My Label".to_string(),
+///                 language_code: Some("en".to_string()),
+///             }],
+///             party_id: Some("PADPIDA2014120301K".to_string()),
+///             party_reference: None,
+///         },
+///         // ... other fields
+///         message_recipient: PartyRequest { /* ... */ },
+///         message_control_type: Some("NewReleaseMessage".to_string()),
+///         message_created_date_time: None, // Will be auto-generated
+///     },
+///     version: "4.3".to_string(),
+///     profile: None,
+///     releases: vec![/* ReleaseRequest items */],
+///     deals: vec![/* DealRequest items */],
+///     extensions: None,
+/// };
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BuildRequest {
-    /// Message header
+    /// Message header containing sender, recipient, and message metadata
     pub header: MessageHeaderRequest,
-    
-    /// ERN version
+
+    /// ERN version (e.g., "3.8.2", "4.2", "4.3")
     pub version: String,
-    
-    /// Profile
+
+    /// DDEX profile identifier (optional)
     pub profile: Option<String>,
-    
-    /// Releases (uses IndexMap for order preservation)
+
+    /// List of releases in this message
+    /// Uses Vec to maintain order while allowing duplicates if needed
     pub releases: Vec<ReleaseRequest>,
-    
-    /// Deals
+
+    /// List of commercial deals
     pub deals: Vec<DealRequest>,
-    
-    /// Extensions (uses IndexMap for determinism)
+
+    /// Custom extensions (uses IndexMap for deterministic ordering)
     pub extensions: Option<IndexMap<String, String>>,
 }
 
-/// Message header request
+/// Message header information for DDEX messages
+///
+/// Contains metadata about the message including sender, recipient,
+/// message type, and creation timestamp.
+///
+/// # Example
+/// ```
+/// use ddex_builder::builder::{MessageHeaderRequest, PartyRequest, LocalizedStringRequest};
+///
+/// let header = MessageHeaderRequest {
+///     message_id: Some("MSG_20241215_001".to_string()),
+///     message_sender: PartyRequest {
+///         party_name: vec![LocalizedStringRequest {
+///             text: "Warner Music Group".to_string(),
+///             language_code: Some("en".to_string()),
+///         }],
+///         party_id: Some("PADPIDA2014120301K".to_string()),
+///         party_reference: None,
+///     },
+///     message_recipient: PartyRequest { /* similar structure */ },
+///     message_control_type: Some("NewReleaseMessage".to_string()),
+///     message_created_date_time: None, // Auto-generated if None
+/// };
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MessageHeaderRequest {
+    /// Unique message identifier (auto-generated if None)
     pub message_id: Option<String>,
+    /// Party sending the message
     pub message_sender: PartyRequest,
+    /// Party receiving the message
     pub message_recipient: PartyRequest,
+    /// Type of message control (e.g., "NewReleaseMessage", "PurgeReleaseMessage")
     pub message_control_type: Option<String>,
+    /// Message creation timestamp in ISO 8601 format (auto-generated if None)
     pub message_created_date_time: Option<String>,
 }
 
-/// Party request
+/// Party information request
+///
+/// Represents a party (sender, recipient, or other entity) in the DDEX message.
+/// Supports multiple localized names and various identifier types.
+///
+/// # Example
+/// ```
+/// use ddex_builder::builder::{PartyRequest, LocalizedStringRequest};
+///
+/// let party = PartyRequest {
+///     party_name: vec![
+///         LocalizedStringRequest {
+///             text: "Universal Music Group".to_string(),
+///             language_code: Some("en".to_string()),
+///         },
+///         LocalizedStringRequest {
+///             text: "Universal Music Group".to_string(),
+///             language_code: Some("es".to_string()),
+///         },
+///     ],
+///     party_id: Some("PADPIDA2014120301K".to_string()), // DPID
+///     party_reference: Some("PARTY_REF_001".to_string()),
+/// };
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PartyRequest {
+    /// Party names in multiple languages
     pub party_name: Vec<LocalizedStringRequest>,
+    /// Party identifier (e.g., DPID, ISNI, Proprietary ID)
     pub party_id: Option<String>,
+    /// Reference identifier for this party within the message
     pub party_reference: Option<String>,
 }
 
-/// Localized string request
+/// Localized string with language code
+///
+/// Represents text content with an optional language identifier.
+/// Used for titles, names, and other textual content that may need
+/// to be provided in multiple languages.
+///
+/// # Example
+/// ```
+/// use ddex_builder::builder::LocalizedStringRequest;
+///
+/// let english_title = LocalizedStringRequest {
+///     text: "My Song Title".to_string(),
+///     language_code: Some("en".to_string()),
+/// };
+///
+/// let spanish_title = LocalizedStringRequest {
+///     text: "Mi Título de Canción".to_string(),
+///     language_code: Some("es".to_string()),
+/// };
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LocalizedStringRequest {
+    /// Text content
     pub text: String,
+    /// ISO 639-1 language code (e.g., "en", "es", "fr")
     pub language_code: Option<String>,
 }
 
-/// Release request
+/// Release information request
+///
+/// Represents a music release (album, single, EP, etc.) with all its metadata,
+/// tracks, and identifiers. This is the core content of most DDEX messages.
+///
+/// # Example
+/// ```
+/// use ddex_builder::builder::{ReleaseRequest, LocalizedStringRequest, TrackRequest};
+///
+/// let release = ReleaseRequest {
+///     release_id: "GRid:A1-12345678901234567890123456789012".to_string(),
+///     release_reference: Some("REL_001".to_string()),
+///     title: vec![LocalizedStringRequest {
+///         text: "Greatest Hits".to_string(),
+///         language_code: Some("en".to_string()),
+///     }],
+///     artist: "The Beatles".to_string(),
+///     label: Some("Apple Records".to_string()),
+///     release_date: Some("2024-01-15".to_string()),
+///     upc: Some("123456789012".to_string()),
+///     tracks: vec![
+///         TrackRequest {
+///             track_id: "T001".to_string(),
+///             resource_reference: Some("RES_001".to_string()),
+///             isrc: "GBUM71505078".to_string(),
+///             title: "Here Comes The Sun".to_string(),
+///             duration: "PT3M5S".to_string(),
+///             artist: "The Beatles".to_string(),
+///         }
+///     ],
+///     resource_references: Some(vec!["RES_001".to_string()]),
+/// };
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReleaseRequest {
+    /// Release identifier (e.g., GRid, Proprietary ID)
     pub release_id: String,
-    pub release_reference: Option<String>,  // Added for linker
+    /// Internal reference for this release within the message
+    pub release_reference: Option<String>,
+    /// Release titles in multiple languages
     pub title: Vec<LocalizedStringRequest>,
+    /// Main artist name for the release
     pub artist: String,
-    pub label: Option<String>,              // Added for metadata
-    pub release_date: Option<String>,       // Added for metadata
-    pub upc: Option<String>,                // Added for validation
+    /// Record label name
+    pub label: Option<String>,
+    /// Release date in YYYY-MM-DD format
+    pub release_date: Option<String>,
+    /// Universal Product Code for the release (12-digit barcode)
+    pub upc: Option<String>,
+    /// List of tracks/resources in this release
     pub tracks: Vec<TrackRequest>,
-    pub resource_references: Option<Vec<String>>,  // Added for linker
+    /// References to resources for linking purposes
+    pub resource_references: Option<Vec<String>>,
 }
 
-/// Track request
+/// Track information request
+///
+/// Represents a single track/sound recording within a release.
+/// Contains all the metadata needed for proper DDEX representation.
+///
+/// # Example
+/// ```
+/// use ddex_builder::builder::TrackRequest;
+///
+/// let track = TrackRequest {
+///     track_id: "T001".to_string(),
+///     resource_reference: Some("A12345".to_string()),
+///     isrc: "USUM71504847".to_string(),
+///     title: "Bohemian Rhapsody".to_string(),
+///     duration: "PT5M55S".to_string(), // 5 minutes 55 seconds
+///     artist: "Queen".to_string(),
+/// };
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrackRequest {
-    pub track_id: String,                     // Added for linker
-    pub resource_reference: Option<String>,   // Added for linker
-    pub isrc: String,                        // Changed from Option<String>
+    /// Unique identifier for this track within the message
+    pub track_id: String,
+    /// Reference to the sound recording resource
+    pub resource_reference: Option<String>,
+    /// International Standard Recording Code (12-character alphanumeric)
+    pub isrc: String,
+    /// Track title
     pub title: String,
-    pub duration: String,                    // Keep as String for ISO 8601 format
+    /// Duration in ISO 8601 format (e.g., "PT3M45S" for 3 minutes 45 seconds)
+    pub duration: String,
+    /// Track artist name (may differ from release artist for compilations)
     pub artist: String,
 }
 
-/// Deal request
+/// Commercial deal request
+///
+/// Represents the commercial terms and licensing information for releases.
+/// Defines how and where the music can be distributed and monetized.
+///
+/// # Example
+/// ```
+/// use ddex_builder::builder::{DealRequest, DealTerms};
+///
+/// let deal = DealRequest {
+///     deal_reference: Some("DEAL_001".to_string()),
+///     deal_terms: DealTerms {
+///         commercial_model_type: "PayAsYouGoModel".to_string(),
+///         territory_code: vec!["Worldwide".to_string()],
+///         start_date: Some("2024-01-01".to_string()),
+///     },
+///     release_references: vec!["REL_001".to_string()],
+/// };
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DealRequest {
-    pub deal_reference: Option<String>,       // Added for linker
-    pub deal_terms: DealTerms,               // Define this
-    pub release_references: Vec<String>,      // Added for linker
+    /// Reference identifier for this deal within the message
+    pub deal_reference: Option<String>,
+    /// Commercial terms and licensing conditions
+    pub deal_terms: DealTerms,
+    /// References to releases covered by this deal
+    pub release_references: Vec<String>,
 }
 
-/// Deal terms (simple definition for now)
+/// Commercial deal terms
+///
+/// Defines the specific commercial and territorial terms of a licensing deal.
+/// These terms control how the music can be distributed and monetized.
+///
+/// # Example
+/// ```
+/// use ddex_builder::builder::DealTerms;
+///
+/// let terms = DealTerms {
+///     commercial_model_type: "SubscriptionModel".to_string(),
+///     territory_code: vec!["US".to_string(), "CA".to_string(), "MX".to_string()],
+///     start_date: Some("2024-01-01".to_string()),
+/// };
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DealTerms {
+    /// Type of commercial model (e.g., "PayAsYouGoModel", "SubscriptionModel", "FreeOfChargeModel")
     pub commercial_model_type: String,
+    /// Territory codes where deal applies (ISO 3166-1 alpha-2 codes or "Worldwide")
     pub territory_code: Vec<String>,
+    /// Deal start date in YYYY-MM-DD format (optional)
     pub start_date: Option<String>,
 }
 
@@ -158,18 +368,26 @@ pub struct BuildResult {
 /// Build warning
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BuildWarning {
+    /// Warning code for programmatic handling
     pub code: String,
+    /// Human-readable warning message
     pub message: String,
+    /// Location in the structure where warning occurred
     pub location: Option<String>,
 }
 
 /// Build statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BuildStatistics {
+    /// Number of releases built
     pub releases: usize,
+    /// Total number of tracks processed
     pub tracks: usize,
+    /// Number of deals processed
     pub deals: usize,
+    /// Time taken to generate in milliseconds
     pub generation_time_ms: u64,
+    /// Size of generated XML in bytes
     pub xml_size_bytes: usize,
 }
 
@@ -187,14 +405,14 @@ impl Default for BuildStatistics {
 
 /// Main DDEX Builder
 pub struct DDEXBuilder {
-    inner: super::Builder,
+    _inner: super::Builder,
 }
 
 impl DDEXBuilder {
     /// Create new builder
     pub fn new() -> Self {
         Self {
-            inner: super::Builder::new(),
+            _inner: super::Builder::new(),
         }
     }
     
@@ -491,6 +709,7 @@ impl DDEXBuilder {
     }
     
     /// Legacy preflight check method (kept for compatibility)
+    #[allow(dead_code)]
     fn preflight(&self, request: &BuildRequest, level: super::preflight::PreflightLevel) -> Result<Vec<BuildWarning>, super::error::BuildError> {
         let mut warnings = Vec::new();
         

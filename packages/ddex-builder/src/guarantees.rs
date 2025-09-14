@@ -124,22 +124,31 @@ pub enum GuaranteeValidator {
     StressTest,
 }
 
-/// Priority level of guarantees
+/// Guarantee priority levels
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum GuaranteePriority {
+    /// Critical - must pass
     Critical,
+    /// High priority
     High,
+    /// Medium priority
     Medium,
+    /// Low priority
     Low,
 }
 
 /// Result of guarantee validation
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GuaranteeValidationResult {
+    /// The guarantee being validated
     pub guarantee: DeterminismGuarantee,
+    /// Whether the guarantee passed
     pub passed: bool,
+    /// Details about the validation
     pub details: String,
+    /// Supporting evidence if available
     pub evidence: Option<String>,
+    /// Timestamp when guarantee was made
     pub timestamp: chrono::DateTime<chrono::Utc>,
 }
 
@@ -542,11 +551,17 @@ pub fn generate_guarantee_report(
 /// Complete report of guarantee validation results
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GuaranteeReport {
+    /// Timestamp of the validation report
     pub timestamp: chrono::DateTime<chrono::Utc>,
+    /// Total number of guarantees checked
     pub total_guarantees: usize,
+    /// Number of guarantees that passed
     pub passed_guarantees: usize,
+    /// Success rate as a percentage (0.0-100.0)
     pub success_rate: f64,
+    /// Detailed results for each guarantee
     pub results: Vec<GuaranteeValidationResult>,
+    /// Whether all guarantees passed
     pub overall_pass: bool,
 }
 

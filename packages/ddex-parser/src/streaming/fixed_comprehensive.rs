@@ -4,7 +4,7 @@
 use crate::error::{ParseError, ErrorLocation};
 use ddex_core::models::{graph::*, versions::ERNVersion};
 use ddex_core::models::{Identifier, LocalizedString, IdentifierType};
-use quick_xml::{Reader, events::Event};
+use quick_xml::Reader;
 use std::io::BufRead;
 use std::time::Instant;
 

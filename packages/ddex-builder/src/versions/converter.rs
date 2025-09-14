@@ -1,49 +1,75 @@
 use crate::presets::DdexVersion;
 use crate::versions::{ConversionOptions};
 use indexmap::IndexMap;
-use quick_xml::events::{Event, BytesStart, BytesEnd, BytesText};
+use quick_xml::events::{Event, BytesStart, BytesEnd};
 use quick_xml::{Reader, Writer};
 use std::io::Cursor;
 
+/// Result of version conversion operation
 #[derive(Debug, Clone)]
 pub enum ConversionResult {
+    /// Successful conversion
     Success {
+        /// Converted XML content
         xml: String,
+        /// Conversion report with warnings
         report: ConversionReport,
     },
+    /// Conversion failed
     Failure {
+        /// Error description
         error: String,
+        /// Partial conversion report
         report: ConversionReport,
     },
 }
 
+/// Report of conversion process between DDEX versions
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ConversionReport {
+    /// Source DDEX version
     pub from_version: DdexVersion,
+    /// Target DDEX version
     pub to_version: DdexVersion,
+    /// List of conversion warnings
     pub warnings: Vec<ConversionWarning>,
+    /// Number of elements successfully converted
     pub elements_converted: usize,
+    /// Number of elements dropped (not supported in target version)
     pub elements_dropped: usize,
+    /// Number of elements added (required in target version)
     pub elements_added: usize,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+/// Type of conversion warning
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub enum ConversionWarningType {
+    /// Element was renamed in target version
     ElementRenamed,
+    /// Element not supported in target version
     ElementDropped,
+    /// Element added with default value
     ElementAdded,
+    /// Validation rules changed between versions
     ValidationChanged,
+    /// Namespace changes required
     NamespaceChanged,
+    /// Format migration performed
     FormatMigrated,
 }
 
+/// Warning generated during conversion
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ConversionWarning {
+    /// Type of warning
     pub warning_type: ConversionWarningType,
+    /// Warning description
     pub message: String,
+    /// Element affected if applicable
     pub element: Option<String>,
 }
 
+/// Handles conversion between different DDEX versions
 pub struct VersionConverter {
     conversion_rules: IndexMap<(DdexVersion, DdexVersion), ConversionRules>,
 }
@@ -52,21 +78,25 @@ pub struct VersionConverter {
 struct ConversionRules {
     element_mappings: IndexMap<String, ElementMapping>,
     namespace_mapping: NamespaceMapping,
-    field_migrations: Vec<FieldMigration>,
-    validation_changes: Vec<ValidationChange>,
+    _field_migrations: Vec<FieldMigration>,
+    _validation_changes: Vec<ValidationChange>,
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 enum ElementMapping {
     Direct(String),
     Renamed(String),
+    /// These variants may be used in future versions
     Split { into: Vec<String>, splitter: fn(&str) -> Vec<String> },
+    /// These variants may be used in future versions
     Merge { from: Vec<String>, merger: fn(Vec<&str>) -> String },
     Deprecated { replacement: Option<String>, warning: String },
     New { default_value: Option<String> },
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct NamespaceMapping {
     from: String,
     to: String,
@@ -74,6 +104,7 @@ struct NamespaceMapping {
     schema_version_to: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct FieldMigration {
     element: String,
@@ -81,6 +112,7 @@ struct FieldMigration {
     migration_type: MigrationType,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 enum MigrationType {
     FormatChange { from_pattern: String, to_pattern: String },
@@ -88,12 +120,14 @@ enum MigrationType {
     ValidationChange { old_rules: Vec<String>, new_rules: Vec<String> },
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct ValidationChange {
     element: String,
     change_type: ValidationChangeType,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 enum ValidationChangeType {
     RequiredAdded(String),
@@ -104,6 +138,7 @@ enum ValidationChangeType {
 }
 
 impl VersionConverter {
+    /// Create a new version converter
     pub fn new() -> Self {
         let mut converter = Self {
             conversion_rules: IndexMap::new(),
@@ -150,7 +185,7 @@ impl VersionConverter {
                 schema_version_from: "ern/382".to_string(),
                 schema_version_to: "ern/42".to_string(),
             },
-            field_migrations: vec![
+            _field_migrations: vec![
                 FieldMigration {
                     element: "Duration".to_string(),
                     field: "value".to_string(),
@@ -160,7 +195,7 @@ impl VersionConverter {
                     },
                 },
             ],
-            validation_changes: vec![
+            _validation_changes: vec![
                 ValidationChange {
                     element: "SoundRecording".to_string(),
                     change_type: ValidationChangeType::OptionalAdded("HashSum".to_string()),
@@ -201,7 +236,7 @@ impl VersionConverter {
                 schema_version_from: "ern/42".to_string(),
                 schema_version_to: "ern/43".to_string(),
             },
-            field_migrations: vec![
+            _field_migrations: vec![
                 FieldMigration {
                     element: "ISRC".to_string(),
                     field: "value".to_string(),
@@ -211,7 +246,7 @@ impl VersionConverter {
                     },
                 },
             ],
-            validation_changes: vec![
+            _validation_changes: vec![
                 ValidationChange {
                     element: "SoundRecording".to_string(),
                     change_type: ValidationChangeType::RequiredAdded("ProprietaryId".to_string()),
@@ -255,8 +290,8 @@ impl VersionConverter {
                 schema_version_from: "ern/43".to_string(),
                 schema_version_to: "ern/42".to_string(),
             },
-            field_migrations: vec![],
-            validation_changes: vec![
+            _field_migrations: vec![],
+            _validation_changes: vec![
                 ValidationChange {
                     element: "SoundRecording".to_string(),
                     change_type: ValidationChangeType::RequiredRemoved("ProprietaryId".to_string()),
@@ -296,8 +331,8 @@ impl VersionConverter {
                 schema_version_from: "ern/42".to_string(),
                 schema_version_to: "ern/382".to_string(),
             },
-            field_migrations: vec![],
-            validation_changes: vec![
+            _field_migrations: vec![],
+            _validation_changes: vec![
                 ValidationChange {
                     element: "SoundRecording".to_string(),
                     change_type: ValidationChangeType::OptionalRemoved("HashSum".to_string()),
@@ -308,6 +343,13 @@ impl VersionConverter {
         self.conversion_rules.insert((DdexVersion::Ern42, DdexVersion::Ern382), rules);
     }
 
+    /// Convert DDEX content between versions
+    ///
+    /// # Arguments
+    /// * `xml_content` - Source XML content
+    /// * `from_version` - Source DDEX version
+    /// * `to_version` - Target DDEX version
+    /// * `options` - Optional conversion configuration
     pub fn convert(&self, xml_content: &str, from_version: DdexVersion, to_version: DdexVersion, options: Option<ConversionOptions>) -> ConversionResult {
         let options = options.unwrap_or_default();
         let mut report = ConversionReport {
@@ -561,10 +603,12 @@ impl VersionConverter {
         }
     }
 
+    /// Get list of supported version conversions
     pub fn get_supported_conversions(&self) -> Vec<(DdexVersion, DdexVersion)> {
         self.conversion_rules.keys().cloned().collect()
     }
 
+    /// Check if conversion between versions is supported
     pub fn can_convert(&self, from: DdexVersion, to: DdexVersion) -> bool {
         self.find_conversion_path(from, to).is_some()
     }

@@ -5,7 +5,6 @@ use ddex_core::models::{graph::*, versions::ERNVersion};
 use ddex_core::models::{Identifier, LocalizedString};
 use ddex_core::models::common::Copyright;
 use std::collections::HashMap;
-use std::borrow::Cow;
 
 /// Parser state for streaming processing
 #[derive(Debug, Clone)]

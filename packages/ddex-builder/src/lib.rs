@@ -157,7 +157,7 @@ pub use determinism::DeterminismConfig;
 pub use error::{BuildError, BuildWarning};
 pub use guarantees::{DeterminismGuarantee, DeterminismGuaranteeValidator, GuaranteeReport};
 pub use presets::PartnerPreset;
-pub use linker::{ReferenceLinker, LinkerConfig, EntityType, LinkerError};
+pub use linker::{ReferenceLinker, LinkerConfig, EntityType, LinkingError};
 pub use id_generator::{StableHashGenerator, StableHashConfig, HashAlgorithm};
 pub use preflight::{PreflightValidator, ValidationConfig, ValidationResult, PreflightLevel};
 pub use diff::{DiffEngine, DiffConfig, VersionCompatibility};

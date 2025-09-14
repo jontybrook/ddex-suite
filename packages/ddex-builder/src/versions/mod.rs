@@ -34,9 +34,33 @@ mod ern_42;
 mod ern_43;
 mod converter;
 
-pub use ern_382::*;
-pub use ern_42::*;
-pub use ern_43::*;
+// Use qualified re-exports to avoid naming conflicts
+/// ERN 3.8.2 version support
+pub mod ern382 {
+    pub use super::ern_382::*;
+}
+
+/// ERN 4.2 version support
+pub mod ern42 {
+    pub use super::ern_42::*;
+}
+
+/// ERN 4.3 version support
+pub mod ern43 {
+    pub use super::ern_43::*;
+}
+
+// Re-export the latest version (4.3) items directly for convenience
+pub use ern_43::{get_version_spec, builders, validation};
+
+// For backward compatibility, also expose version-specific namespace functions
+pub use ern_382::get_namespace_mappings as get_namespace_mappings_382;
+pub use ern_42::get_namespace_mappings as get_namespace_mappings_42;
+pub use ern_43::get_namespace_mappings as get_namespace_mappings_43;
+
+pub use ern_382::get_xml_template as get_xml_template_382;
+pub use ern_42::get_xml_template as get_xml_template_42;
+pub use ern_43::get_xml_template as get_xml_template_43;
 pub use converter::{VersionConverter, ConversionResult as ConverterResult, ConversionReport as ConverterReport, ConversionWarning as ConverterWarning, ConversionWarningType};
 
 /// Version-specific DDEX metadata and constraints
@@ -109,23 +133,45 @@ pub struct ElementConversion {
     pub notes: Option<String>,
 }
 
-/// Type of conversion performed
+/// Field transformation between DDEX versions
 #[derive(Debug, Clone, PartialEq)]
 pub enum ConversionType {
     /// Direct mapping (same element name)
     DirectMapping,
-    /// Element renamed
-    Renamed { old_name: String, new_name: String },
-    /// Element structure changed
-    Restructured { description: String },
-    /// New element added (upgrade)
-    Added { default_value: Option<String> },
-    /// Element removed (downgrade)
-    Removed { reason: String },
-    /// Element moved to different location
-    Moved { old_path: String, new_path: String },
-    /// Complex transformation
-    Transformed { description: String },
+    /// Field was renamed
+    Renamed {
+        /// Original field name
+        old_name: String,
+        /// New field name
+        new_name: String
+    },
+    /// Field structure changed
+    Restructured {
+        /// Description of restructuring
+        description: String
+    },
+    /// Field was added in new version
+    Added {
+        /// Default value for new field
+        default_value: Option<String>
+    },
+    /// Field was removed
+    Removed {
+        /// Reason for removal
+        reason: String
+    },
+    /// Field moved to different location
+    Moved {
+        /// Original path
+        old_path: String,
+        /// New path
+        new_path: String
+    },
+    /// Field requires transformation
+    Transformed {
+        /// Description of transformation
+        description: String
+    },
 }
 
 /// Conversion warning
@@ -335,8 +381,8 @@ pub struct VersionManager {
     version_specs: IndexMap<DdexVersion, VersionSpec>,
     /// Compatibility matrix
     compatibility: CompatibilityMatrix,
-    /// Default conversion options
-    default_options: ConversionOptions,
+    /// Default conversion options (used for new conversions when none specified)
+    _default_options: ConversionOptions,
 }
 
 /// Options for version conversion
@@ -391,7 +437,7 @@ impl VersionManager {
         Self {
             version_specs: Self::load_default_specs(),
             compatibility: Self::build_compatibility_matrix(),
-            default_options: ConversionOptions::default(),
+            _default_options: ConversionOptions::default(),
         }
     }
     

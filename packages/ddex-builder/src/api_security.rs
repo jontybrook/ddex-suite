@@ -116,6 +116,7 @@ pub struct BatchOperationMonitor {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct OperationRecord {
     operation: String,
     timestamp: Instant,
@@ -178,11 +179,38 @@ impl BatchOperationMonitor {
     }
 }
 
+/// Rate limit information
+#[derive(Debug)]
+pub struct RateLimitInfo {
+    /// Total operations in time window
+    pub total_operations: usize,
+    /// Unique operations counted
+    pub unique_operations: usize,
+    /// Time window in seconds
+    pub time_window_seconds: u64,
+}
+
+/// Content type for security validation
+#[derive(Debug, Clone, Copy)]
+pub enum ContentType {
+    /// XML content
+    Xml,
+    /// JSON content
+    Json,
+    /// Binary content
+    Binary,
+    /// UTF-8 string content
+    Utf8String,
+}
+
 /// Statistics for batch operations
 #[derive(Debug, Clone)]
 pub struct BatchStats {
+    /// Total operations in current time window
     pub total_operations: usize,
+    /// Number of unique operations
     pub unique_operations: usize,
+    /// Time window duration in seconds
     pub time_window_seconds: u64,
 }
 
@@ -195,9 +223,13 @@ pub struct FfiValidator {
 /// Expected data types for FFI validation
 #[derive(Debug, Clone, Copy)]
 pub enum FfiDataType {
+    /// XML content type
     Xml,
+    /// JSON content type
     Json,
+    /// Binary content type
     Binary,
+    /// UTF-8 string content type
     Utf8String,
 }
 

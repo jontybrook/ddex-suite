@@ -90,6 +90,7 @@ static EXTERNAL_REF_REGEX: Lazy<Regex> = Lazy::new(|| {
 });
 
 /// Potentially dangerous file path patterns
+#[allow(dead_code)]
 static DANGEROUS_PATH_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"\.\./|\\\.\\\|/etc/|/proc/|/sys/|/dev/|/tmp/|C:\\|\\\\").unwrap()
 });
@@ -570,6 +571,7 @@ impl RateLimiter {
 /// Output safety and sanitization
 #[derive(Debug)]
 pub struct OutputSanitizer {
+    #[allow(dead_code)]
     config: SecurityConfig,
 }
 

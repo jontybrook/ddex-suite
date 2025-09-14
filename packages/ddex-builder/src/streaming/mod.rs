@@ -16,17 +16,34 @@ use std::io::Write as IoWrite;
 use uuid::Uuid;
 
 /// Configuration for streaming builder
+///
+/// Controls the behavior of the streaming DDEX XML builder including
+/// buffer management, deterministic ordering, validation, and progress reporting.
+///
+/// # Example
+/// ```
+/// use ddex_builder::streaming::StreamingConfig;
+/// use ddex_builder::determinism::DeterminismConfig;
+///
+/// let config = StreamingConfig {
+///     max_buffer_size: 5 * 1024 * 1024, // 5MB buffer
+///     deterministic: true,
+///     determinism_config: DeterminismConfig::default(),
+///     validate_during_stream: true,
+///     progress_callback_frequency: 50, // Report every 50 items
+/// };
+/// ```
 #[derive(Debug, Clone)]
 pub struct StreamingConfig {
-    /// Maximum buffer size before automatic flush (default: 10MB)
+    /// Maximum buffer size in bytes before automatic flush (default: 10MB)
     pub max_buffer_size: usize,
-    /// Whether to use deterministic ordering
+    /// Whether to use deterministic ordering for consistent output
     pub deterministic: bool,
-    /// Determinism configuration
+    /// Detailed configuration for deterministic behavior
     pub determinism_config: DeterminismConfig,
-    /// Whether to validate while streaming
+    /// Whether to validate data while streaming (slower but safer)
     pub validate_during_stream: bool,
-    /// Progress callback frequency (every N items)
+    /// Progress callback frequency - report progress every N items processed
     pub progress_callback_frequency: usize,
 }
 
@@ -43,12 +60,33 @@ impl Default for StreamingConfig {
 }
 
 /// Progress information for streaming operations
+///
+/// Provides real-time progress updates during streaming DDEX XML generation.
+/// Used by progress callbacks to monitor the build process and estimate completion.
+///
+/// # Example
+/// ```
+/// use ddex_builder::streaming::{StreamingBuilder, StreamingProgress};
+///
+/// let mut builder = StreamingBuilder::new(output_writer)?;
+/// builder.set_progress_callback(Box::new(|progress: StreamingProgress| {
+///     println!("Progress: {}/{} items, {} MB written",
+///              progress.releases_written + progress.resources_written,
+///              progress.estimated_completion_percent.unwrap_or(0.0),
+///              progress.bytes_written / 1024 / 1024);
+/// }));
+/// ```
 #[derive(Debug, Clone)]
 pub struct StreamingProgress {
+    /// Number of releases written to the stream so far
     pub releases_written: usize,
+    /// Number of resources (tracks/recordings) written to the stream so far
     pub resources_written: usize,
+    /// Total bytes written to the output stream so far
     pub bytes_written: usize,
+    /// Current memory usage in bytes (includes buffers)
     pub current_memory_usage: usize,
+    /// Estimated completion percentage (0.0-100.0) if total items was set
     pub estimated_completion_percent: Option<f64>,
 }
 
@@ -384,29 +422,116 @@ impl<W: IoWrite> StreamingBuilder<W> {
     }
 }
 
-/// Statistics from a completed streaming operation
-#[derive(Debug, Clone)]
-pub struct StreamingStats {
+/// Result of streaming build operation
+///
+/// Contains comprehensive statistics and metadata about a completed
+/// streaming DDEX XML build operation, including performance metrics
+/// and any warnings that were generated during the process.
+///
+/// # Example
+/// ```
+/// use ddex_builder::streaming::StreamingResult;
+///
+/// // After completing a streaming build
+/// let result = streaming_builder.finish_message()?;
+/// println!("Built {} releases with {} resources",
+///          result.releases_written, result.resources_written);
+/// println!("Generated {} bytes using {} peak memory",
+///          result.bytes_written, result.peak_memory_usage);
+///
+/// if !result.warnings.is_empty() {
+///     println!("Warnings: {:?}", result.warnings);
+/// }
+/// ```
+#[derive(Debug)]
+pub struct StreamingResult {
+    /// Total number of releases written to the stream
     pub releases_written: usize,
+    /// Total number of resources (tracks/recordings) written to the stream
     pub resources_written: usize,
+    /// Total number of deals written to the stream
     pub deals_written: usize,
+    /// Total bytes written to the output stream
     pub bytes_written: usize,
+    /// Any warnings generated during the streaming operation
     pub warnings: Vec<BuildWarning>,
+    /// Peak memory usage in bytes during the streaming process
     pub peak_memory_usage: usize,
 }
 
-/// Custom error type for streaming operations
+/// Statistics from a completed streaming operation
+///
+/// Internal statistics structure used during streaming operations.
+/// Similar to StreamingResult but used for internal tracking.
+///
+/// # Example
+/// ```
+/// use ddex_builder::streaming::StreamingStats;
+///
+/// // Internal usage - returned by finish_message()
+/// let stats = StreamingStats {
+///     releases_written: 1000,
+///     resources_written: 15000,
+///     deals_written: 50,
+///     bytes_written: 25 * 1024 * 1024, // 25MB
+///     warnings: vec![],
+///     peak_memory_usage: 8 * 1024 * 1024, // 8MB peak
+/// };
+/// ```
+#[derive(Debug, Clone)]
+pub struct StreamingStats {
+    /// Number of releases successfully written
+    pub releases_written: usize,
+    /// Number of resources successfully written
+    pub resources_written: usize,
+    /// Number of deals successfully written
+    pub deals_written: usize,
+    /// Total bytes written to the output
+    pub bytes_written: usize,
+    /// List of warnings generated during streaming
+    pub warnings: Vec<BuildWarning>,
+    /// Peak memory usage observed during streaming
+    pub peak_memory_usage: usize,
+}
+
+/// Errors that can occur during streaming operations
+///
+/// Comprehensive error types for streaming DDEX XML generation,
+/// including state management errors, I/O issues, and XML formatting problems.
+///
+/// # Example
+/// ```
+/// use ddex_builder::streaming::{StreamingBuilder, StreamingError};
+///
+/// match streaming_builder.write_resource(/*...*/) {
+///     Ok(resource_ref) => println!("Resource written: {}", resource_ref),
+///     Err(StreamingError::InvalidState { message }) => {
+///         eprintln!("Invalid state: {}", message);
+///     }
+///     Err(StreamingError::IoError(io_err)) => {
+///         eprintln!("I/O error: {}", io_err);
+///     }
+///     Err(other_err) => eprintln!("Other error: {}", other_err),
+/// }
+/// ```
 #[derive(Debug, thiserror::Error)]
 pub enum StreamingError {
+    /// Invalid state transition (e.g., writing resources after finishing message)
     #[error("Invalid state: {message}")]
-    InvalidState { message: String },
-    
+    InvalidState {
+        /// Description of the invalid state and what operation was attempted
+        message: String
+    },
+
+    /// I/O error during streaming operations (writing to output, flushing buffers)
     #[error("I/O error: {0}")]
     IoError(#[from] std::io::Error),
-    
+
+    /// XML writing or formatting error
     #[error("XML writing error: {0}")]
     XmlError(#[from] quick_xml::Error),
-    
+
+    /// General build error from the underlying builder system
     #[error("Build error: {0}")]
     BuildError(#[from] BuildError),
 }

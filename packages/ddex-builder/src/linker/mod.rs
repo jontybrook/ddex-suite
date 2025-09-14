@@ -29,6 +29,7 @@ pub struct ReferenceLinker {
     auto_linker: AutoLinker,
     
     /// Configuration for the linker
+    #[allow(dead_code)]
     config: LinkerConfig,
 }
 
@@ -44,7 +45,7 @@ impl ReferenceLinker {
             generator: ReferenceGenerator::new(config.reference_style.clone()),
             relationships: RelationshipManager::new(),
             auto_linker: AutoLinker::new(),
-            config,
+            config: config,
         }
     }
     
@@ -63,7 +64,7 @@ impl ReferenceLinker {
         &mut self,
         release_id: &str,
         resource_ids: &[String],
-    ) -> Result<Vec<ReleaseResourceReference>, LinkerError> {
+    ) -> Result<Vec<ReleaseResourceReference>, LinkingError> {
         // Get or generate release reference
         let release_ref = self.relationships
             .get_reference(EntityType::Release, release_id)
@@ -82,7 +83,7 @@ impl ReferenceLinker {
         for (sequence_no, resource_id) in resource_ids.iter().enumerate() {
             let resource_ref = self.relationships
                 .get_reference(EntityType::Resource, resource_id)
-                .ok_or_else(|| LinkerError::UnknownResource(resource_id.clone()))?;
+                .ok_or_else(|| LinkingError::UnknownResource(resource_id.clone()))?;
             
             references.push(ReleaseResourceReference {
                 release_reference: release_ref.clone(),
@@ -98,7 +99,7 @@ impl ReferenceLinker {
     pub fn auto_link_request(
         &mut self,
         request: &mut crate::builder::BuildRequest,
-    ) -> Result<LinkingReport, LinkerError> {
+    ) -> Result<LinkingReport, LinkingError> {
         self.auto_linker.process_request(request, &mut self.generator, &mut self.relationships)
     }
     
@@ -108,7 +109,7 @@ impl ReferenceLinker {
     }
     
     /// Validate all references in the system
-    pub fn validate_references(&self) -> Result<(), Vec<LinkerError>> {
+    pub fn validate_references(&self) -> Result<(), Vec<LinkingError>> {
         self.relationships.validate()
     }
 }

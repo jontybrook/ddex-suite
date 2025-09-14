@@ -79,15 +79,18 @@ use crate::builder::{BuildRequest, ReleaseRequest};
 use crate::error::BuildError;
 use indexmap::IndexMap;
 
+/// AST generator for converting build requests to abstract syntax trees
 pub struct ASTGenerator {
     version: String,
 }
 
 impl ASTGenerator {
+    /// Create a new AST generator for the specified version
     pub fn new(version: String) -> Self {
         Self { version }
     }
-    
+
+    /// Generate an AST from a build request
     pub fn generate(&mut self, request: &BuildRequest) -> Result<AST, BuildError> {
         // Create root element based on version
         let mut root = Element::new("NewReleaseMessage");
@@ -296,6 +299,7 @@ impl ASTGenerator {
         Ok(release_list)
     }
     
+    #[allow(dead_code)]
     fn generate_deal_list(&self, deals: &[crate::builder::DealRequest]) -> Result<Element, BuildError> {
         let mut deal_list = Element::new("DealList");
         

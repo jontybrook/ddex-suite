@@ -485,7 +485,6 @@ fn handle_stream_command(cmd: StreamCommand) -> Result<()> {
 }
 
 fn handle_batch_command(cmd: BatchCommand) -> Result<()> {
-    use ddex_parser::DDEXParser;
     
     fs::create_dir_all(&cmd.output_dir)?;
     
@@ -568,7 +567,6 @@ fn handle_batch_command(cmd: BatchCommand) -> Result<()> {
 }
 
 fn handle_validate_command(cmd: ValidateCommand) -> Result<()> {
-    use ddex_parser::DDEXParser;
     
     let mut all_valid = true;
     let mut results = Vec::new();

@@ -1,6 +1,6 @@
 //! Automatic linking logic for DDEX entities
 
-use super::{EntityType, LinkerError, LinkingReport, ReferenceGenerator, RelationshipManager};
+use super::{EntityType, LinkingError, LinkingReport, ReferenceGenerator, RelationshipManager};
 use crate::builder::BuildRequest;
 use indexmap::IndexSet;
 
@@ -55,7 +55,7 @@ impl AutoLinker {
         request: &mut BuildRequest,
         generator: &mut ReferenceGenerator,
         relationships: &mut RelationshipManager,
-    ) -> Result<LinkingReport, LinkerError> {
+    ) -> Result<LinkingReport, LinkingError> {
         let mut report = LinkingReport::default();
         
         // Phase 1: Register all resources (tracks) first

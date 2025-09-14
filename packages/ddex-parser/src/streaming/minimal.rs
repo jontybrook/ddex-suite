@@ -2,7 +2,7 @@
 //! Minimal working streaming parser implementation
 
 use crate::error::{ParseError, ErrorLocation};
-use ddex_core::models::{graph::*, versions::ERNVersion};
+use ddex_core::models::versions::ERNVersion;
 use quick_xml::{Reader, events::Event};
 use std::io::BufRead;
 use std::time::Instant;

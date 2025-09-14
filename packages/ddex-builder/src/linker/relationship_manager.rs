@@ -1,6 +1,6 @@
 //! Manages relationships between DDEX entities
 
-use super::types::{EntityType, LinkerError};
+use super::types::{EntityType, LinkingError};
 use indexmap::{IndexMap, IndexSet};
 
 /// Manages entity relationships and reference lookups
@@ -72,18 +72,18 @@ impl RelationshipManager {
     }
     
     /// Validate all references
-    pub fn validate(&self) -> Result<(), Vec<LinkerError>> {
+    pub fn validate(&self) -> Result<(), Vec<LinkingError>> {
         let mut errors = Vec::new();
         
         // Check for orphaned relationships
         for (from_ref, to_refs) in &self.relationships {
             if !self.reference_exists(from_ref) {
-                errors.push(LinkerError::OrphanedReference(from_ref.clone()));
+                errors.push(LinkingError::OrphanedReference(from_ref.clone()));
             }
             
             for to_ref in to_refs {
                 if !self.reference_exists(to_ref) {
-                    errors.push(LinkerError::BrokenReference {
+                    errors.push(LinkingError::BrokenReference {
                         from: from_ref.clone(),
                         to: to_ref.clone(),
                     });

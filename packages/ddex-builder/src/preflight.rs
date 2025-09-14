@@ -14,10 +14,12 @@ static UPC_PATTERN: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"^\d{12,14}$").unwrap()
 });
 
+#[allow(dead_code)]
 static ISWC_PATTERN: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"^T\d{10}$").unwrap()
 });
 
+#[allow(dead_code)]
 static ISNI_PATTERN: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"^\d{15}[\dX]$").unwrap()
 });
@@ -66,45 +68,64 @@ impl Default for ValidationConfig {
     }
 }
 
+/// Validation strictness level for preflight checks
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PreflightLevel {
-    /// Strict - fail on any warning
+    /// Strict validation - fail on any issue
     Strict,
-    /// Warn - collect warnings but continue
+    /// Warning level - continue with warnings
     Warn,
-    /// None - skip validation
+    /// Info only - log but don't fail
     None,
 }
 
-/// Validation result
+/// Result of preflight validation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidationResult {
+    /// List of validation errors that must be fixed
     pub errors: Vec<ValidationError>,
+    /// List of warnings that should be reviewed
     pub warnings: Vec<ValidationWarning>,
+    /// Informational messages
     pub info: Vec<ValidationInfo>,
+    /// Whether validation passed
     pub passed: bool,
 }
 
+/// Validation error that prevents building
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidationError {
+    /// Error code for programmatic handling
     pub code: String,
+    /// Field that failed validation
     pub field: String,
+    /// Human-readable error message
     pub message: String,
+    /// Location in the structure (e.g., "Release[0].Track[2]")
     pub location: String,
 }
 
+/// Validation warning that should be reviewed
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidationWarning {
+    /// Warning code for programmatic handling
     pub code: String,
+    /// Field that triggered warning
     pub field: String,
+    /// Human-readable warning message
     pub message: String,
+    /// Location in the structure
     pub location: String,
+    /// Suggested fix if available
     pub suggestion: Option<String>,
 }
 
+/// Informational validation message
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidationInfo {
+    /// Info code for logging
     pub code: String,
+    /// Informational message
     pub message: String,
 }
 

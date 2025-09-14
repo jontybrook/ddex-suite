@@ -69,18 +69,27 @@ pub struct NormalizeOptions {
     pub case: CaseNormalization,
 }
 
+/// Unicode normalization form for ID generation
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UnicodeForm {
+    /// Canonical Decomposition, followed by Canonical Composition
     NFC,
+    /// Canonical Decomposition
     NFD,
+    /// Compatibility Decomposition, followed by Canonical Composition
     NFKC,
+    /// Compatibility Decomposition
     NFKD,
 }
 
+/// Case normalization strategy for ID generation
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CaseNormalization {
+    /// Keep original case
     AsIs,
+    /// Convert to lowercase
     Lower,
+    /// Convert to uppercase
     Upper,
 }
 

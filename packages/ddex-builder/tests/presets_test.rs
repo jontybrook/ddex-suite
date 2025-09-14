@@ -1,10 +1,9 @@
 //! Comprehensive tests for DDEX preset functionality
 
 use ddex_builder::presets::{
-    all_presets, generic, youtube, DdexVersion, MessageProfile, ValidationRule, PartnerPreset, PresetConfig, PresetSource
+    all_presets, generic, youtube, DdexVersion, MessageProfile, ValidationRule, PresetSource
 };
-use ddex_builder::{Builder, error::BuildError};
-use indexmap::IndexMap;
+use ddex_builder::Builder;
 
 #[test]
 fn test_all_presets_loaded() {

@@ -4,6 +4,8 @@ mod cli;
 mod error;
 mod parser;
 mod transform;
+mod streaming;
+mod utf8_utils;
 
 // Re-export for CLI use
 pub use ddex_parser::DDEXParser;

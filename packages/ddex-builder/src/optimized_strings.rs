@@ -8,7 +8,7 @@ use indexmap::IndexMap;
 use std::sync::Arc;
 use once_cell::sync::Lazy;
 use smartstring::{SmartString, LazyCompact};
-use string_cache::{DefaultAtom, Atom};
+use string_cache::DefaultAtom;
 use indexmap::IndexSet;
 
 /// High-performance string type for small strings
@@ -233,10 +233,12 @@ impl std::fmt::Display for OptimizedString {
 /// Cow-optimized string for contexts where we may or may not own the data
 pub type CowString = Cow<'static, str>;
 
-/// Optimized localized string that minimizes allocations
+/// Localized string with language code
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OptimizedLocalizedString {
+    /// The text content
     pub text: OptimizedString,
+    /// Optional ISO language code (e.g., "en", "es")
     pub language_code: Option<OptimizedString>,
 }
 
@@ -388,28 +390,37 @@ impl BuildContext {
     }
 }
 
-/// Build statistics for performance monitoring
+/// Statistics for string optimization
 #[derive(Debug, Default, Clone)]
 pub struct BuildStats {
+    /// Total strings processed
     pub strings_processed: usize,
+    /// Cache hits for static strings
     pub static_cache_hits: usize,
+    /// Number of interned strings
     pub interned_strings: usize,
+    /// Number of buffer requests
     pub buffers_requested: usize,
 }
 
-/// Memory usage information
+/// Memory usage statistics
 #[derive(Debug, Clone)]
 pub struct MemoryUsage {
+    /// Bytes used by string interner
     pub interner_bytes: usize,
+    /// Bytes in buffer pool
     pub buffer_pool_bytes: usize,
+    /// Total memory usage
     pub total_bytes: usize,
 }
 
-/// Pre-calculate buffer sizes for different build types
+/// Memory size constants for planning
 pub mod buffer_sizes {
     /// Estimated XML output sizes
     pub const SINGLE_TRACK_XML: usize = 8_192;      // ~8KB
-    pub const ALBUM_12_TRACKS_XML: usize = 65_536;  // ~64KB  
+    /// Typical size of 12-track album XML (~64KB)
+    pub const ALBUM_12_TRACKS_XML: usize = 65_536;  // ~64KB
+    /// Typical size of 100-track compilation XML (~512KB)
     pub const COMPILATION_100_TRACKS_XML: usize = 524_288; // ~512KB
     
     /// Buffer overhead factors

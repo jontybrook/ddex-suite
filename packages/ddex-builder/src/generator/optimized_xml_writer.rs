@@ -8,8 +8,6 @@ use crate::determinism::{DeterminismConfig, IndentChar};
 use crate::error::BuildError;
 use crate::optimized_strings::{BuildContext, OptimizedString, buffer_sizes};
 use indexmap::IndexMap;
-use std::io::Write;
-use std::fmt::Write as FmtWrite;
 
 /// High-performance XML writer with optimizations
 pub struct OptimizedXmlWriter<'a> {
@@ -47,7 +45,7 @@ impl<'a> OptimizedXmlWriter<'a> {
     
     /// Estimate output size to pre-allocate buffers efficiently
     fn estimate_output_size(&self, ast: &AST) -> usize {
-        let element_count = self.count_elements(&ast.root);
+        let _element_count = self.count_elements(&ast.root);
         
         // Use our buffer size estimation
         let track_count = self.estimate_track_count(&ast.root);

@@ -1,7 +1,6 @@
 //! Tests for DDEX semantic diff functionality
 
 use super::*;
-use crate::diff::test_data::*;
 use crate::diff::formatter::DiffFormatter;
 
 #[test]
@@ -67,7 +66,7 @@ fn test_formatting_respected_when_configured() {
 fn test_attribute_changes() {
     let mut engine = DiffEngine::new();
     
-    let mut ast1 = AST {
+    let ast1 = AST {
         root: Element::new("Release").with_attr("UPC", "123456789012"),
         namespaces: indexmap::IndexMap::new(),
         schema_location: None,
@@ -336,7 +335,7 @@ fn test_update_message_generation() {
 
 #[test]
 fn test_business_impact_analysis() {
-    let mut engine = DiffEngine::new();
+    let engine = DiffEngine::new();
     
     // Create changeset with mix of critical and non-critical changes
     let mut changeset = types::ChangeSet::new();

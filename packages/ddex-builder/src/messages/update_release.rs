@@ -13,24 +13,76 @@ use indexmap::{IndexMap, IndexSet};
 use chrono::{DateTime, Utc};
 
 /// Complete UpdateReleaseMessage structure
+///
+/// Represents a complete DDEX UpdateReleaseMessage that describes incremental
+/// changes to an existing DDEX message. This allows efficient partial updates
+/// without resending entire catalogs.
+///
+/// # Example
+/// ```
+/// use ddex_builder::messages::update_release::UpdateReleaseMessage;
+/// use ddex_builder::builder::MessageHeaderRequest;
+/// use indexmap::IndexMap;
+///
+/// // Create an update message to modify a release title
+/// let update_message = UpdateReleaseMessage {
+///     header: MessageHeaderRequest {
+///         message_id: Some("UPD-MSG-20241215-001".to_string()),
+///         // ... other header fields
+///         # message_sender: Default::default(),
+///         # message_recipient: Default::default(),
+///         # message_control_type: Some("UpdateMessage".to_string()),
+///         # message_created_date_time: None,
+///     },
+///     update_list: vec![
+///         // UpdateOperation to change release title
+///         # UpdateOperation {
+///         #     operation_id: "OP000001".to_string(),
+///         #     action: UpdateAction::Replace,
+///         #     target_path: "/Release[@ReleaseId='R001']/Title".to_string(),
+///         #     entity_type: EntityType::Release,
+///         #     entity_id: "R001".to_string(),
+///         #     old_value: Some("Old Title".to_string()),
+///         #     new_value: Some("New Title".to_string()),
+///         #     is_critical: false,
+///         #     description: "Update release title".to_string(),
+///         #     dependencies: vec![],
+///         # }
+///     ],
+///     resource_updates: IndexMap::new(),
+///     release_updates: IndexMap::new(),
+///     deal_updates: IndexMap::new(),
+///     update_metadata: UpdateMetadata {
+///         original_message_id: "ORIG-MSG-001".to_string(),
+///         # original_message_version: None,
+///         # original_message_timestamp: None,
+///         # update_created_timestamp: chrono::Utc::now(),
+///         # update_sequence: 1,
+///         # total_operations: 1,
+///         # impact_level: "Low".to_string(),
+///         # validation_status: ValidationStatus::Pending,
+///         # custom_metadata: IndexMap::new(),
+///     },
+/// };
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateReleaseMessage {
-    /// Message header information
+    /// Message header containing sender, recipient, and timing information
     pub header: MessageHeaderRequest,
-    
-    /// List of update operations to perform
+
+    /// Ordered list of update operations to perform on the target message
     pub update_list: Vec<UpdateOperation>,
-    
-    /// Resources that need to be updated
+
+    /// Resource-specific updates indexed by resource ID
     pub resource_updates: IndexMap<String, ResourceUpdate>,
-    
-    /// Releases that need to be updated  
+
+    /// Release-specific updates indexed by release ID
     pub release_updates: IndexMap<String, ReleaseUpdate>,
-    
-    /// Deal updates (if any)
+
+    /// Deal-specific updates indexed by deal ID (optional)
     pub deal_updates: IndexMap<String, DealUpdate>,
-    
-    /// Metadata about this update
+
+    /// Metadata describing this update operation
     pub update_metadata: UpdateMetadata,
 }
 
@@ -162,99 +214,255 @@ pub struct DealUpdate {
     pub terms_updates: Vec<TermsUpdate>,
 }
 
+/// Updated resource information
+///
+/// Represents resource data in DDEX update messages, containing all the
+/// metadata needed to describe a sound recording, video, or other resource
+/// that has been modified in an UpdateReleaseMessage.
+///
+/// # Example
+/// ```
+/// use ddex_builder::messages::update_release::{UpdatedResource, TechnicalDetails};
+///
+/// let resource = UpdatedResource {
+///     resource_type: "SoundRecording".to_string(),
+///     title: "Bohemian Rhapsody (Remastered)".to_string(),
+///     artist: "Queen".to_string(),
+///     isrc: Some("GBUM71505078".to_string()),
+///     duration: Some("PT5M55S".to_string()), // 5 minutes 55 seconds
+///     file_path: Some("/audio/queen/bohemian_rhapsody_remastered.flac".to_string()),
+///     technical_details: Some(TechnicalDetails {
+///         file_name: Some("bohemian_rhapsody_remastered.flac".to_string()),
+///         codec_type: Some("FLAC".to_string()),
+///         bit_rate: Some("1411".to_string()), // kbps
+///         sample_rate: Some("44100".to_string()), // Hz
+///     }),
+/// };
+/// ```
+#[derive(Debug, Clone)]
+pub struct UpdatedResource {
+    /// Type of resource (SoundRecording, Video, Image, Text, etc.)
+    pub resource_type: String,
+    /// Title of the resource/track
+    pub title: String,
+    /// Artist name for this resource
+    pub artist: String,
+    /// International Standard Recording Code (12-character alphanumeric)
+    pub isrc: Option<String>,
+    /// Duration in ISO 8601 format (e.g., "PT3M45S" for 3 minutes 45 seconds)
+    pub duration: Option<String>,
+    /// File path or URL to the resource file
+    pub file_path: Option<String>,
+    /// Technical details of the resource (codec, bitrate, etc.)
+    pub technical_details: Option<TechnicalDetails>,
+}
+
 /// Resource data for updates
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourceData {
+    /// Type of resource (SoundRecording, Video, Image, etc.)
     pub resource_type: String,
+    /// Title of the resource
     pub title: String,
+    /// Artist name
     pub artist: String,
+    /// International Standard Recording Code
     pub isrc: Option<String>,
+    /// Duration in ISO 8601 format
     pub duration: Option<String>,
+    /// File path or URL
     pub file_path: Option<String>,
+    /// Technical details
     pub technical_details: Option<TechnicalDetails>,
+}
+
+/// Updated release information
+///
+/// Represents release data in DDEX update messages, containing all the
+/// metadata needed to describe a music release (album, single, EP, etc.)
+/// that has been modified in an UpdateReleaseMessage.
+///
+/// # Example
+/// ```
+/// use ddex_builder::messages::update_release::UpdatedRelease;
+///
+/// let release = UpdatedRelease {
+///     release_type: "Album".to_string(),
+///     title: "The Greatest Hits (Deluxe Edition)".to_string(),
+///     artist: "The Beatles".to_string(),
+///     label: Some("Apple Records".to_string()),
+///     upc: Some("602537518739".to_string()),
+///     release_date: Some("2024-01-15".to_string()),
+///     genre: Some("Rock".to_string()),
+///     resource_references: vec![
+///         "R12345678".to_string(),
+///         "R87654321".to_string(),
+///         "R11223344".to_string(),
+///     ],
+/// };
+/// ```
+#[derive(Debug, Clone)]
+pub struct UpdatedRelease {
+    /// Release type (Album, Single, EP, Compilation, etc.)
+    pub release_type: String,
+    /// Title of the release
+    pub title: String,
+    /// Main artist name for the release
+    pub artist: String,
+    /// Record label name
+    pub label: Option<String>,
+    /// Universal Product Code (12-digit barcode identifier)
+    pub upc: Option<String>,
+    /// Release date in YYYY-MM-DD format
+    pub release_date: Option<String>,
+    /// Primary genre classification
+    pub genre: Option<String>,
+    /// References to included resources (tracks/recordings)
+    pub resource_references: Vec<String>,
 }
 
 /// Release data for updates
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReleaseData {
+    /// Release type (Single, Album, EP, etc.)
     pub release_type: String,
+    /// Release title
     pub title: String,
+    /// Main artist name
     pub artist: String,
+    /// Record label name
     pub label: Option<String>,
+    /// Universal Product Code
     pub upc: Option<String>,
+    /// Release date in YYYY-MM-DD format
     pub release_date: Option<String>,
+    /// Primary genre
     pub genre: Option<String>,
+    /// References to included resources
     pub resource_references: Vec<String>,
 }
 
 /// Deal data for updates
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DealData {
+    /// Type of commercial model (e.g., "PayAsYouGoModel")
     pub commercial_model_type: String,
+    /// Territory codes where deal applies
     pub territory_codes: Vec<String>,
+    /// Deal start date in YYYY-MM-DD format
     pub start_date: Option<String>,
+    /// Deal end date in YYYY-MM-DD format
     pub end_date: Option<String>,
+    /// Pricing information
     pub price: Option<PriceData>,
 }
 
-/// Technical update information
+/// Field update details
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TechnicalUpdate {
+    /// Name of the field being updated
     pub field_name: String,
+    /// Previous value
     pub old_value: Option<String>,
+    /// New value
     pub new_value: Option<String>,
+    /// Type of update action
     pub update_action: UpdateAction,
 }
 
 /// Track update within a release
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrackUpdate {
+    /// Unique track identifier
     pub track_id: String,
+    /// Update action to perform
     pub action: UpdateAction,
+    /// Previous resource reference
     pub old_resource_reference: Option<String>,
+    /// New resource reference
     pub new_resource_reference: Option<String>,
+    /// Position change information
     pub position_change: Option<PositionChange>,
 }
 
 /// Reference update information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReferenceUpdate {
+    /// Previous reference value
     pub old_reference: String,
+    /// New reference value
     pub new_reference: String,
+    /// Type of reference being updated
     pub reference_type: String,
+    /// Reason for the update
     pub update_reason: String,
 }
 
 /// Terms update for deals
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TermsUpdate {
+    /// Name of the field being updated
     pub field_name: String,
+    /// Previous value
     pub old_value: Option<String>,
+    /// New value
     pub new_value: Option<String>,
+    /// Date when update becomes effective
     pub effective_date: Option<String>,
 }
 
 /// Position change information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PositionChange {
+    /// Previous position in sequence
     pub old_position: usize,
+    /// New position in sequence
     pub new_position: usize,
 }
 
-/// Technical details
+/// Technical details for resources
+///
+/// Contains technical specifications for audio/video resources,
+/// including encoding information and quality parameters.
+///
+/// # Example
+/// ```
+/// use ddex_builder::messages::update_release::TechnicalDetails;
+///
+/// let tech_details = TechnicalDetails {
+///     file_name: Some("track_01_mastered.flac".to_string()),
+///     codec_type: Some("FLAC".to_string()),
+///     bit_rate: Some("1411".to_string()), // kbps for lossless
+///     sample_rate: Some("44100".to_string()), // Hz (CD quality)
+/// };
+///
+/// let mp3_details = TechnicalDetails {
+///     file_name: Some("track_01_compressed.mp3".to_string()),
+///     codec_type: Some("MP3".to_string()),
+///     bit_rate: Some("320".to_string()), // kbps
+///     sample_rate: Some("44100".to_string()), // Hz
+/// };
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TechnicalDetails {
+    /// File name of the resource
     pub file_name: Option<String>,
+    /// Audio/video codec type (e.g., "MP3", "FLAC", "AAC", "H.264")
     pub codec_type: Option<String>,
+    /// Bit rate in kilobits per second (kbps)
     pub bit_rate: Option<String>,
+    /// Sample rate in Hz (e.g., "44100", "48000", "96000")
     pub sample_rate: Option<String>,
 }
 
-/// Price data
+/// Pricing data
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PriceData {
+    /// Price amount
     pub amount: String,
+    /// ISO currency code
     pub currency_code: String,
+    /// Type of price (e.g., "WholesalePrice")
     pub price_type: Option<String>,
 }
 

@@ -1,5 +1,5 @@
 use ddex_builder::{ReferenceLinker, EntityType, LinkerConfig};
-use ddex_builder::linker::{ReferenceStyle, LinkerError};
+use ddex_builder::linker::{ReferenceStyle, LinkingError};
 use ddex_builder::builder::{
     BuildRequest, MessageHeaderRequest, PartyRequest, 
     LocalizedStringRequest, ReleaseRequest, TrackRequest
@@ -107,7 +107,7 @@ fn test_link_unknown_resource_error() {
     
     assert!(result.is_err());
     match result.unwrap_err() {
-        LinkerError::UnknownResource(id) => assert_eq!(id, "unknown_track"),
+        LinkingError::UnknownResource(id) => assert_eq!(id, "unknown_track"),
         _ => panic!("Expected UnknownResource error"),
     }
 }

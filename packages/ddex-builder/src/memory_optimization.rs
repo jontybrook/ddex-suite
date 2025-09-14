@@ -108,7 +108,7 @@ impl<T> ObjectPool<T> {
     }
     
     /// Get an object from the pool (or create new one)
-    pub fn get(&self) -> PooledObject<T> {
+    pub fn get(&self) -> PooledObject<'_, T> {
         let obj = self.objects.borrow_mut()
             .pop_front()
             .unwrap_or_else(|| (self.factory)());
@@ -167,6 +167,7 @@ impl<'a, T> Drop for PooledObject<'a, T> {
 
 /// Compact representation for DDEX elements to reduce memory usage
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct CompactElement {
     /// Name index in string table
     name_idx: u32,
@@ -178,12 +179,26 @@ pub struct CompactElement {
     children: Vec<CompactNodeRef>,
 }
 
-/// Compact node reference (union type)
+/// Node type in the AST
+#[derive(Debug, Clone)]
+pub enum NodeType {
+    /// XML element node with index in element table
+    Element(u32),
+    /// Text node with index in string table
+    Text(u32),
+    /// Comment node with index in string table
+    Comment(u32),
+}
+
+/// Node type in compact representation
 #[derive(Debug, Clone)]
 pub enum CompactNodeRef {
-    Element(u32), // Index in element table
-    Text(u32),    // Index in string table
-    Comment(u32), // Index in string table
+    /// Element node with index in element table
+    Element(u32),
+    /// Text node with index in string table
+    Text(u32),
+    /// Comment node with index in string table
+    Comment(u32),
 }
 
 /// Compact attributes storage
@@ -366,7 +381,7 @@ impl<T> LazyField<T> {
     }
     
     /// Get the value, loading if necessary
-    pub fn get(&self) -> std::cell::Ref<T> {
+    pub fn get(&self) -> std::cell::Ref<'_, T> {
         if self.value.borrow().is_none() {
             *self.value.borrow_mut() = Some((self.loader)());
         }
@@ -449,13 +464,18 @@ impl Default for BuildMemoryManager {
     }
 }
 
-/// Memory usage statistics
-#[derive(Debug, Clone)]
+/// Memory statistics
+#[derive(Debug, Default)]
 pub struct MemoryStats {
+    /// Bytes allocated in arena
     pub arena_allocated: usize,
+    /// Total arena capacity
     pub arena_capacity: usize,
+    /// Size of element pool
     pub element_pool_size: usize,
+    /// Size of string pool
     pub string_pool_size: usize,
+    /// Size of buffer pool
     pub buffer_pool_size: usize,
 }
 
@@ -496,7 +516,7 @@ mod tests {
             assert_eq!(obj1.get(), "test");
             
             {
-                let obj2 = pool.get();
+                let _obj2 = pool.get();
                 assert_eq!(pool.size(), 0); // Both objects checked out
             }
             // obj2 returned to pool

@@ -154,6 +154,7 @@ struct SchemaKey {
 
 /// Cached schema with metadata
 #[derive(Debug)]
+#[allow(dead_code)]
 struct CachedSchema {
     schema: CompiledSchema,
     created_at: Instant,
@@ -161,6 +162,7 @@ struct CachedSchema {
 
 /// Schema metadata for statistics
 #[derive(Debug)]
+#[allow(dead_code)]
 struct SchemaMetadata {
     compile_time: Duration,
     last_used: Instant,
@@ -194,29 +196,40 @@ impl CompiledSchema {
     }
 }
 
-/// Validation rule
+/// Validation rule for cached schemas
 #[derive(Debug, Clone)]
 pub struct ValidationRule {
+    /// Path to element being validated
     pub element_path: String,
+    /// Type of validation rule
     pub rule_type: RuleType,
+    /// Rule parameters
     pub parameters: Vec<String>,
 }
 
-/// Rule types
+/// Type of validation rule
 #[derive(Debug, Clone)]
 pub enum RuleType {
+    /// Field is required
     Required,
+    /// Must match pattern
     Pattern(String),
+    /// Numeric range
     Range(f64, f64),
+    /// String length range
     Length(usize, usize),
+    /// Custom validation
     Custom(String),
 }
 
-/// Element constraint
+/// Schema constraints
 #[derive(Debug, Clone)]
 pub struct ElementConstraint {
+    /// Minimum occurrences
     pub min_occurs: usize,
+    /// Maximum occurrences (None = unbounded)
     pub max_occurs: Option<usize>,
+    /// Data type name
     pub data_type: String,
 }
 
@@ -243,7 +256,7 @@ impl ValidationCache {
         if let Some(cached) = self.results.get_mut(content_hash) {
             // Check if expired
             if cached.created_at.elapsed() > self.config.ttl {
-                self.results.remove(content_hash);
+                self.results.shift_remove(content_hash);
                 return None;
             }
             
@@ -276,7 +289,7 @@ impl ValidationCache {
             .min_by_key(|(_, cached)| cached.last_accessed)
             .map(|(k, v)| (k.clone(), v.last_accessed))
         {
-            self.results.remove(&key);
+            self.results.shift_remove(&key);
         }
     }
     
@@ -336,9 +349,13 @@ impl Default for ValidationCacheConfig {
 /// Validation result
 #[derive(Debug, Clone)]
 pub struct ValidationResult {
+    /// Whether validation passed
     pub is_valid: bool,
+    /// List of errors
     pub errors: Vec<String>,
+    /// List of warnings
     pub warnings: Vec<String>,
+    /// Time taken to validate
     pub validation_time: Duration,
 }
 
@@ -373,7 +390,7 @@ impl HashCache {
                 return cached.hash.clone();
             } else {
                 // Expired, remove and recompute
-                self.hashes.remove(key);
+                self.hashes.shift_remove(key);
             }
         }
         
@@ -397,7 +414,7 @@ impl HashCache {
     /// Evict a random entry (simple eviction strategy)
     fn evict_random(&mut self) {
         if let Some(key) = self.hashes.keys().next().cloned() {
-            self.hashes.remove(&key);
+            self.hashes.shift_remove(&key);
         }
     }
     
@@ -416,8 +433,11 @@ impl HashCache {
 /// Hash key for caching
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct HashKey {
+    /// Hashing algorithm used (e.g., "SHA256", "BLAKE3")
     pub algorithm: String,
+    /// Type of content being hashed
     pub content_type: String,
+    /// Resulting content identifier hash
     pub content_id: String,
 }
 
@@ -498,7 +518,7 @@ impl TemplateCache {
             .min_by_key(|(_, cached)| cached.last_used)
             .map(|(k, v)| (k.clone(), v.last_used))
         {
-            self.templates.remove(&key);
+            self.templates.shift_remove(&key);
         }
     }
     
@@ -517,8 +537,11 @@ impl TemplateCache {
 /// Template key
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TemplateKey {
+    /// Element type name
     pub element_type: String,
+    /// DDEX version string
     pub version: String,
+    /// Optional variant identifier
     pub variant: Option<String>,
 }
 
@@ -545,8 +568,10 @@ pub struct CompiledTemplate {
 /// Template part (static or dynamic)
 #[derive(Debug, Clone)]
 pub enum TemplatePart {
+    /// Static string value
     Static(OptimizedString),
-    Placeholder(String), // Field name
+    /// Placeholder for dynamic field name
+    Placeholder(String),
 }
 
 /// Template cache configuration
@@ -568,13 +593,21 @@ impl Default for TemplateCacheConfig {
 /// Cache statistics
 #[derive(Debug, Default, Clone)]
 pub struct CacheStats {
+    /// Schema cache hits
     pub schema_hits: usize,
+    /// Schema cache misses
     pub schema_misses: usize,
+    /// Validation cache hits
     pub validation_hits: usize,
+    /// Validation cache misses
     pub validation_misses: usize,
+    /// Hash cache hits
     pub hash_hits: usize,
+    /// Hash cache misses
     pub hash_misses: usize,
+    /// Template cache hits
     pub template_hits: usize,
+    /// Template cache misses
     pub template_misses: usize,
 }
 

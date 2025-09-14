@@ -8,17 +8,33 @@ use crate::id_generator::{StableHashGenerator, StableHashConfig};
 use indexmap::{IndexMap, IndexSet};
 
 /// Configuration for reference management during streaming
+///
+/// Controls how references are generated and managed during streaming DDEX XML
+/// generation, including deterministic behavior and memory management.
+///
+/// # Example
+/// ```
+/// use ddex_builder::streaming::reference_manager::ReferenceConfig;
+///
+/// let config = ReferenceConfig {
+///     deterministic: true,
+///     resource_prefix: "AUDIO".to_string(),
+///     release_prefix: "ALBUM".to_string(),
+///     deal_prefix: "DEAL".to_string(),
+///     max_cache_size: 50_000, // Smaller cache for memory-constrained environments
+/// };
+/// ```
 #[derive(Debug, Clone)]
 pub struct ReferenceConfig {
-    /// Use deterministic reference generation
+    /// Use deterministic reference generation based on content hashes
     pub deterministic: bool,
-    /// Prefix for resource references
+    /// Prefix for resource references (default: "R")
     pub resource_prefix: String,
-    /// Prefix for release references  
+    /// Prefix for release references (default: "REL")
     pub release_prefix: String,
-    /// Prefix for deal references
+    /// Prefix for deal references (default: "D")
     pub deal_prefix: String,
-    /// Maximum number of references to cache in memory
+    /// Maximum number of references to cache in memory before cleanup
     pub max_cache_size: usize,
 }
 
@@ -34,31 +50,78 @@ impl Default for ReferenceConfig {
     }
 }
 
-/// Represents a resource reference with metadata
+/// Reference information for a resource
+///
+/// Stores metadata about a resource reference generated during streaming,
+/// including identifiers, content information, and sequence tracking.
+///
+/// # Example
+/// ```
+/// use ddex_builder::streaming::reference_manager::ResourceReference;
+///
+/// let resource_ref = ResourceReference {
+///     reference_id: "R12345678".to_string(),
+///     resource_id: "USUM71504847".to_string(), // ISRC
+///     title: "Bohemian Rhapsody".to_string(),
+///     artist: "Queen".to_string(),
+///     resource_type: "SoundRecording".to_string(),
+///     sequence_number: 1,
+/// };
+/// ```
 #[derive(Debug, Clone)]
 pub struct ResourceReference {
+    /// Unique reference ID for this resource within the DDEX message
     pub reference_id: String,
+    /// Resource identifier (e.g., ISRC, proprietary ID)
     pub resource_id: String,
+    /// Title of the resource/track
     pub title: String,
+    /// Artist name for this resource
     pub artist: String,
+    /// Type of resource (SoundRecording, Video, Image, Text, etc.)
     pub resource_type: String,
+    /// Sequence number indicating order in the message
     pub sequence_number: usize,
 }
 
-/// Represents a release reference with metadata
+/// Reference information for a release
+///
+/// Stores metadata about a release reference generated during streaming,
+/// including identifiers, content information, resource links, and sequence tracking.
+///
+/// # Example
+/// ```
+/// use ddex_builder::streaming::reference_manager::ReleaseReference;
+///
+/// let release_ref = ReleaseReference {
+///     reference_id: "REL87654321".to_string(),
+///     release_id: "GRid:A1-12345678901234567890123456789012".to_string(),
+///     title: "Greatest Hits".to_string(),
+///     artist: "The Beatles".to_string(),
+///     resource_references: vec!["R12345678".to_string(), "R87654321".to_string()],
+///     sequence_number: 1,
+/// };
+/// ```
 #[derive(Debug, Clone)]
 pub struct ReleaseReference {
+    /// Unique reference ID for this release within the DDEX message
     pub reference_id: String,
+    /// Release identifier (e.g., GRid, UPC, proprietary ID)
     pub release_id: String,
+    /// Title of the release
     pub title: String,
+    /// Main artist name for this release
     pub artist: String,
+    /// References to resources (tracks) contained in this release
     pub resource_references: Vec<String>,
+    /// Sequence number indicating order in the message
     pub sequence_number: usize,
 }
 
 /// Manages references during streaming operations
 pub struct StreamingReferenceManager {
     config: ReferenceConfig,
+    #[allow(dead_code)]
     hash_generator: StableHashGenerator,
     
     // Resource tracking
@@ -372,8 +435,8 @@ impl StreamingReferenceManager {
             let resource_to_remove = std::cmp::min(to_remove / 2, self.resource_references.len() / 2);
             for _ in 0..resource_to_remove {
                 if let Some((_resource_id, reference_id)) = self.resource_references.shift_remove_index(0) {
-                    self.resource_metadata.remove(&reference_id);
-                    self.used_references.remove(&reference_id);
+                    self.resource_metadata.shift_remove(&reference_id);
+                    self.used_references.shift_remove(&reference_id);
                 }
             }
             
@@ -381,8 +444,8 @@ impl StreamingReferenceManager {
             let release_to_remove = std::cmp::min(to_remove / 2, self.release_references.len() / 2);
             for _ in 0..release_to_remove {
                 if let Some((_release_id, reference_id)) = self.release_references.shift_remove_index(0) {
-                    self.release_metadata.remove(&reference_id);
-                    self.used_references.remove(&reference_id);
+                    self.release_metadata.shift_remove(&reference_id);
+                    self.used_references.shift_remove(&reference_id);
                 }
             }
         }
@@ -405,28 +468,108 @@ impl Default for StreamingReferenceManager {
     }
 }
 
-/// Result of reference validation
-#[derive(Debug, Clone)]
-pub struct ReferenceValidationResult {
+/// Reference validation result
+///
+/// Comprehensive validation report for all references generated during
+/// streaming DDEX XML creation, including error detection and statistics.
+///
+/// # Example
+/// ```
+/// use ddex_builder::streaming::reference_manager::StreamingReferenceManager;
+///
+/// let mut manager = StreamingReferenceManager::new();
+/// // ... generate resources and releases ...
+/// let validation = manager.validate_references();
+///
+/// if !validation.is_valid {
+///     for error in &validation.errors {
+///         eprintln!("Validation error: {}", error);
+///     }
+/// }
+///
+/// for warning in &validation.warnings {
+///     println!("Warning: {}", warning);
+/// }
+///
+/// println!("Validated {} total references ({} resources, {} releases, {} deals)",
+///          validation.total_references,
+///          validation.resource_count,
+///          validation.release_count,
+///          validation.deal_count);
+/// ```
+#[derive(Debug)]
+pub struct ReferenceValidation {
+    /// Whether all references are valid (no errors found)
     pub is_valid: bool,
+    /// List of validation errors found during reference checking
     pub errors: Vec<String>,
+    /// List of warnings generated (non-fatal issues)
     pub warnings: Vec<String>,
+    /// Total number of references checked during validation
     pub total_references: usize,
+    /// Number of resource references validated
     pub resource_count: usize,
+    /// Number of release references validated
     pub release_count: usize,
+    /// Number of deal references validated
     pub deal_count: usize,
 }
 
-/// Statistics about reference management
+/// Result of reference validation
 #[derive(Debug, Clone)]
+pub struct ReferenceValidationResult {
+    /// Whether all references passed validation
+    pub is_valid: bool,
+    /// List of validation errors found
+    pub errors: Vec<String>,
+    /// List of warnings generated
+    pub warnings: Vec<String>,
+    /// Total number of references checked
+    pub total_references: usize,
+    /// Number of resource references
+    pub resource_count: usize,
+    /// Number of release references
+    pub release_count: usize,
+    /// Number of deal references
+    pub deal_count: usize,
+}
+
+/// Statistics for reference generation
+///
+/// Comprehensive statistics about reference generation during streaming,
+/// including counts, cache usage, and validation issues detected.
+///
+/// # Example
+/// ```
+/// use ddex_builder::streaming::reference_manager::StreamingReferenceManager;
+///
+/// let manager = StreamingReferenceManager::new();
+/// let stats = manager.get_stats();
+///
+/// println!("Generated {} references total", stats.total_references_generated);
+/// println!("Cache usage: {}/{}", stats.cache_size, 100_000);
+///
+/// if stats.duplicate_resource_ids > 0 {
+///     println!("Warning: {} duplicate resource IDs found", stats.duplicate_resource_ids);
+/// }
+/// ```
+#[derive(Debug, Default)]
 pub struct ReferenceStats {
+    /// Total number of references generated across all types
     pub total_references_generated: usize,
+    /// Number of resource references created
     pub resource_references: usize,
+    /// Number of release references created
     pub release_references: usize,
+    /// Number of deal references created
     pub deal_references: usize,
+    /// Current size of the reference cache in memory
     pub cache_size: usize,
+    /// Number of duplicate resource IDs detected
     pub duplicate_resource_ids: usize,
+    /// Number of duplicate release IDs detected
     pub duplicate_release_ids: usize,
+    /// Number of orphaned references (references without valid targets)
     pub orphaned_references: usize,
 }
 
@@ -480,7 +623,7 @@ mod tests {
         
         // Add some resources and releases
         let resource_ref = manager.generate_resource_reference("resource1").unwrap();
-        let release_ref = manager.generate_release_reference("release1").unwrap();
+        let _release_ref = manager.generate_release_reference("release1").unwrap();
         
         // Store metadata with valid resource reference
         manager.store_release_metadata("release1", "Album Title", "Artist", 
@@ -495,8 +638,8 @@ mod tests {
     #[test]
     fn test_orphaned_references() {
         let mut manager = StreamingReferenceManager::new();
-        
-        let release_ref = manager.generate_release_reference("release1").unwrap();
+
+        let _release_ref = manager.generate_release_reference("release1").unwrap();
         
         // Store metadata with invalid resource reference
         manager.store_release_metadata("release1", "Album Title", "Artist", 

@@ -8,7 +8,6 @@ use crate::builder::{BuildRequest, ReleaseRequest, TrackRequest};
 use crate::error::BuildError;
 use crate::optimized_strings::BuildContext;
 use crate::memory_optimization::BuildMemoryManager;
-use indexmap::IndexMap;
 use rayon::prelude::*;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
@@ -390,13 +389,18 @@ impl ParallelProcessor {
     }
 }
 
-/// Result of parallel build processing
+/// Result of parallel processing
 #[derive(Debug)]
 pub struct ParallelBuildResult {
+    /// Processed elements
     pub elements: Vec<ProcessedElement>,
+    /// Total processing time
     pub processing_time: std::time::Duration,
+    /// Whether parallel processing was used
     pub used_parallel: bool,
+    /// Number of threads used
     pub thread_count: usize,
+    /// Total tracks processed
     pub total_tracks: usize,
 }
 
@@ -422,16 +426,31 @@ impl ParallelBuildResult {
     }
 }
 
-/// Processed element information
+/// Thread performance metrics
 #[derive(Debug)]
 pub struct ProcessedElement {
+    /// Thread name/ID
     pub name: String,
+    /// Time spent processing
     pub processing_time: std::time::Duration,
+    /// Number of elements processed
+    pub element_count: usize,
+}
+
+/// Thread performance metrics
+#[derive(Debug)]
+pub struct ThreadMetrics {
+    /// Thread name/ID
+    pub name: String,
+    /// Time spent processing
+    pub processing_time: std::time::Duration,
+    /// Number of elements processed
     pub element_count: usize,
 }
 
 /// Validated track data
 #[derive(Debug)]
+#[allow(dead_code)]
 struct ValidatedTrack {
     pub track_id: String,
     pub isrc: String,
@@ -440,11 +459,14 @@ struct ValidatedTrack {
     pub artist: String,
 }
 
-/// Validation result
+/// Result of parallel build operation
 #[derive(Debug)]
 pub struct ValidationResult {
+    /// Whether the build succeeded
     pub success: bool,
+    /// Error if build failed
     pub error: Option<BuildError>,
+    /// Time taken for processing
     pub processing_time: std::time::Duration,
 }
 
@@ -526,13 +548,18 @@ impl WorkloadAnalyzer {
     }
 }
 
-/// Workload analysis result
+/// Complexity analysis result
 #[derive(Debug)]
 pub struct WorkloadAnalysis {
+    /// Total number of releases
     pub total_releases: usize,
+    /// Total number of tracks across all releases
     pub total_tracks: usize,
+    /// Maximum tracks in a single release
     pub max_tracks_per_release: usize,
+    /// Computed complexity score (0.0-1.0)
     pub complexity_score: f32,
+    /// Recommended parallel configuration
     pub recommended_config: ParallelConfig,
 }
 

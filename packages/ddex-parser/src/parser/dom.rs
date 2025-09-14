@@ -35,7 +35,7 @@ pub fn parse_dom<R: BufRead + Seek>(
     
     // Build graph model from XML with namespace context
     let graph_builder = GraphBuilder::new(version);
-    let graph = graph_builder.build_from_xml_with_context(reader, namespace_context)?;
+    let graph = graph_builder.build_from_xml_with_context_and_security(reader, namespace_context, security_config)?;
     
     // Optionally resolve references
     let graph = if options.resolve_references {

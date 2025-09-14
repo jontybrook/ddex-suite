@@ -110,15 +110,19 @@ pub mod youtube;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
-/// DDEX version enum
+/// DDEX version for presets
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DdexVersion {
+    /// ERN 3.8.2
     #[serde(rename = "ERN/3.8.2")]
     Ern382,
+    /// ERN 4.2
     #[serde(rename = "ERN/4.2")]
     Ern42,
+    /// ERN 4.3
     #[serde(rename = "ERN/4.3")]
     Ern43,
+    /// ERN 4.1
     #[serde(rename = "ERN/4.1")]
     Ern41,
 }
@@ -134,76 +138,126 @@ impl std::fmt::Display for DdexVersion {
     }
 }
 
-/// Message profile enum
+/// Message profile type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MessageProfile {
+    /// Audio album release
     AudioAlbum,
+    /// Audio single release
     AudioSingle,
+    /// Video album release
     VideoAlbum,
+    /// Video single release
     VideoSingle,
+    /// Mixed content release
     Mixed,
 }
 
-/// Validation rule types
+/// Validation rule for preset
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ValidationRule {
+    /// Field is required
     Required,
+    /// Minimum length requirement
     MinLength(usize),
+    /// Maximum length requirement
     MaxLength(usize),
+    /// Must match regex pattern
     Pattern(String),
+    /// Must be one of specified values
     OneOf(Vec<String>),
-    AudioQuality { min_bit_depth: u8, min_sample_rate: u32 },
-    TerritoryCode { allowed: Vec<String> },
+    /// Audio quality requirements
+    AudioQuality {
+        /// Minimum bit depth in bits
+        min_bit_depth: u8,
+        /// Minimum sample rate in Hz
+        min_sample_rate: u32
+    },
+    /// Territory code restrictions
+    TerritoryCode {
+        /// List of allowed territory codes
+        allowed: Vec<String>
+    },
+    /// Custom validation rule
     Custom(String),
 }
 
-/// Enhanced preset configuration with validation rules
+/// Preset defaults configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PresetConfig {
+    /// DDEX version to use
     pub version: DdexVersion,
+    /// Message profile type
     pub profile: MessageProfile,
+    /// Required fields list
     pub required_fields: Vec<String>,
+    /// Validation rules by field name
     pub validation_rules: IndexMap<String, ValidationRule>,
+    /// Default values by field name
     pub default_values: IndexMap<String, String>,
+    /// Custom field mappings
     pub custom_mappings: IndexMap<String, String>,
+    /// Supported territory codes
     pub territory_codes: Vec<String>,
+    /// Supported distribution channels
     pub distribution_channels: Vec<String>,
+    /// Supported release types
     pub release_types: Vec<String>,
 }
 
-/// Partner preset configuration (legacy structure, enhanced)
+/// Partner preset configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PartnerPreset {
+    /// Preset name
     pub name: String,
+    /// Preset description
     pub description: String,
+    /// Source of preset definition
     pub source: PresetSource,
+    /// URL to documentation
     pub provenance_url: Option<String>,
+    /// Preset version
     pub version: String,
+    /// Whether preset is locked from editing
     pub locked: bool,
+    /// Legal disclaimer
     pub disclaimer: String,
+    /// Determinism configuration
     pub determinism: super::determinism::DeterminismConfig,
+    /// Default values for preset
     pub defaults: PresetDefaults,
+    /// Required fields that must be present for this partner
     pub required_fields: Vec<String>,
+    /// Format overrides for specific fields (field_name -> format_string)
     pub format_overrides: IndexMap<String, String>,
     // Enhanced fields
+    /// Preset configuration settings
     pub config: PresetConfig,
+    /// Validation rules specific to this partner
     pub validation_rules: IndexMap<String, ValidationRule>,
+    /// Custom field mappings for partner-specific requirements
     pub custom_mappings: IndexMap<String, String>,
 }
 
-/// Preset source
+/// Source of preset definition
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PresetSource {
+    /// Official public documentation from partner
     PublicDocs,
+    /// Based on customer feedback and testing
     CustomerFeedback,
+    /// Community-contributed preset
     Community,
 }
 
-/// Preset defaults
+/// Preset configuration options
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PresetDefaults {
+    /// Type of message control (e.g., "NewReleaseMessage")
     pub message_control_type: Option<String>,
+    /// Territory codes this preset applies to
     pub territory_code: Vec<String>,
+    /// Distribution channels (e.g., "Streaming", "Download")
     pub distribution_channel: Vec<String>,
 }
 

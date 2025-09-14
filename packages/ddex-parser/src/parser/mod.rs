@@ -9,6 +9,10 @@ pub mod dom;
 pub mod extension_capture;
 pub mod namespace_detector;
 pub mod attribute_extractor;
+pub mod xml_validator;
+pub mod selective_parser;
+pub mod xpath_selector;
+pub mod multi_release_parser;
 
 #[cfg(test)]
 mod tests;

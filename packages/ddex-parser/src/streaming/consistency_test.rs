@@ -1,7 +1,7 @@
 //! Test to ensure parsing consistency between different parsers
 
 use crate::streaming::{WorkingStreamIterator, ParallelStreamingIterator};
-use crate::error::ParseError;
+use crate::error::{ParseError, ErrorLocation};
 use ddex_core::models::versions::ERNVersion;
 use std::io::Cursor;
 
@@ -65,7 +65,10 @@ pub fn test_parser_consistency() -> Result<(), ParseError> {
             }
         }
 
-        return Err(ParseError::XmlError(quick_xml::Error::UnexpectedEof("Element count mismatch".to_string())));
+        return Err(ParseError::ConversionError {
+            message: "Element count mismatch between parsers".to_string(),
+            location: ErrorLocation::default()
+        });
     }
 
     println!("✅ Element counts match!");

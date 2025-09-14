@@ -1,16 +1,21 @@
 //! Type definitions for the linker module
 
 use std::fmt;
-use thiserror::Error;
 
-/// Entity types in DDEX
+/// Type of entity being linked
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum EntityType {
+    /// Release entity
     Release,
+    /// Resource entity (audio, video, etc.)
     Resource,
+    /// Party entity (artist, label, etc.)
     Party,
+    /// Deal entity
     Deal,
+    /// Technical details
     TechnicalDetails,
+    /// Rights controller
     RightsController,
 }
 
@@ -33,8 +38,11 @@ pub enum ReferenceStyle {
     /// Sequential numbering (A1, A2, R1, R2)
     Sequential,
     
-    /// Prefixed with custom separator
-    Prefixed { separator: String },
+    /// Reference format with custom separator
+    Prefixed {
+        /// Separator character(s) between prefix and ID
+        separator: String
+    },
     
     /// Custom formatter function
     Custom(fn(EntityType, u32) -> String),
@@ -73,49 +81,93 @@ impl Default for LinkerConfig {
     }
 }
 
+/// Link between release and resource
+#[derive(Debug, Clone)]
+pub struct ResourceLink {
+    /// Reference to the release
+    pub release_reference: String,
+    /// Reference to the resource
+    pub resource_reference: String,
+    /// Sequence number in the release
+    pub sequence_number: u32,
+}
+
 /// Release-Resource reference mapping
 #[derive(Debug, Clone)]
 pub struct ReleaseResourceReference {
+    /// Reference to the parent release
     pub release_reference: String,
+    /// Reference to the linked resource
     pub resource_reference: String,
+    /// Sequence number in the release
     pub sequence_number: u32,
+}
+
+/// Statistics for linking operation
+#[derive(Debug, Default)]
+pub struct LinkingStats {
+    /// Number of references generated
+    pub generated_refs: usize,
+    /// Number of resources linked
+    pub linked_resources: usize,
+    /// Number of deals linked
+    pub linked_deals: usize,
+    /// Number of parties linked
+    pub linked_parties: usize,
+    /// Whether validation passed
+    pub validation_passed: bool,
+    /// List of warnings generated
+    pub warnings: Vec<String>,
 }
 
 /// Report from auto-linking process
 #[derive(Debug, Clone, Default)]
 pub struct LinkingReport {
+    /// Number of references generated
     pub generated_refs: usize,
+    /// Number of resources successfully linked
     pub linked_resources: usize,
+    /// Number of deals successfully linked
     pub linked_deals: usize,
+    /// Number of parties successfully linked
     pub linked_parties: usize,
+    /// Whether all validations passed
     pub validation_passed: bool,
+    /// List of warnings generated during linking
     pub warnings: Vec<String>,
 }
 
-/// Linker errors
-#[derive(Debug, Error)]
-pub enum LinkerError {
+/// Linking errors
+#[derive(Debug, thiserror::Error)]
+pub enum LinkingError {
+    /// Reference to unknown resource
     #[error("Unknown resource: {0}")]
     UnknownResource(String),
-    
+    /// Reference to unknown release
     #[error("Unknown release: {0}")]
     UnknownRelease(String),
-    
+    /// Reference without a target
     #[error("Orphaned reference: {0}")]
     OrphanedReference(String),
-    
+    /// Broken reference link
     #[error("Broken reference from {from} to {to}")]
-    BrokenReference { from: String, to: String },
-    
+    BrokenReference {
+        /// Source of the reference
+        from: String,
+        /// Target that doesn't exist
+        to: String
+    },
+    /// Duplicate reference ID
     #[error("Duplicate reference: {0}")]
     DuplicateReference(String),
-    
+    /// Circular reference detected
     #[error("Circular reference detected: {0}")]
     CircularReference(String),
-    
+    /// Invalid entity type for operation
     #[error("Invalid entity type: {0}")]
     InvalidEntityType(String),
-    
+    /// Validation failed
     #[error("Validation failed: {0}")]
     ValidationFailed(String),
 }
+

@@ -7,6 +7,7 @@ use ddex_core::models::flat::ParsedERNMessage;
 use ddex_core::models::versions::ERNVersion;
 use crate::parser::ParseOptions;
 use crate::transform::flatten::Flattener;
+use crate::utf8_utils;
 use quick_xml::events::Event;
 use quick_xml::Reader;
 use std::io::BufRead;
@@ -23,6 +24,9 @@ pub struct ParseProgress {
 }
 
 /// Streaming parser for memory-efficient processing
+///
+/// Part of the public streaming API for parsing large DDEX files efficiently.
+#[allow(dead_code)]
 pub struct StreamingParser<R: BufRead> {
     reader: Reader<R>,
     _version: ERNVersion,
@@ -34,15 +38,21 @@ pub struct StreamingParser<R: BufRead> {
     chunk_size: usize,
     max_memory: usize,
     buffer: Vec<u8>,
+    current_depth: usize,
+    max_depth: usize,
 }
 
 impl<R: BufRead> StreamingParser<R> {
     pub fn new(reader: R, version: ERNVersion) -> Self {
+        Self::new_with_security_config(reader, version, &crate::parser::security::SecurityConfig::default())
+    }
+
+    pub fn new_with_security_config(reader: R, version: ERNVersion, security_config: &crate::parser::security::SecurityConfig) -> Self {
         let mut xml_reader = Reader::from_reader(reader);
         xml_reader.config_mut().trim_text(true);
         xml_reader.config_mut().check_end_names = true;
         xml_reader.config_mut().expand_empty_elements = false;
-        
+
         Self {
             reader: xml_reader,
             _version: version,
@@ -54,6 +64,8 @@ impl<R: BufRead> StreamingParser<R> {
             chunk_size: 100,
             max_memory: 100 * 1024 * 1024, // 100MB default
             buffer: Vec::with_capacity(8192),
+            current_depth: 0,
+            max_depth: security_config.max_element_depth,
         }
     }
     
@@ -99,8 +111,25 @@ impl<R: BufRead> StreamingParser<R> {
         // Skip to MessageHeader element
         loop {
             match self.reader.read_event_into(&mut self.buffer) {
-                Ok(Event::Start(ref e)) if e.name().as_ref() == b"MessageHeader" => {
-                    return self.parse_message_header_element();
+                Ok(Event::Start(ref e)) => {
+                    self.current_depth += 1;
+
+                    // Check depth limit
+                    if self.current_depth > self.max_depth {
+                        return Err(ParseError::DepthLimitExceeded {
+                            depth: self.current_depth,
+                            max: self.max_depth,
+                        });
+                    }
+
+                    if e.name().as_ref() == b"MessageHeader" {
+                        return self.parse_message_header_element();
+                    } else {
+                        self.skip_element()?;
+                    }
+                }
+                Ok(Event::End(_)) => {
+                    self.current_depth = self.current_depth.saturating_sub(1);
                 }
                 Ok(Event::Eof) => {
                     return Err(ParseError::XmlError {
@@ -322,25 +351,14 @@ impl<R: BufRead> StreamingParser<R> {
     fn read_text_element(&mut self) -> Result<String, ParseError> {
         let mut text = String::new();
         self.buffer.clear();
-        
+
         loop {
             let event = self.reader.read_event_into(&mut self.buffer);
             match event {
                 Ok(Event::Text(e)) => {
-                    // Handle the text decoding separately to avoid borrowing issues
-                    match e.unescape() {
-                        Ok(unescaped) => {
-                            text = unescaped.to_string();
-                        }
-                        Err(err) => {
-                            // Get location after the borrow of buffer is done
-                            let location = self.get_current_location();
-                            return Err(ParseError::XmlError {
-                                message: err.to_string(),
-                                location,
-                            });
-                        }
-                    }
+                    // Use proper UTF-8 handling from utf8_utils
+                    let current_pos = self.reader.buffer_position() as usize;
+                    text = utf8_utils::handle_text_node(&e, current_pos)?;
                 }
                 Ok(Event::End(_)) => {
                     break;
@@ -369,13 +387,27 @@ impl<R: BufRead> StreamingParser<R> {
     
     /// Skip an element and all its children
     fn skip_element(&mut self) -> Result<(), ParseError> {
-        let mut depth = 1;
+        let mut local_depth = 1;
         self.buffer.clear();
-        
-        while depth > 0 {
+
+        while local_depth > 0 {
             match self.reader.read_event_into(&mut self.buffer) {
-                Ok(Event::Start(_)) => depth += 1,
-                Ok(Event::End(_)) => depth -= 1,
+                Ok(Event::Start(_)) => {
+                    local_depth += 1;
+                    self.current_depth += 1;
+
+                    // Check depth limit
+                    if self.current_depth > self.max_depth {
+                        return Err(ParseError::DepthLimitExceeded {
+                            depth: self.current_depth,
+                            max: self.max_depth,
+                        });
+                    }
+                }
+                Ok(Event::End(_)) => {
+                    local_depth -= 1;
+                    self.current_depth = self.current_depth.saturating_sub(1);
+                }
                 Ok(Event::Eof) => break,
                 Err(e) => {
                     return Err(ParseError::XmlError {
@@ -387,7 +419,7 @@ impl<R: BufRead> StreamingParser<R> {
             }
             self.buffer.clear();
         }
-        
+
         Ok(())
     }
     
@@ -402,6 +434,9 @@ impl<R: BufRead> StreamingParser<R> {
 }
 
 /// Iterator for streaming releases
+///
+/// Part of the public streaming API.
+#[allow(dead_code)]
 pub struct ReleaseIterator<'a, R: BufRead> {
     parser: &'a mut StreamingParser<R>,
     done: bool,
@@ -611,9 +646,9 @@ pub fn parse_streaming<R: BufRead>(
     reader: R,
     version: ERNVersion,
     options: ParseOptions,
-    _security_config: &crate::parser::security::SecurityConfig,
+    security_config: &crate::parser::security::SecurityConfig,
 ) -> Result<ParsedERNMessage, ParseError> {
-    let mut parser = StreamingParser::new(reader, version)
+    let mut parser = StreamingParser::new_with_security_config(reader, version, security_config)
         .with_chunk_size(options.chunk_size)
         .with_max_memory(options.max_memory);
 

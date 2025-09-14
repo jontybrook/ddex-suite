@@ -10,7 +10,6 @@
 
 use ddex_builder::{DDEXBuilder, BuildRequest};
 use ddex_builder::builder::{MessageHeaderRequest, PartyRequest, LocalizedStringRequest, ReleaseRequest, DealRequest, BuildOptions};
-use serde_json::json;
 use indexmap::IndexMap;
 use std::sync::{Arc, Mutex};
 use std::thread;

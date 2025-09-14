@@ -34,7 +34,7 @@ fn test_parse_ern_43() {
     
     assert_eq!(result.graph.version, ERNVersion::V4_3);
     
-    if let Some(deal) = result.graph.deals.first() {
+    if let Some(_deal) = result.graph.deals.first() {
         println!("Deal found in 4.3 file");
     }
 }

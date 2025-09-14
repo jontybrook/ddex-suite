@@ -94,7 +94,7 @@ impl PyDDEXParser {
     /// Stream parse large files
     pub fn stream(
         &self,
-        py: Python,
+        _py: Python,
         source: &Bound<'_, PyAny>,
         options: Option<&Bound<'_, PyDict>>,
     ) -> PyResult<StreamIterator> {
