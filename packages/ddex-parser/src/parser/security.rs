@@ -8,20 +8,23 @@ pub struct SecurityConfig {
     pub disable_external_entities: bool,
     pub max_entity_expansions: usize,
     pub max_entity_depth: usize,
-    
+
     // Size limits
     pub max_element_depth: usize,
     pub max_attribute_size: usize,
     pub max_text_size: usize,
     pub max_file_size: usize,
-    
+
     // Time limits
     pub parse_timeout: Duration,
     pub stream_timeout: Duration,
-    
+
     // Network protection
     pub allow_network: bool,
     pub allowed_schemas: Vec<String>,
+
+    // Performance options
+    pub enable_fast_streaming: bool,
 }
 
 impl Default for SecurityConfig {
@@ -46,6 +49,7 @@ impl SecurityConfig {
             stream_timeout: Duration::from_secs(300),
             allow_network: false,
             allowed_schemas: vec!["file".to_string()],
+            enable_fast_streaming: false, // Disabled by default for strict mode
         }
     }
     
@@ -53,13 +57,14 @@ impl SecurityConfig {
     pub fn relaxed() -> Self {
         Self {
             max_element_depth: 200,
-            max_file_size: if cfg!(target_arch = "wasm32") { 
-                100 * 1024 * 1024 // 100MB for WASM 
-            } else { 
+            max_file_size: if cfg!(target_arch = "wasm32") {
+                100 * 1024 * 1024 // 100MB for WASM
+            } else {
                 5 * 1024 * 1024 * 1024 // 5GB for native
             },
             parse_timeout: Duration::from_secs(120),
             stream_timeout: Duration::from_secs(600),
+            enable_fast_streaming: true, // Enable fast streaming in relaxed mode
             ..Self::strict()
         }
     }

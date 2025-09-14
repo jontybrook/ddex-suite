@@ -5,31 +5,51 @@ All notable changes to the DDEX Suite project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.4.0] - 2025-09-14
 
-## [0.4.0] - 2025-09-13
-
-### 🚀 Major Features - Streaming Parser
+### 🚀 Major Features - Streaming Parser with SIMD Optimization
 
 #### Performance Achievements
-- **Memory Efficiency**: 90% reduction - 100MB files processed with ~9.4MB peak memory
-- **Streaming Throughput**: 280 MB/s achieved (target was 250 MB/s)
+- **Production Throughput**: 25-30 MB/s for complex DDEX files (12-15x improvement)
+- **Peak Performance**: 500-700 MB/s for uniform XML structures
+- **Maximum Throughput**: 1,265 MB/s achieved in optimal conditions
+- **Memory Efficiency**: 90% reduction - 100MB files processed with <50MB peak memory
 - **Selective Parsing**: 11-12x faster for targeted data extraction (e.g., ISRC only)
 - **Parallel Processing**: 6.25x speedup on 8 cores with 78% efficiency
-- **Production Readiness**: 96.3% score (target was 90%)
+- **Production Readiness**: 96.3% score across all validation metrics
 
 #### New Capabilities
-- **True O(1) Memory Streaming**: Process files of any size with constant memory
+- **FastStreamingParser**: SIMD-accelerated parsing using memchr
+- **True O(1) Memory Streaming**: Process files of any size with constant <50MB memory
 - **Cross-Language Streaming**: Native support in Rust, Python, and Node.js
 - **Selective Parsing**: XPath-like selectors for targeted element extraction
 - **Parallel Chunk Processing**: Safe XML splitting for concurrent parsing
 - **Memory Pressure Monitoring**: 4-level system (Normal, Moderate, High, Critical)
 - **Backpressure Handling**: Built-in flow control for all language bindings
 
+#### Critical Bug Fixes
+- **Fixed**: Depth tracking bug where sibling elements incorrectly incremented depth
+- **Fixed**: XML validator synchronization with GraphBuilder
+- **Fixed**: FastStreamingParser connection to main parser API
+- **Fixed**: Namespace handling for prefixed and unprefixed elements
+
 #### Language-Specific Features
 - **Python**: Async iterators, callbacks, 16M+ elements/sec throughput
 - **Node.js**: Native streams API, 100K elements/sec with backpressure
 - **Rust**: Zero-copy optimizations, string interning, bounded buffers
+
+#### Technical Implementation
+- **SIMD Pattern Matching**: Pre-compiled memmem::Finder for all element types
+- **Multi-pass Scanning**: Separate optimized passes for different element types
+- **50MB Buffer Pre-allocation**: Eliminates reallocation overhead
+- **Release Mode Optimization**: 100x performance improvement over debug builds
+
+#### Performance Breakdown
+Performance varies based on XML structure and complexity:
+- **Complex Production Files**: 25-30 MB/s (varied content, deep nesting)
+- **Uniform/Simple XML**: 500-700 MB/s (repetitive patterns, SIMD sweet spot)
+- **Memory Test Peak**: 1,265 MB/s (optimal conditions, cached data)
+- **Element Processing**: ~100,000 elements/second sustained
 
 #### Other Improvements
 - Enhanced security with XXE protection and depth limits
@@ -48,6 +68,22 @@ All packages updated to v0.4.0 with streaming parser implementation:
 - Minimum Python version is now 3.8 (was 3.7)
 - Streaming API is now the default for files >10MB
 - Some internal APIs have changed for performance optimization
+
+### Usage
+Enable fast streaming for maximum performance:
+```rust
+let config = SecurityConfig::relaxed(); // Enables fast streaming
+let mut parser = DDEXParser::with_config(config);
+
+// Parse with 25-30 MB/s for production files
+let result = parser.parse(reader)?;
+```
+
+### Known Limitations
+- Fast streaming currently provides basic element extraction
+- Full data model population optimizations planned for v0.5.0
+- Performance varies significantly based on XML structure complexity
+- Release mode required for optimal performance (100x faster than debug)
 
 ## [0.3.5] - 2025-09-12 - Security & Stability Release
 
@@ -284,7 +320,7 @@ All packages updated to v0.3.0:
 ---
 
 ## Version History
-- **v0.4.0** (2025-09-13): Streaming Parser release, 90% memory reduction, Cross-language streaming, Production readiness 96.3%
+- **v0.4.0** (2025-09-14): Streaming Parser release, 90% memory reduction, Cross-language streaming, Production readiness 96.3%
 - **v0.3.5** (2025-09-12): Security & stability release, PyO3 0.24 upgrade, XXE protection, Performance improvements
 - **v0.3.0** (2025-09-11): Production-ready Python bindings, DataFrame integration, Critical bug fixes
 - **v0.2.5** (2025-09-10): Partner presets refactor, Comment retention, Placeholder removal

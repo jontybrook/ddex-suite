@@ -22,7 +22,7 @@ use ddex_core::models::flat::ParsedERNMessage;
 use std::io::BufRead;
 
 /// Main parser options
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ParseOptions {
     pub mode: mode::ParseMode,
     pub auto_threshold: u64,

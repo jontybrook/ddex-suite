@@ -394,7 +394,7 @@ fn handle_parse_command(cmd: ParseCommand) -> Result<()> {
     use ddex_parser::DDEXParser;
     
     let input_content = read_input_string(&cmd.input)?;
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let start_time = Instant::now();
     
     let result = parser.parse(std::io::Cursor::new(input_content.as_bytes()))?;
@@ -425,7 +425,7 @@ fn handle_extract_command(cmd: ExtractCommand) -> Result<()> {
     let xml_content = fs::read_to_string(&cmd.input)
         .context(format!("Failed to read file: {}", cmd.input.display()))?;
     
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let result = parser.parse(std::io::Cursor::new(xml_content.as_bytes()))?;
     
     // Extract elements based on query
@@ -464,7 +464,7 @@ fn handle_stream_command(cmd: StreamCommand) -> Result<()> {
     
     // Implement streaming logic here
     let xml_content = fs::read_to_string(&cmd.input)?;
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let result = parser.parse(std::io::Cursor::new(xml_content.as_bytes()))?;
     
     // Stream elements to separate files
@@ -619,7 +619,7 @@ fn handle_convert_command(cmd: ConvertCommand) -> Result<()> {
     use ddex_parser::DDEXParser;
     
     let input_content = fs::read_to_string(&cmd.input)?;
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let result = parser.parse(std::io::Cursor::new(input_content.as_bytes()))?;
     
     let output_data = if cmd.flatten {
@@ -644,7 +644,7 @@ fn handle_stats_command(cmd: StatsCommand) -> Result<()> {
     use ddex_parser::DDEXParser;
     
     let mut stats = StatsReport::new();
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     
     for file_path in &cmd.files {
         let start_time = Instant::now();
@@ -740,7 +740,7 @@ fn detect_version(path: &str) -> Result<()> {
     let xml = fs::read_to_string(path)
         .context(format!("Failed to read file: {}", path))?;
     
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let version = parser.detect_version(std::io::Cursor::new(xml.as_bytes()))?;
     
     println!("DDEX Version: {:?}", version);
@@ -754,7 +754,7 @@ fn sanity_check(path: &str) -> Result<()> {
     let xml = fs::read_to_string(path)
         .context(format!("Failed to read file: {}", path))?;
     
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let result = parser.sanity_check(std::io::Cursor::new(xml.as_bytes()))?;
     
     if result.is_valid {
@@ -870,7 +870,7 @@ fn process_file_batch(
     use ddex_parser::DDEXParser;
     
     let xml_content = fs::read_to_string(file_path)?;
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let result = parser.parse(std::io::Cursor::new(xml_content.as_bytes()))?;
     
     let output_data = if flatten {
@@ -931,7 +931,7 @@ fn validate_ddex_file(
     use ddex_parser::DDEXParser;
     
     let xml_content = fs::read_to_string(file_path)?;
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     
     match parser.sanity_check(std::io::Cursor::new(xml_content.as_bytes())) {
         Ok(result) => Ok(ValidationResult {
@@ -1104,7 +1104,7 @@ fn parse_file_interactive(file_path: &str) -> Result<()> {
     use ddex_parser::DDEXParser;
     
     let xml_content = fs::read_to_string(file_path)?;
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let result = parser.parse(std::io::Cursor::new(xml_content.as_bytes()))?;
     
     let json = serde_json::to_string_pretty(&result.flat)?;
@@ -1117,7 +1117,7 @@ fn extract_interactive(file_path: &str, query: &str) -> Result<()> {
     use ddex_parser::DDEXParser;
     
     let xml_content = fs::read_to_string(file_path)?;
-    let parser = DDEXParser::new();
+    let mut parser = DDEXParser::new();
     let result = parser.parse(std::io::Cursor::new(xml_content.as_bytes()))?;
     
     let extracted = extract_elements(&result, query, false, false)?;

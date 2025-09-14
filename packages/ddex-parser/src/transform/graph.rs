@@ -64,8 +64,8 @@ impl GraphBuilder {
                             match e.name().as_ref() {
                                 b"ReleaseList" => in_release_list = true,
                                 b"Release" if in_release_list => {
-                                    // Create a minimal release
-                                    releases.push(self.parse_minimal_release(&mut xml_reader)?);
+                                    // Create a minimal release and manually validate the end event
+                                    releases.push(self.parse_minimal_release(&mut xml_reader, &mut validator)?);
                                 }
                                 _ => {}
                             }
@@ -154,7 +154,7 @@ impl GraphBuilder {
         })
     }
     
-    fn parse_minimal_release<R: BufRead>(&self, reader: &mut Reader<R>) -> Result<Release, ParseError> {
+    fn parse_minimal_release<R: BufRead>(&self, reader: &mut Reader<R>, validator: &mut crate::parser::xml_validator::XmlValidator) -> Result<Release, ParseError> {
         use ddex_core::models::common::LocalizedString;
         
         let release = Release {  // Remove mut
@@ -175,15 +175,33 @@ impl GraphBuilder {
             comments: None,
         };
         
-        // Skip to the end of the Release element
+        // Skip to the end of the Release element, calling validator for each event
         let mut buf = Vec::new();
         let mut depth = 1;
         while depth > 0 {
             match reader.read_event_into(&mut buf) {
-                Ok(Event::Start(_)) => depth += 1,
-                Ok(Event::End(_)) => depth -= 1,
-                Ok(Event::Eof) => break,
-                _ => {}
+                Ok(ref event) => {
+                    // Validate each event so the validator stack stays consistent
+                    validator.validate_event(event, reader)?;
+
+                    match event {
+                        Event::Start(_) => depth += 1,
+                        Event::End(_) => depth -= 1,
+                        Event::Eof => break,
+                        _ => {}
+                    }
+                }
+                Err(e) => {
+                    return Err(ParseError::XmlError {
+                        message: format!("XML parsing error in release: {}", e),
+                        location: crate::error::ErrorLocation {
+                            line: 0,
+                            column: 0,
+                            byte_offset: Some(reader.buffer_position() as usize),
+                            path: "parse_minimal_release".to_string(),
+                        },
+                    });
+                }
             }
             buf.clear();
         }

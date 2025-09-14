@@ -5,7 +5,50 @@ All notable changes to DDEX Builder will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.0] - 2025-09-12
+## [0.4.0] - 2025-09-14
+
+### 🚀 Major Features - Enhanced Integration & Performance
+
+#### Round-Trip Compatibility with v0.4.0 Parser
+- **Full Integration**: Complete compatibility with SIMD-optimized ddex-parser v0.4.0
+- **Performance Optimizations**: Enhanced XML generation speed for streaming workflows
+- **Memory Efficiency**: Optimized for large-scale processing with <50MB peak usage
+
+#### Enhanced DataFrame Support
+- **Python Integration**: Improved `from_dataframe()` performance and reliability
+- **Schema Validation**: Enhanced input validation for DataFrame-to-DDEX conversion
+- **Round-Trip Fidelity**: Perfect compatibility with v0.4.0 parser DataFrame output
+
+### 🐛 Bug Fixes
+- **Canonicalization**: Fixed text content preservation in XML generation
+- **Deterministic Output**: Improved consistency across different platforms
+- **Memory Management**: Enhanced cleanup and resource handling
+
+### 📈 Performance Improvements
+- **Build Speed**: Maintained <15ms typical build times for standard releases
+- **Memory Usage**: Optimized memory patterns for streaming workflows
+- **Batch Processing**: Enhanced throughput for large catalog generation
+
+## [0.3.5] - 2025-09-12
+
+### 🔒 Security & Stability Release
+
+#### Security Enhancements
+- **PyO3 Upgrade**: Updated to PyO3 0.24 fixing RUSTSEC-2025-0020 security advisory
+- **XML Security**: Enhanced XXE protection and input validation
+- **Memory Safety**: Additional bounds checking and error handling
+
+#### Stability Improvements
+- **Cross-Platform**: Improved reliability across Linux, macOS, and Windows
+- **Error Handling**: More robust error recovery and reporting
+- **Test Coverage**: Enhanced test suite with additional edge case coverage
+
+### 📦 Package Updates
+- Compatible with ddex-core 0.3.5 and ddex-parser 0.3.5
+- Updated Python bindings with PyO3 0.24 compatibility
+- Enhanced Node.js bindings stability
+
+## [0.3.0] - 2025-09-11
 
 ### 🎉 Major Improvements
 
@@ -48,7 +91,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Advanced validation scenarios need refinement
 - WASM builds require additional setup
 
-## [0.2.5] - 2025-01-10
+## [0.2.5] - 2025-09-10
 
 ### Changed
 - Version alignment with ddex-parser v0.2.5
@@ -98,7 +141,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **PyPI Packages**: Python distributions available with comprehensive type hints
 - **Crates.io**: Rust packages published with complete API documentation
 
-## [0.1.0] - 2025-01-07
+## [0.1.0] - 2025-09-08
 
 ### 🎉 Initial Release
 

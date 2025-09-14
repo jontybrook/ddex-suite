@@ -9,8 +9,10 @@ use std::io::BufRead;
 /// XML validator that tracks element stack and validates structure
 #[derive(Debug, Clone)]
 pub struct XmlValidator {
-    /// Stack of open XML elements for tag matching
-    element_stack: Vec<String>,
+    /// Stack of open XML elements for tag matching (stores element name and its depth)
+    element_stack: Vec<(String, usize)>,
+    /// Track current actual nesting depth (siblings don't increase depth)
+    current_depth: usize,
     /// Track current byte position for error reporting
     current_position: usize,
     /// Enable strict validation (mismatched tags, unclosed elements)
@@ -30,6 +32,7 @@ impl XmlValidator {
     pub fn new(strict: bool, extended: bool) -> Self {
         Self {
             element_stack: Vec::new(),
+            current_depth: 0,
             current_position: 0,
             strict_validation: strict,
             extended_validation: extended,
@@ -123,12 +126,19 @@ impl XmlValidator {
             self.validate_attributes(element)?;
         }
 
-        // Push element onto stack for tag matching
-        self.element_stack.push(element_name.clone());
+        // Calculate depth: depth = number of open ancestors + 1 (for this element)
+        // Siblings have the same depth as each other
+        let element_depth = self.element_stack.len() + 1;
+
+        // Push element onto stack for tag matching with its depth
+        self.element_stack.push((element_name.clone(), element_depth));
+
+        // Update current depth to this element's depth
+        self.current_depth = element_depth;
 
         // Debug: print what we're pushing (only for first few elements)
         if self.element_stack.len() <= 5 {
-            eprintln!("PUSH DEBUG: '{}' (stack size now: {})", element_name, self.element_stack.len());
+            eprintln!("PUSH DEBUG: '{}' depth {} (stack size now: {})", element_name, self.current_depth, self.element_stack.len());
         }
 
         Ok(())
@@ -141,11 +151,11 @@ impl XmlValidator {
 
         if self.strict_validation {
             // Check if there's a matching start tag
-            if let Some(expected) = self.element_stack.pop() {
+            if let Some((expected, depth)) = self.element_stack.pop() {
                 if expected != element_name {
                     // Debug: print stack state when mismatch occurs
                     eprintln!("TAG MISMATCH DEBUG:");
-                    eprintln!("  Expected: '{}'", expected);
+                    eprintln!("  Expected: '{}' at depth {}", expected, depth);
                     eprintln!("  Found: '{}'", element_name);
                     eprintln!("  Stack size: {}", self.element_stack.len() + 1); // +1 because we just popped
                     eprintln!("  Stack contents: {:?}", self.element_stack);
@@ -157,6 +167,9 @@ impl XmlValidator {
                         position: self.current_position,
                     });
                 }
+                // Update depth to parent's depth when exiting an element
+                // After popping, stack size = parent depth
+                self.current_depth = self.element_stack.len();
             } else {
                 return Err(ParseError::UnexpectedClosingTag {
                     tag: element_name,
@@ -164,8 +177,11 @@ impl XmlValidator {
                 });
             }
         } else {
-            // Even in lenient mode, we should pop from stack
-            self.element_stack.pop();
+            // Even in lenient mode, we should pop from stack and update depth
+            if let Some((_, _depth)) = self.element_stack.pop() {
+                // After popping, current depth = remaining stack size
+                self.current_depth = self.element_stack.len();
+            }
         }
 
         Ok(())
@@ -288,20 +304,22 @@ impl XmlValidator {
     /// Validate at document end that all elements are properly closed
     fn validate_document_end(&mut self) -> Result<(), ParseError> {
         if self.strict_validation && !self.element_stack.is_empty() {
+            let unclosed_tags = self.element_stack.iter().map(|(name, _)| name.clone()).collect();
             return Err(ParseError::UnclosedTags {
-                tags: self.element_stack.clone(),
+                tags: unclosed_tags,
                 position: self.current_position,
             });
         }
 
-        // Clear stack for next document
+        // Clear stack and reset depth for next document
         self.element_stack.clear();
+        self.current_depth = 0;
         Ok(())
     }
 
     /// Get current element stack (for debugging)
-    pub fn get_element_stack(&self) -> &Vec<String> {
-        &self.element_stack
+    pub fn get_element_stack(&self) -> Vec<String> {
+        self.element_stack.iter().map(|(name, _)| name.clone()).collect()
     }
 
     /// Check if validator is currently inside any elements
@@ -309,8 +327,10 @@ impl XmlValidator {
         !self.element_stack.is_empty()
     }
 
-    /// Get current nesting depth
+    /// Get current nesting depth (actual depth, not stack size)
     pub fn get_depth(&self) -> usize {
+        // Return actual stack depth, which represents nesting level
+        // This fixes the sibling depth bug - siblings have the same depth as their parent + 1
         self.element_stack.len()
     }
 }
