@@ -1,7 +1,7 @@
 //! Shared error types for DDEX Suite
 
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use serde::{Serialize, Deserialize};
 
 /// Common error types used across parser and builder
 #[derive(Debug, Error, Clone, Serialize, Deserialize)]
@@ -19,21 +19,13 @@ pub enum DDEXError {
     },
 
     #[error("Reference error: {message}")]
-    ReferenceError {
-        message: String,
-        reference: String,
-    },
+    ReferenceError { message: String, reference: String },
 
     #[error("Version mismatch: expected {expected}, found {found}")]
-    VersionMismatch {
-        expected: String,
-        found: String,
-    },
+    VersionMismatch { expected: String, found: String },
 
     #[error("IO error: {message}")]
-    IoError {
-        message: String,
-    },
+    IoError { message: String },
 }
 
 /// Location information for errors
@@ -59,8 +51,8 @@ impl Default for ErrorLocation {
 /// FFI-friendly error representation
 pub mod ffi {
     use super::*;
-    use crate::ffi::{FFIError, FFIErrorSeverity, FFIErrorCategory, FFIErrorLocation};
-    
+    use crate::ffi::{FFIError, FFIErrorCategory, FFIErrorLocation, FFIErrorSeverity};
+
     /// Convert from DDEXError to FFIError
     impl From<DDEXError> for FFIError {
         fn from(err: DDEXError) -> Self {

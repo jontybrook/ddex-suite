@@ -1,8 +1,8 @@
 // core/src/models/versions/common.rs
 //! Common types for version-specific models
 
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 /// Common ValidityPeriod for 4.2+
 #[derive(Debug, Clone, Serialize, Deserialize)]

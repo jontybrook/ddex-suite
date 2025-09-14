@@ -5,8 +5,8 @@
 //! DDEX schema. This ensures that proprietary extensions from music companies
 //! or custom implementations are preserved during parse → modify → build cycles.
 
-use serde::{Deserialize, Serialize};
 use indexmap::IndexMap;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Comprehensive XML fragment preservation for round-trip fidelity
@@ -14,37 +14,37 @@ use std::collections::HashMap;
 pub struct XmlFragment {
     /// The raw XML content as a string
     pub raw_content: String,
-    
+
     /// Element name (local name without namespace prefix)
     pub element_name: String,
-    
+
     /// Namespace URI for this element
     pub namespace_uri: Option<String>,
-    
+
     /// Namespace prefix used in the original XML
     pub namespace_prefix: Option<String>,
-    
+
     /// All namespace declarations on this element
     pub namespace_declarations: IndexMap<String, String>, // prefix -> uri
-    
+
     /// All attributes on this element (including namespaced ones)
     pub attributes: IndexMap<String, String>, // qualified name -> value
-    
+
     /// Child XML fragments (for nested unknown elements)
     pub children: Vec<XmlFragment>,
-    
+
     /// Text content (if this element contains only text)
     pub text_content: Option<String>,
-    
+
     /// Processing instructions within this fragment
     pub processing_instructions: Vec<ProcessingInstruction>,
-    
+
     /// Comments within this fragment
     pub comments: Vec<Comment>,
-    
+
     /// Position hint for canonical ordering
     pub position_hint: Option<usize>,
-    
+
     /// Whether this fragment should be preserved as-is (no canonicalization)
     pub preserve_formatting: bool,
 }
@@ -69,22 +69,22 @@ pub enum CommentPosition {
 pub struct Comment {
     /// The comment content (without <!-- --> markers)
     pub content: String,
-    
+
     /// Position relative to the parent element
     pub position: CommentPosition,
-    
+
     /// XPath-like location reference for precise positioning
     pub xpath: Option<String>,
-    
+
     /// Line number in original XML (for debugging/tooling)
     pub line_number: Option<usize>,
-    
+
     /// Column number in original XML (for debugging/tooling)
     pub column_number: Option<usize>,
-    
+
     /// Whether this comment should be preserved during canonicalization
     pub preserve_formatting: bool,
-    
+
     /// Processing hints for specific output formats
     pub processing_hints: IndexMap<String, String>,
 }
@@ -94,7 +94,7 @@ pub struct Comment {
 pub struct ProcessingInstruction {
     /// The target of the processing instruction
     pub target: String,
-    
+
     /// The data content of the processing instruction
     pub data: Option<String>,
 }
@@ -104,16 +104,16 @@ pub struct ProcessingInstruction {
 pub struct Extensions {
     /// Extensions organized by their location in the DDEX structure
     pub fragments: IndexMap<String, XmlFragment>,
-    
+
     /// Global namespace declarations that should be preserved at document level
     pub global_namespaces: IndexMap<String, String>, // prefix -> uri
-    
+
     /// Document-level processing instructions
     pub document_processing_instructions: Vec<ProcessingInstruction>,
-    
+
     /// Document-level comments
     pub document_comments: Vec<Comment>,
-    
+
     /// Legacy simple extensions (for backward compatibility)
     #[serde(flatten)]
     pub legacy_data: HashMap<String, serde_json::Value>,
@@ -137,7 +137,7 @@ impl XmlFragment {
             preserve_formatting: false,
         }
     }
-    
+
     /// Create a fragment with namespace information
     pub fn with_namespace(
         element_name: String,
@@ -160,7 +160,7 @@ impl XmlFragment {
             preserve_formatting: false,
         }
     }
-    
+
     /// Get the qualified name for this element
     pub fn qualified_name(&self) -> String {
         if let Some(ref prefix) = self.namespace_prefix {
@@ -169,53 +169,55 @@ impl XmlFragment {
             self.element_name.clone()
         }
     }
-    
+
     /// Check if this fragment is from a specific namespace
     pub fn is_from_namespace(&self, namespace_uri: &str) -> bool {
-        self.namespace_uri.as_ref().is_some_and(|uri| uri == namespace_uri)
+        self.namespace_uri
+            .as_ref()
+            .is_some_and(|uri| uri == namespace_uri)
     }
-    
+
     /// Add a child fragment
     pub fn add_child(&mut self, child: XmlFragment) {
         self.children.push(child);
     }
-    
+
     /// Add an attribute
     pub fn add_attribute(&mut self, name: String, value: String) {
         self.attributes.insert(name, value);
     }
-    
+
     /// Add a namespace declaration
     pub fn add_namespace_declaration(&mut self, prefix: String, uri: String) {
         self.namespace_declarations.insert(prefix, uri);
     }
-    
+
     /// Set position hint for canonical ordering
     pub fn set_position_hint(&mut self, position: usize) {
         self.position_hint = Some(position);
     }
-    
+
     /// Mark this fragment to preserve original formatting
     pub fn preserve_formatting(&mut self) {
         self.preserve_formatting = true;
     }
-    
+
     /// Get the canonical XML representation with proper formatting
     pub fn to_canonical_xml(&self, indent_level: usize) -> String {
         if self.preserve_formatting {
             return self.raw_content.clone();
         }
-        
+
         let indent = "  ".repeat(indent_level);
         let mut xml = String::new();
-        
+
         // Opening tag
         xml.push_str(&format!("{}<{}", indent, self.qualified_name()));
-        
+
         // Namespace declarations (sorted for determinism)
         let mut sorted_ns: Vec<_> = self.namespace_declarations.iter().collect();
         sorted_ns.sort_by_key(|(prefix, _)| prefix.as_str());
-        
+
         for (prefix, uri) in sorted_ns {
             if prefix.is_empty() {
                 xml.push_str(&format!(" xmlns=\"{}\"", uri));
@@ -223,27 +225,34 @@ impl XmlFragment {
                 xml.push_str(&format!(" xmlns:{}=\"{}\"", prefix, uri));
             }
         }
-        
+
         // Attributes (sorted for determinism)
         let mut sorted_attrs: Vec<_> = self.attributes.iter().collect();
         sorted_attrs.sort_by_key(|(name, _)| name.as_str());
-        
+
         for (name, value) in sorted_attrs {
-            xml.push_str(&format!(" {}=\"{}\"", name, html_escape::encode_double_quoted_attribute(value)));
+            xml.push_str(&format!(
+                " {}=\"{}\"",
+                name,
+                html_escape::encode_double_quoted_attribute(value)
+            ));
         }
-        
+
         if let Some(ref text) = self.text_content {
             // Element with text content
             xml.push('>');
             xml.push_str(&html_escape::encode_text(text));
             xml.push_str(&format!("</{}>", self.qualified_name()));
-        } else if self.children.is_empty() && self.processing_instructions.is_empty() && self.comments.is_empty() {
+        } else if self.children.is_empty()
+            && self.processing_instructions.is_empty()
+            && self.comments.is_empty()
+        {
             // Self-closing element
             xml.push_str("/>");
         } else {
             // Element with children
             xml.push_str(">\n");
-            
+
             // Processing instructions
             for pi in &self.processing_instructions {
                 xml.push_str(&format!("{}  <?{}", indent, pi.target));
@@ -253,26 +262,28 @@ impl XmlFragment {
                 }
                 xml.push_str("?>\n");
             }
-            
+
             // Comments
             for comment in &self.comments {
                 let comment_indent = match comment.position {
                     CommentPosition::Before | CommentPosition::After => indent.clone(),
-                    CommentPosition::FirstChild | CommentPosition::LastChild => format!("{}  ", indent),
+                    CommentPosition::FirstChild | CommentPosition::LastChild => {
+                        format!("{}  ", indent)
+                    }
                     CommentPosition::Inline => String::new(),
                 };
                 xml.push_str(&format!("{}{}\n", comment_indent, comment.to_xml()));
             }
-            
+
             // Child elements
             for child in &self.children {
                 xml.push_str(&child.to_canonical_xml(indent_level + 1));
                 xml.push('\n');
             }
-            
+
             xml.push_str(&format!("{}</{}>", indent, self.qualified_name()));
         }
-        
+
         xml
     }
 }
@@ -290,14 +301,14 @@ impl Comment {
             processing_hints: IndexMap::new(),
         }
     }
-    
+
     /// Create a comment with location metadata
     pub fn with_location(
-        content: String, 
-        position: CommentPosition, 
+        content: String,
+        position: CommentPosition,
         xpath: Option<String>,
         line_number: Option<usize>,
-        column_number: Option<usize>
+        column_number: Option<usize>,
     ) -> Self {
         Self {
             content,
@@ -309,46 +320,47 @@ impl Comment {
             processing_hints: IndexMap::new(),
         }
     }
-    
+
     /// Create a comment for document-level usage
     pub fn document_comment(content: String) -> Self {
         Self::new(content, CommentPosition::Before)
     }
-    
+
     /// Set preservation of original formatting
     pub fn preserve_formatting(mut self) -> Self {
         self.preserve_formatting = true;
         self
     }
-    
+
     /// Add a processing hint
     pub fn with_hint(mut self, key: String, value: String) -> Self {
         self.processing_hints.insert(key, value);
         self
     }
-    
+
     /// Get canonical comment content with proper whitespace normalization
     pub fn canonical_content(&self) -> String {
         if self.preserve_formatting {
             return self.content.clone();
         }
-        
+
         // Normalize whitespace for canonical output
         self.content.trim().to_string()
     }
-    
+
     /// Format as XML comment with proper escaping
     pub fn to_xml(&self) -> String {
         let content = if self.preserve_formatting {
             self.content.clone()
         } else {
             // Normalize whitespace and ensure no double dashes
-            self.content.trim()
+            self.content
+                .trim()
                 .replace("--", "- -")
                 .replace("<!--", "&lt;!--")
                 .replace("-->", "--&gt;")
         };
-        
+
         format!("<!--{}-->", content)
     }
 }
@@ -371,17 +383,17 @@ impl Extensions {
             legacy_data: HashMap::new(),
         }
     }
-    
+
     /// Add an XML fragment at a specific location
     pub fn add_fragment(&mut self, location: String, fragment: XmlFragment) {
         self.fragments.insert(location, fragment);
     }
-    
+
     /// Get a fragment by location
     pub fn get_fragment(&self, location: &str) -> Option<&XmlFragment> {
         self.fragments.get(location)
     }
-    
+
     /// Get all fragments for a location pattern
     pub fn get_fragments_matching(&self, pattern: &str) -> Vec<(&String, &XmlFragment)> {
         self.fragments
@@ -389,73 +401,75 @@ impl Extensions {
             .filter(|(location, _)| location.starts_with(pattern))
             .collect()
     }
-    
+
     /// Add a global namespace declaration
     pub fn add_global_namespace(&mut self, prefix: String, uri: String) {
         self.global_namespaces.insert(prefix, uri);
     }
-    
+
     /// Add a document-level processing instruction
     pub fn add_document_processing_instruction(&mut self, pi: ProcessingInstruction) {
         self.document_processing_instructions.push(pi);
     }
-    
+
     /// Add a document-level comment
     pub fn add_document_comment(&mut self, comment: String) {
-        self.document_comments.push(Comment::document_comment(comment));
+        self.document_comments
+            .push(Comment::document_comment(comment));
     }
-    
+
     /// Add a structured document-level comment
     pub fn add_document_comment_structured(&mut self, comment: Comment) {
         self.document_comments.push(comment);
     }
-    
+
     /// Legacy method for backward compatibility
     pub fn insert(&mut self, key: String, value: serde_json::Value) {
         self.legacy_data.insert(key, value);
     }
-    
+
     /// Legacy method for backward compatibility
     pub fn get(&self, key: &str) -> Option<&serde_json::Value> {
         self.legacy_data.get(key)
     }
-    
+
     /// Check if there are any extensions
     pub fn is_empty(&self) -> bool {
-        self.fragments.is_empty() 
+        self.fragments.is_empty()
             && self.global_namespaces.is_empty()
             && self.document_processing_instructions.is_empty()
             && self.document_comments.is_empty()
             && self.legacy_data.is_empty()
     }
-    
+
     /// Get the total number of preserved extensions
     pub fn count(&self) -> usize {
-        self.fragments.len() 
+        self.fragments.len()
             + self.global_namespaces.len()
             + self.document_processing_instructions.len()
             + self.document_comments.len()
             + self.legacy_data.len()
     }
-    
+
     /// Merge another Extensions instance into this one
     pub fn merge(&mut self, other: Extensions) {
         for (location, fragment) in other.fragments {
             self.fragments.insert(location, fragment);
         }
-        
+
         for (prefix, uri) in other.global_namespaces {
             self.global_namespaces.insert(prefix, uri);
         }
-        
-        self.document_processing_instructions.extend(other.document_processing_instructions);
+
+        self.document_processing_instructions
+            .extend(other.document_processing_instructions);
         self.document_comments.extend(other.document_comments);
-        
+
         for (key, value) in other.legacy_data {
             self.legacy_data.insert(key, value);
         }
     }
-    
+
     /// Clear all extensions
     pub fn clear(&mut self) {
         self.fragments.clear();
@@ -469,7 +483,7 @@ impl Extensions {
 /// Helper functions for extension management
 pub mod utils {
     use super::*;
-    
+
     /// Generate a location key for an extension
     /// Format: "element_path/namespace_uri/element_name"
     pub fn generate_location_key(
@@ -483,7 +497,7 @@ pub mod utils {
             None => format!("{}/{}", path, element_name),
         }
     }
-    
+
     /// Check if a namespace URI is a known DDEX namespace
     pub fn is_ddex_namespace(namespace_uri: &str) -> bool {
         const DDEX_NAMESPACES: &[&str] = &[
@@ -493,30 +507,36 @@ pub mod utils {
             "http://ddex.net/xml/avs",
             "http://www.w3.org/2001/XMLSchema-instance",
         ];
-        
+
         DDEX_NAMESPACES.contains(&namespace_uri)
     }
-    
+
     /// Extract namespace prefix from a qualified name
     pub fn extract_namespace_prefix(qualified_name: &str) -> Option<&str> {
-        qualified_name.split(':').next().filter(|prefix| !prefix.is_empty())
+        qualified_name
+            .split(':')
+            .next()
+            .filter(|prefix| !prefix.is_empty())
     }
-    
+
     /// Extract local name from a qualified name
     pub fn extract_local_name(qualified_name: &str) -> &str {
-        qualified_name.split(':').next_back().unwrap_or(qualified_name)
+        qualified_name
+            .split(':')
+            .next_back()
+            .unwrap_or(qualified_name)
     }
-    
+
     /// Validate XML fragment content
     pub fn validate_xml_fragment(fragment: &XmlFragment) -> Result<(), String> {
         if fragment.element_name.is_empty() {
             return Err("Element name cannot be empty".to_string());
         }
-        
+
         if fragment.raw_content.is_empty() {
             return Err("Raw content cannot be empty".to_string());
         }
-        
+
         // Additional validation can be added here
         Ok(())
     }
@@ -525,19 +545,22 @@ pub mod utils {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_xml_fragment_creation() {
         let fragment = XmlFragment::new(
             "customElement".to_string(),
             "<customElement>content</customElement>".to_string(),
         );
-        
+
         assert_eq!(fragment.element_name, "customElement");
-        assert_eq!(fragment.raw_content, "<customElement>content</customElement>");
+        assert_eq!(
+            fragment.raw_content,
+            "<customElement>content</customElement>"
+        );
         assert_eq!(fragment.qualified_name(), "customElement");
     }
-    
+
     #[test]
     fn test_xml_fragment_with_namespace() {
         let fragment = XmlFragment::with_namespace(
@@ -546,40 +569,37 @@ mod tests {
             Some("custom".to_string()),
             "<custom:customElement>content</custom:customElement>".to_string(),
         );
-        
+
         assert_eq!(fragment.qualified_name(), "custom:customElement");
         assert!(fragment.is_from_namespace("http://example.com/custom"));
     }
-    
+
     #[test]
     fn test_extensions_container() {
         let mut extensions = Extensions::new();
         assert!(extensions.is_empty());
-        
-        let fragment = XmlFragment::new(
-            "test".to_string(),
-            "<test/>".to_string(),
-        );
-        
+
+        let fragment = XmlFragment::new("test".to_string(), "<test/>".to_string());
+
         extensions.add_fragment("message/test".to_string(), fragment);
         assert!(!extensions.is_empty());
         assert_eq!(extensions.count(), 1);
     }
-    
+
     #[test]
     fn test_canonical_xml_generation() {
         let mut fragment = XmlFragment::new(
             "customElement".to_string(),
             "<customElement attr=\"value\">text</customElement>".to_string(),
         );
-        
+
         fragment.add_attribute("attr".to_string(), "value".to_string());
         fragment.text_content = Some("text".to_string());
-        
+
         let xml = fragment.to_canonical_xml(0);
         assert!(xml.contains("<customElement attr=\"value\">text</customElement>"));
     }
-    
+
     #[test]
     fn test_location_key_generation() {
         let key = utils::generate_location_key(
@@ -587,10 +607,10 @@ mod tests {
             Some("http://example.com/ns"),
             "customElement",
         );
-        
+
         assert_eq!(key, "message/header/http://example.com/ns/customElement");
     }
-    
+
     #[test]
     fn test_ddex_namespace_detection() {
         assert!(utils::is_ddex_namespace("http://ddex.net/xml/ern/43"));

@@ -1,9 +1,9 @@
 // core/src/models/graph/message.rs
 //! ERN Message types
 
+use super::{Deal, MessageHeader, Party, Release, Resource};
+use crate::models::{versions::ERNVersion, AttributeMap, Comment, Extensions};
 use serde::{Deserialize, Serialize};
-use crate::models::{Extensions, Comment, AttributeMap, versions::ERNVersion};
-use super::{MessageHeader, Party, Resource, Release, Deal};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ERNMessage {

@@ -2,9 +2,9 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ERNVersion {
-    V3_8_2,  // Changed from ERN382
-    V4_2,    // Changed from ERN42
-    V4_3,    // Changed from ERN43
+    V3_8_2, // Changed from ERN382
+    V4_2,   // Changed from ERN42
+    V4_3,   // Changed from ERN43
 }
 
 impl ERNVersion {
@@ -15,7 +15,7 @@ impl ERNVersion {
             ERNVersion::V4_3 => "4.3",
         }
     }
-    
+
     pub fn namespace(&self) -> &'static str {
         match self {
             ERNVersion::V3_8_2 => "http://ddex.net/xml/ern/382",

@@ -1,21 +1,21 @@
 // core/src/models/versions/ern_42.rs
 //! ERN 4.2 specific model variations
 
-use serde::{Deserialize, Serialize};
-use crate::models::common::{LocalizedString, Identifier};
-use chrono::{DateTime, Utc};
 use super::common::ValidityPeriod42;
+use crate::models::common::{Identifier, LocalizedString};
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 /// MessageHeader for ERN 4.2
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MessageHeader42 {
     pub message_id: String,
-    pub message_thread_id: Option<String>,  // Optional in 4.2
+    pub message_thread_id: Option<String>, // Optional in 4.2
     pub message_type: MessageType42,
     pub message_sender: PartyDescriptor42,
     pub message_recipient: PartyDescriptor42,
     pub message_created_date_time: DateTime<Utc>,
-    pub message_audit_trail: Option<MessageAuditTrail42>,  // New in 4.2
+    pub message_audit_trail: Option<MessageAuditTrail42>, // New in 4.2
     pub message_control_type: Option<MessageControlType42>,
 }
 
@@ -35,9 +35,9 @@ pub enum MessageControlType42 {
 /// PartyDescriptor for ERN 4.2 (enhanced)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PartyDescriptor42 {
-    pub party_name: Vec<LocalizedString>,  // Array in 4.2
-    pub party_id: Vec<Identifier>,  // Array of typed identifiers
-    pub trading_name: Option<String>,  // New in 4.2
+    pub party_name: Vec<LocalizedString>, // Array in 4.2
+    pub party_id: Vec<Identifier>,        // Array of typed identifiers
+    pub trading_name: Option<String>,     // New in 4.2
 }
 
 /// MessageAuditTrail introduced in ERN 4.2
@@ -56,8 +56,8 @@ pub struct MessageAuditTrailEvent42 {
 /// DealTerms for ERN 4.2 (standard structure)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DealTerms42 {
-    pub deal_reference: Option<String>,  // New in 4.2
-    pub commercial_model_type: Vec<String>,  // Array in 4.2
+    pub deal_reference: Option<String>,     // New in 4.2
+    pub commercial_model_type: Vec<String>, // Array in 4.2
     pub use_type: Vec<String>,
     pub territory_code: Vec<TerritoryCode42>,
     pub distribution_channel: Vec<DistributionChannel42>,
@@ -88,7 +88,7 @@ pub struct PriceInformation42 {
 pub struct Price42 {
     pub amount: f64,
     pub currency_code: String,
-    pub price_tier: Option<String>,  // New in 4.2
+    pub price_tier: Option<String>, // New in 4.2
 }
 
 /// TechnicalInstantiation introduced in ERN 4.2

@@ -1,9 +1,9 @@
 // core/src/models/graph/deal.rs
 //! Deal types
 
-use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc};
 use crate::models::common::{Price, ValidityPeriod};
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Deal {

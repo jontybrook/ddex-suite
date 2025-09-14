@@ -1,6 +1,6 @@
 //! FFI type definitions for cross-language bindings
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// Location information for FFI errors
 #[derive(Debug, Clone, Serialize, Deserialize)]

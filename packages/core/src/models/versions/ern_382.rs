@@ -1,13 +1,13 @@
 // core/src/models/versions/ern_382.rs
 //! ERN 3.8.2 specific model variations
 
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 /// MessageHeader for ERN 3.8.2
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MessageHeader382 {
-    pub message_thread_id: String,  // Required in 3.8.2
+    pub message_thread_id: String, // Required in 3.8.2
     pub message_id: String,
     pub message_file_name: Option<String>,
     pub message_sender: PartyDescriptor382,
@@ -20,14 +20,14 @@ pub struct MessageHeader382 {
 /// PartyDescriptor for ERN 3.8.2 (simpler structure)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PartyDescriptor382 {
-    pub party_name: String,  // Single name, not array
-    pub party_id: Option<String>,  // Single ID, not array
+    pub party_name: String,       // Single name, not array
+    pub party_id: Option<String>, // Single ID, not array
 }
 
 /// DealTerms for ERN 3.8.2 (different structure)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DealTerms382 {
-    pub commercial_model_type: String,  // Single value in 3.8.2
+    pub commercial_model_type: String, // Single value in 3.8.2
     pub usage: Option<Usage382>,
     pub territory_code: Vec<String>,
     pub excluded_territory_code: Vec<String>,
@@ -66,8 +66,8 @@ pub struct ValidityPeriod382 {
 pub struct SoundRecording382 {
     pub resource_reference: String,
     pub resource_id: Vec<ProprietaryId382>,
-    pub title: Vec<String>,  // Not LocalizedString in 3.8.2
-    pub duration: Option<String>,  // ISO 8601 duration string
+    pub title: Vec<String>,       // Not LocalizedString in 3.8.2
+    pub duration: Option<String>, // ISO 8601 duration string
     pub creation_date: Option<String>,
     pub mastered_date: Option<String>,
 }

@@ -1,11 +1,14 @@
 // core/src/models/flat/message.rs
 //! Flattened message types
 
-use serde::{Deserialize, Serialize};
+use super::{ParsedDeal, ParsedRelease, ParsedResource};
+use crate::models::{
+    graph::{ERNMessage, Party},
+    Extensions,
+};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use super::{ParsedRelease, ParsedResource, ParsedDeal};
-use crate::models::{Extensions, graph::{Party, ERNMessage}};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ParsedERNMessage {
@@ -19,15 +22,15 @@ impl ParsedERNMessage {
     pub fn releases(&self) -> &[ParsedRelease] {
         &self.flat.releases
     }
-    
+
     pub fn resources(&self) -> &HashMap<String, ParsedResource> {
         &self.flat.resources
     }
-    
+
     pub fn deals(&self) -> &[ParsedDeal] {
         &self.flat.deals
     }
-    
+
     pub fn parties(&self) -> &HashMap<String, Party> {
         &self.flat.parties
     }

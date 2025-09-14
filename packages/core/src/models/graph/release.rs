@@ -1,10 +1,13 @@
 // core/src/models/graph/release.rs
 //! Release types
 
-use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc};
-use crate::models::{Extensions, Comment, AttributeMap, common::{Identifier, LocalizedString}};
 use super::Artist;
+use crate::models::{
+    common::{Identifier, LocalizedString},
+    AttributeMap, Comment, Extensions,
+};
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Release {

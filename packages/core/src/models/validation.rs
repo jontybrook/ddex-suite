@@ -1,5 +1,5 @@
 //! # Comprehensive Attribute Validation System
-//! 
+//!
 //! This module provides validation for XML attributes including:
 //! - Required attribute validation
 //! - Format validation (URIs, dates, enums, etc.)
@@ -8,14 +8,14 @@
 //! - Cross-attribute validation
 //! - Namespace-aware validation
 
-use crate::models::{AttributeMap, AttributeValue, QName, AttributeType};
+use crate::models::{AttributeMap, AttributeType, AttributeValue, QName};
+use chrono::{DateTime, NaiveDate, Utc};
 use indexmap::{IndexMap, IndexSet};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
-use chrono::{DateTime, Utc, NaiveDate};
 use url::Url;
-use regex::Regex;
 
 /// Type alias for custom validation functions
 type ValidationFunction = fn(&AttributeValue) -> Result<(), String>;
@@ -25,51 +25,42 @@ type ValidationFunction = fn(&AttributeValue) -> Result<(), String>;
 pub enum AttributeValidationError {
     #[error("Missing required attribute: {attribute}")]
     MissingRequired { attribute: QName },
-    
+
     #[error("Invalid format for attribute {attribute}: {reason}")]
     InvalidFormat { attribute: QName, reason: String },
-    
+
     #[error("Invalid enum value for attribute {attribute}: '{value}', expected one of: {allowed_values:?}")]
-    InvalidEnumValue { 
-        attribute: QName, 
-        value: String, 
-        allowed_values: Vec<String> 
+    InvalidEnumValue {
+        attribute: QName,
+        value: String,
+        allowed_values: Vec<String>,
     },
-    
+
     #[error("Value out of range for attribute {attribute}: {value}, expected {range}")]
-    ValueOutOfRange { 
-        attribute: QName, 
-        value: String, 
-        range: String 
+    ValueOutOfRange {
+        attribute: QName,
+        value: String,
+        range: String,
     },
-    
+
     #[error("Invalid type for attribute {attribute}: expected {expected}, got {actual}")]
-    InvalidType { 
-        attribute: QName, 
-        expected: AttributeType, 
-        actual: AttributeType 
+    InvalidType {
+        attribute: QName,
+        expected: AttributeType,
+        actual: AttributeType,
     },
-    
+
     #[error("Custom validation failed for attribute {attribute}: {rule}")]
-    CustomValidationFailed { 
-        attribute: QName, 
-        rule: String 
-    },
-    
+    CustomValidationFailed { attribute: QName, rule: String },
+
     #[error("Cross-attribute validation failed: {message}")]
     CrossAttributeValidationFailed { message: String },
-    
+
     #[error("Namespace validation failed for attribute {attribute}: {reason}")]
-    NamespaceValidationFailed { 
-        attribute: QName, 
-        reason: String 
-    },
-    
+    NamespaceValidationFailed { attribute: QName, reason: String },
+
     #[error("Policy violation for attribute {attribute}: {policy}")]
-    PolicyViolation { 
-        attribute: QName, 
-        policy: String 
-    },
+    PolicyViolation { attribute: QName, policy: String },
 }
 
 /// Validation result containing errors and warnings
@@ -88,16 +79,16 @@ impl ValidationResult {
             is_valid: true,
         }
     }
-    
+
     pub fn add_error(&mut self, error: AttributeValidationError) {
         self.errors.push(error);
         self.is_valid = false;
     }
-    
+
     pub fn add_warning(&mut self, warning: String) {
         self.warnings.push(warning);
     }
-    
+
     pub fn merge(&mut self, other: ValidationResult) {
         self.errors.extend(other.errors);
         self.warnings.extend(other.warnings);
@@ -135,13 +126,16 @@ pub enum ValidationRule {
     /// Numeric range validation (using i64 for Eq compliance)
     Range { min: Option<i64>, max: Option<i64> },
     /// String length validation
-    Length { min: Option<usize>, max: Option<usize> },
+    Length {
+        min: Option<usize>,
+        max: Option<usize>,
+    },
     /// Custom validation function (by name)
     Custom(String),
     /// Cross-attribute dependency
-    Dependency { 
-        depends_on: QName, 
-        condition: DependencyCondition 
+    Dependency {
+        depends_on: QName,
+        condition: DependencyCondition,
     },
 }
 
@@ -233,26 +227,23 @@ impl AttributeValidator {
             custom_validators: HashMap::new(),
             regex_cache: HashMap::new(),
         };
-        
+
         validator.setup_ddex_rules();
         validator.setup_xml_schema_rules();
         validator.setup_custom_validators();
         validator
     }
-    
+
     /// Create validator with specific policy
     pub fn with_policy(policy: ValidationPolicy) -> Self {
         let mut validator = Self::new();
         validator.policy = policy;
         validator
     }
-    
+
     /// Add global validation rule for an attribute
     pub fn add_global_rule(&mut self, attribute: QName, rule: ValidationRule) {
-        self.global_rules
-            .entry(attribute)
-            .or_default()
-            .push(rule);
+        self.global_rules.entry(attribute).or_default().push(rule);
     }
 
     /// Add element-specific validation rule
@@ -264,7 +255,7 @@ impl AttributeValidator {
             .or_default()
             .push(rule);
     }
-    
+
     /// Add custom validation function
     pub fn add_custom_validator<F>(&mut self, name: String, _validator: F)
     where
@@ -274,20 +265,23 @@ impl AttributeValidator {
         // In a real implementation, we'd need a more complex system for dynamic functions
         match name.as_str() {
             "ddex_territory_code" => {
-                self.custom_validators.insert(name, Self::validate_territory_code);
-            },
+                self.custom_validators
+                    .insert(name, Self::validate_territory_code);
+            }
             "ddex_language_code" => {
-                self.custom_validators.insert(name, Self::validate_language_code);
-            },
+                self.custom_validators
+                    .insert(name, Self::validate_language_code);
+            }
             "ddex_currency_code" => {
-                self.custom_validators.insert(name, Self::validate_currency_code);
-            },
+                self.custom_validators
+                    .insert(name, Self::validate_currency_code);
+            }
             _ => {
                 // Store placeholder - in real implementation would store actual function
             }
         }
     }
-    
+
     /// Validate attributes for a specific element
     pub fn validate_element_attributes(
         &mut self,
@@ -295,13 +289,17 @@ impl AttributeValidator {
         attributes: &AttributeMap,
     ) -> ValidationResult {
         let mut result = ValidationResult::new();
-        
+
         // Get applicable rules
-        let element_rules = self.element_rules.get(element_name).cloned().unwrap_or_default();
-        
+        let element_rules = self
+            .element_rules
+            .get(element_name)
+            .cloned()
+            .unwrap_or_default();
+
         // Check required attributes first
         self.validate_required_attributes(&element_rules, attributes, &mut result);
-        
+
         // Validate each attribute
         for (attr_qname, attr_value) in attributes {
             self.validate_single_attribute(
@@ -312,20 +310,20 @@ impl AttributeValidator {
                 &mut result,
             );
         }
-        
+
         // Cross-attribute validation
         self.validate_cross_attributes(element_name, attributes, &mut result);
-        
+
         // Policy validation
         self.validate_policy_compliance(element_name, attributes, &mut result);
-        
+
         result
     }
-    
+
     /// Validate all attributes globally (no element context)
     pub fn validate_global_attributes(&mut self, attributes: &AttributeMap) -> ValidationResult {
         let mut result = ValidationResult::new();
-        
+
         for (attr_qname, attr_value) in attributes {
             if let Some(rules) = self.global_rules.get(attr_qname).cloned() {
                 for rule in &rules {
@@ -335,10 +333,10 @@ impl AttributeValidator {
                 }
             }
         }
-        
+
         result
     }
-    
+
     fn validate_required_attributes(
         &self,
         element_rules: &IndexMap<QName, Vec<ValidationRule>>,
@@ -353,7 +351,7 @@ impl AttributeValidator {
             }
         }
     }
-    
+
     fn validate_single_attribute(
         &mut self,
         _element_name: &QName,
@@ -370,7 +368,7 @@ impl AttributeValidator {
                 }
             }
         }
-        
+
         // Apply global rules
         if let Some(rules) = self.global_rules.get(attr_qname).cloned() {
             for rule in &rules {
@@ -379,13 +377,13 @@ impl AttributeValidator {
                 }
             }
         }
-        
+
         // Namespace validation
         if self.policy.validate_namespaces {
             self.validate_namespace_compliance(attr_qname, result);
         }
     }
-    
+
     fn apply_validation_rule(
         &mut self,
         attr_qname: &QName,
@@ -396,7 +394,7 @@ impl AttributeValidator {
             ValidationRule::Required => {
                 // This is handled separately in validate_required_attributes
                 Ok(())
-            },
+            }
             ValidationRule::Type(expected_type) => {
                 let actual_type = self.get_attribute_type(attr_value);
                 if actual_type != *expected_type {
@@ -408,7 +406,7 @@ impl AttributeValidator {
                 } else {
                     Ok(())
                 }
-            },
+            }
             ValidationRule::Enum(allowed_values) => {
                 let value_str = attr_value.to_string();
                 if !allowed_values.contains(&value_str) {
@@ -420,7 +418,7 @@ impl AttributeValidator {
                 } else {
                     Ok(())
                 }
-            },
+            }
             ValidationRule::Regex(pattern) => {
                 let regex = self.get_or_compile_regex(pattern)?;
                 let value_str = attr_value.to_string();
@@ -432,7 +430,7 @@ impl AttributeValidator {
                 } else {
                     Ok(())
                 }
-            },
+            }
             ValidationRule::Uri => {
                 let value_str = attr_value.to_string();
                 if Url::parse(&value_str).is_err() {
@@ -443,7 +441,7 @@ impl AttributeValidator {
                 } else {
                     Ok(())
                 }
-            },
+            }
             ValidationRule::Email => {
                 let value_str = attr_value.to_string();
                 let email_regex = self.get_or_compile_regex(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")?;
@@ -455,7 +453,7 @@ impl AttributeValidator {
                 } else {
                     Ok(())
                 }
-            },
+            }
             ValidationRule::Date => {
                 let value_str = attr_value.to_string();
                 if NaiveDate::parse_from_str(&value_str, "%Y-%m-%d").is_err() {
@@ -466,7 +464,7 @@ impl AttributeValidator {
                 } else {
                     Ok(())
                 }
-            },
+            }
             ValidationRule::DateTime => {
                 let value_str = attr_value.to_string();
                 if value_str.parse::<DateTime<Utc>>().is_err() {
@@ -477,13 +475,13 @@ impl AttributeValidator {
                 } else {
                     Ok(())
                 }
-            },
+            }
             ValidationRule::Range { min, max } => {
                 self.validate_numeric_range(attr_qname, attr_value, *min, *max)
-            },
+            }
             ValidationRule::Length { min, max } => {
                 self.validate_string_length(attr_qname, attr_value, *min, *max)
-            },
+            }
             ValidationRule::Custom(validator_name) => {
                 if let Some(validator) = self.custom_validators.get(validator_name) {
                     match validator(attr_value) {
@@ -499,14 +497,17 @@ impl AttributeValidator {
                         rule: format!("Unknown validator: {}", validator_name),
                     })
                 }
-            },
-            ValidationRule::Dependency { depends_on: _, condition: _ } => {
+            }
+            ValidationRule::Dependency {
+                depends_on: _,
+                condition: _,
+            } => {
                 // Dependencies are handled in validate_cross_attributes
                 Ok(())
-            },
+            }
         }
     }
-    
+
     fn validate_cross_attributes(
         &self,
         _element_name: &QName,
@@ -515,32 +516,37 @@ impl AttributeValidator {
     ) {
         // Collect all dependency rules
         let mut dependencies = Vec::new();
-        
+
         for rules in self.global_rules.values() {
             for rule in rules {
-                if let ValidationRule::Dependency { depends_on, condition } = rule {
+                if let ValidationRule::Dependency {
+                    depends_on,
+                    condition,
+                } = rule
+                {
                     dependencies.push((depends_on, condition));
                 }
             }
         }
-        
+
         // Apply dependency rules
         for (attr_qname, attr_rules) in &self.global_rules {
             for rule in attr_rules {
-                if let ValidationRule::Dependency { depends_on, condition } = rule {
-                    if let Err(error) = self.validate_dependency(
-                        attr_qname,
-                        depends_on,
-                        condition,
-                        attributes,
-                    ) {
+                if let ValidationRule::Dependency {
+                    depends_on,
+                    condition,
+                } = rule
+                {
+                    if let Err(error) =
+                        self.validate_dependency(attr_qname, depends_on, condition, attributes)
+                    {
                         result.add_error(error);
                     }
                 }
             }
         }
     }
-    
+
     fn validate_dependency(
         &self,
         attr_qname: &QName,
@@ -550,7 +556,7 @@ impl AttributeValidator {
     ) -> Result<(), AttributeValidationError> {
         let has_attr = attributes.contains_key(attr_qname);
         let has_dependency = attributes.contains_key(depends_on);
-        
+
         match condition {
             DependencyCondition::RequiredWhenExists => {
                 if has_dependency && !has_attr {
@@ -563,7 +569,7 @@ impl AttributeValidator {
                 } else {
                     Ok(())
                 }
-            },
+            }
             DependencyCondition::RequiredWhenEquals(value) => {
                 if let Some(dep_value) = attributes.get(depends_on) {
                     if dep_value.to_string() == *value && !has_attr {
@@ -579,7 +585,7 @@ impl AttributeValidator {
                 } else {
                     Ok(())
                 }
-            },
+            }
             DependencyCondition::ForbiddenWhenExists => {
                 if has_dependency && has_attr {
                     Err(AttributeValidationError::CrossAttributeValidationFailed {
@@ -591,10 +597,11 @@ impl AttributeValidator {
                 } else {
                     Ok(())
                 }
-            },
+            }
             DependencyCondition::MustMatch => {
-                if let (Some(attr_value), Some(dep_value)) = 
-                    (attributes.get(attr_qname), attributes.get(depends_on)) {
+                if let (Some(attr_value), Some(dep_value)) =
+                    (attributes.get(attr_qname), attributes.get(depends_on))
+                {
                     if attr_value.to_string() != dep_value.to_string() {
                         Err(AttributeValidationError::CrossAttributeValidationFailed {
                             message: format!(
@@ -608,10 +615,11 @@ impl AttributeValidator {
                 } else {
                     Ok(())
                 }
-            },
+            }
             DependencyCondition::MustDiffer => {
-                if let (Some(attr_value), Some(dep_value)) = 
-                    (attributes.get(attr_qname), attributes.get(depends_on)) {
+                if let (Some(attr_value), Some(dep_value)) =
+                    (attributes.get(attr_qname), attributes.get(depends_on))
+                {
                     if attr_value.to_string() == dep_value.to_string() {
                         Err(AttributeValidationError::CrossAttributeValidationFailed {
                             message: format!(
@@ -625,10 +633,10 @@ impl AttributeValidator {
                 } else {
                     Ok(())
                 }
-            },
+            }
         }
     }
-    
+
     fn validate_policy_compliance(
         &self,
         _element_name: &QName,
@@ -638,7 +646,8 @@ impl AttributeValidator {
         if !self.policy.allow_unknown_attributes {
             for attr_qname in attributes.keys() {
                 if !self.is_known_attribute(attr_qname) {
-                    let message = format!("Unknown attribute not allowed: {}", attr_qname.local_name);
+                    let message =
+                        format!("Unknown attribute not allowed: {}", attr_qname.local_name);
                     if self.policy.strict_mode {
                         result.add_error(AttributeValidationError::PolicyViolation {
                             attribute: attr_qname.clone(),
@@ -651,7 +660,7 @@ impl AttributeValidator {
             }
         }
     }
-    
+
     fn validate_namespace_compliance(&self, attr_qname: &QName, result: &mut ValidationResult) {
         if let Some(namespace_uri) = &attr_qname.namespace_uri {
             if let Some(policy) = self.policy.namespace_policies.get(namespace_uri) {
@@ -664,9 +673,9 @@ impl AttributeValidator {
             }
         }
     }
-    
+
     // Helper methods
-    
+
     fn get_attribute_type(&self, value: &AttributeValue) -> AttributeType {
         match value {
             AttributeValue::String(_) => AttributeType::String,
@@ -683,20 +692,19 @@ impl AttributeValidator {
             AttributeValue::Raw(_) => AttributeType::Raw,
         }
     }
-    
+
     fn get_or_compile_regex(&mut self, pattern: &str) -> Result<&Regex, AttributeValidationError> {
         if !self.regex_cache.contains_key(pattern) {
-            let regex = Regex::new(pattern).map_err(|e| {
-                AttributeValidationError::InvalidFormat {
+            let regex =
+                Regex::new(pattern).map_err(|e| AttributeValidationError::InvalidFormat {
                     attribute: QName::new("regex".to_string()),
                     reason: format!("Invalid regex pattern: {}", e),
-                }
-            })?;
+                })?;
             self.regex_cache.insert(pattern.to_string(), regex);
         }
         Ok(self.regex_cache.get(pattern).unwrap())
     }
-    
+
     fn validate_numeric_range(
         &self,
         attr_qname: &QName,
@@ -707,12 +715,14 @@ impl AttributeValidator {
         let numeric_value = match attr_value {
             AttributeValue::Integer(i) => *i,
             AttributeValue::Decimal(d) => *d as i64,
-            _ => return Err(AttributeValidationError::InvalidFormat {
-                attribute: attr_qname.clone(),
-                reason: "not a numeric value".to_string(),
-            }),
+            _ => {
+                return Err(AttributeValidationError::InvalidFormat {
+                    attribute: attr_qname.clone(),
+                    reason: "not a numeric value".to_string(),
+                })
+            }
         };
-        
+
         if let Some(min_val) = min {
             if numeric_value < min_val {
                 return Err(AttributeValidationError::ValueOutOfRange {
@@ -722,7 +732,7 @@ impl AttributeValidator {
                 });
             }
         }
-        
+
         if let Some(max_val) = max {
             if numeric_value > max_val {
                 return Err(AttributeValidationError::ValueOutOfRange {
@@ -732,10 +742,10 @@ impl AttributeValidator {
                 });
             }
         }
-        
+
         Ok(())
     }
-    
+
     fn validate_string_length(
         &self,
         attr_qname: &QName,
@@ -745,7 +755,7 @@ impl AttributeValidator {
     ) -> Result<(), AttributeValidationError> {
         let string_value = attr_value.to_string();
         let length = string_value.len();
-        
+
         if let Some(min_len) = min {
             if length < min_len {
                 return Err(AttributeValidationError::ValueOutOfRange {
@@ -755,7 +765,7 @@ impl AttributeValidator {
                 });
             }
         }
-        
+
         if let Some(max_len) = max {
             if length > max_len {
                 return Err(AttributeValidationError::ValueOutOfRange {
@@ -765,81 +775,95 @@ impl AttributeValidator {
                 });
             }
         }
-        
+
         Ok(())
     }
-    
+
     fn is_known_attribute(&self, attr_qname: &QName) -> bool {
-        self.global_rules.contains_key(attr_qname) ||
-            self.element_rules.values()
+        self.global_rules.contains_key(attr_qname)
+            || self
+                .element_rules
+                .values()
                 .any(|element_rules| element_rules.contains_key(attr_qname))
     }
-    
+
     // Setup methods for DDEX and XML Schema rules
-    
+
     fn setup_ddex_rules(&mut self) {
         // DDEX-specific validation rules
         self.add_global_rule(
             QName::new("TerritoryCode".to_string()),
             ValidationRule::Custom("ddex_territory_code".to_string()),
         );
-        
+
         self.add_global_rule(
             QName::new("LanguageAndScriptCode".to_string()),
             ValidationRule::Custom("ddex_language_code".to_string()),
         );
-        
+
         self.add_global_rule(
             QName::new("CurrencyCode".to_string()),
             ValidationRule::Custom("ddex_currency_code".to_string()),
         );
-        
+
         // Sequence number validation
         self.add_global_rule(
             QName::new("SequenceNumber".to_string()),
-            ValidationRule::Range { min: Some(1), max: Some(999999) },
+            ValidationRule::Range {
+                min: Some(1),
+                max: Some(999999),
+            },
         );
-        
+
         // DDEX identifier patterns
         self.add_global_rule(
             QName::new("ISRC".to_string()),
             ValidationRule::Regex(r"^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$".to_string()),
         );
-        
+
         self.add_global_rule(
             QName::new("ISWC".to_string()),
             ValidationRule::Regex(r"^T-[0-9]{9}-[0-9]$".to_string()),
         );
     }
-    
+
     fn setup_xml_schema_rules(&mut self) {
         // XML Schema instance attributes
         let xsi_ns = "http://www.w3.org/2001/XMLSchema-instance";
-        
+
         self.add_global_rule(
             QName::with_namespace("type".to_string(), xsi_ns.to_string()),
             ValidationRule::Type(AttributeType::Token),
         );
-        
+
         self.add_global_rule(
             QName::with_namespace("nil".to_string(), xsi_ns.to_string()),
             ValidationRule::Type(AttributeType::Boolean),
         );
-        
+
         self.add_global_rule(
             QName::with_namespace("schemaLocation".to_string(), xsi_ns.to_string()),
             ValidationRule::Type(AttributeType::Uri),
         );
     }
-    
+
     fn setup_custom_validators(&mut self) {
-        self.add_custom_validator("ddex_territory_code".to_string(), Self::validate_territory_code);
-        self.add_custom_validator("ddex_language_code".to_string(), Self::validate_language_code);
-        self.add_custom_validator("ddex_currency_code".to_string(), Self::validate_currency_code);
+        self.add_custom_validator(
+            "ddex_territory_code".to_string(),
+            Self::validate_territory_code,
+        );
+        self.add_custom_validator(
+            "ddex_language_code".to_string(),
+            Self::validate_language_code,
+        );
+        self.add_custom_validator(
+            "ddex_currency_code".to_string(),
+            Self::validate_currency_code,
+        );
     }
-    
+
     // Custom validation functions
-    
+
     fn validate_territory_code(value: &AttributeValue) -> Result<(), String> {
         let code = value.to_string();
         // ISO 3166-1 alpha-2 country codes (simplified validation)
@@ -849,7 +873,7 @@ impl AttributeValidator {
             Ok(())
         }
     }
-    
+
     fn validate_language_code(value: &AttributeValue) -> Result<(), String> {
         let code = value.to_string();
         // Simplified language code validation (ISO 639-1)
@@ -859,7 +883,7 @@ impl AttributeValidator {
             Ok(())
         }
     }
-    
+
     fn validate_currency_code(value: &AttributeValue) -> Result<(), String> {
         let code = value.to_string();
         // ISO 4217 currency codes
@@ -880,123 +904,147 @@ impl Default for AttributeValidator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_basic_validation() {
         let mut validator = AttributeValidator::new();
-        
+
         // Add required attribute rule
         let attr_name = QName::new("required_attr".to_string());
         validator.add_global_rule(attr_name.clone(), ValidationRule::Required);
-        
+
         let attributes = AttributeMap::new();
         let result = validator.validate_global_attributes(&attributes);
-        
+
         // Should not fail since we're not testing element-specific validation
         assert!(result.is_valid);
     }
-    
+
     #[test]
     fn test_enum_validation() {
         let mut validator = AttributeValidator::new();
-        
+
         let attr_name = QName::new("enum_attr".to_string());
         validator.add_global_rule(
             attr_name.clone(),
             ValidationRule::Enum(vec!["value1".to_string(), "value2".to_string()]),
         );
-        
+
         let mut attributes = AttributeMap::new();
-        attributes.insert(attr_name.clone(), AttributeValue::String("value1".to_string()));
-        
+        attributes.insert(
+            attr_name.clone(),
+            AttributeValue::String("value1".to_string()),
+        );
+
         let result = validator.validate_global_attributes(&attributes);
         assert!(result.is_valid);
-        
+
         // Test invalid enum value
-        attributes.insert(attr_name.clone(), AttributeValue::String("invalid".to_string()));
+        attributes.insert(
+            attr_name.clone(),
+            AttributeValue::String("invalid".to_string()),
+        );
         let result = validator.validate_global_attributes(&attributes);
         assert!(!result.is_valid);
         assert_eq!(result.errors.len(), 1);
     }
-    
+
     #[test]
     fn test_regex_validation() {
         let mut validator = AttributeValidator::new();
-        
+
         let attr_name = QName::new("pattern_attr".to_string());
         validator.add_global_rule(
             attr_name.clone(),
             ValidationRule::Regex(r"^\d{4}-\d{2}-\d{2}$".to_string()),
         );
-        
+
         let mut attributes = AttributeMap::new();
-        attributes.insert(attr_name.clone(), AttributeValue::String("2023-12-25".to_string()));
-        
+        attributes.insert(
+            attr_name.clone(),
+            AttributeValue::String("2023-12-25".to_string()),
+        );
+
         let result = validator.validate_global_attributes(&attributes);
         assert!(result.is_valid);
-        
+
         // Test invalid pattern
-        attributes.insert(attr_name.clone(), AttributeValue::String("invalid-date".to_string()));
+        attributes.insert(
+            attr_name.clone(),
+            AttributeValue::String("invalid-date".to_string()),
+        );
         let result = validator.validate_global_attributes(&attributes);
         assert!(!result.is_valid);
     }
-    
+
     #[test]
     fn test_uri_validation() {
         let mut validator = AttributeValidator::new();
-        
+
         let attr_name = QName::new("uri_attr".to_string());
         validator.add_global_rule(attr_name.clone(), ValidationRule::Uri);
-        
+
         let mut attributes = AttributeMap::new();
-        attributes.insert(attr_name.clone(), AttributeValue::String("https://example.com".to_string()));
-        
+        attributes.insert(
+            attr_name.clone(),
+            AttributeValue::String("https://example.com".to_string()),
+        );
+
         let result = validator.validate_global_attributes(&attributes);
         assert!(result.is_valid);
-        
+
         // Test invalid URI
-        attributes.insert(attr_name.clone(), AttributeValue::String("not-a-uri".to_string()));
+        attributes.insert(
+            attr_name.clone(),
+            AttributeValue::String("not-a-uri".to_string()),
+        );
         let result = validator.validate_global_attributes(&attributes);
         assert!(!result.is_valid);
     }
-    
+
     #[test]
     fn test_range_validation() {
         let mut validator = AttributeValidator::new();
-        
+
         let attr_name = QName::new("numeric_attr".to_string());
         validator.add_global_rule(
             attr_name.clone(),
-            ValidationRule::Range { min: Some(1), max: Some(100) },
+            ValidationRule::Range {
+                min: Some(1),
+                max: Some(100),
+            },
         );
-        
+
         let mut attributes = AttributeMap::new();
         attributes.insert(attr_name.clone(), AttributeValue::Integer(50));
-        
+
         let result = validator.validate_global_attributes(&attributes);
         assert!(result.is_valid);
-        
+
         // Test out of range
         attributes.insert(attr_name.clone(), AttributeValue::Integer(150));
         let result = validator.validate_global_attributes(&attributes);
         assert!(!result.is_valid);
     }
-    
+
     #[test]
     fn test_custom_validation() {
         let mut validator = AttributeValidator::new();
-        
+
         let attr_name = QName::new("TerritoryCode".to_string());
         // Rule already added in setup_ddex_rules
-        
+
         let mut attributes = AttributeMap::new();
         attributes.insert(attr_name.clone(), AttributeValue::String("US".to_string()));
-        
+
         let result = validator.validate_global_attributes(&attributes);
         assert!(result.is_valid);
-        
+
         // Test invalid territory code
-        attributes.insert(attr_name.clone(), AttributeValue::String("invalid".to_string()));
+        attributes.insert(
+            attr_name.clone(),
+            AttributeValue::String("invalid".to_string()),
+        );
         let result = validator.validate_global_attributes(&attributes);
         assert!(!result.is_valid);
     }

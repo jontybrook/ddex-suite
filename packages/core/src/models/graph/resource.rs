@@ -1,8 +1,11 @@
 // core/src/models/graph/resource.rs
 //! Resource types
 
+use crate::models::{
+    common::{Copyright, Identifier, LocalizedString},
+    Extensions,
+};
 use serde::{Deserialize, Serialize};
-use crate::models::{Extensions, common::{Identifier, Copyright, LocalizedString}};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Resource {

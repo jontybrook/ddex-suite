@@ -1,10 +1,13 @@
 // core/src/models/flat/release.rs
 //! Parsed release types
 
-use serde::{Deserialize, Serialize};
+use super::{ParsedImage, ParsedTrack, ParsedVideo, TerritoryInfo};
+use crate::models::{
+    common::{Copyright, LocalizedString},
+    Extensions,
+};
 use chrono::{DateTime, Utc};
-use crate::models::{Extensions, common::{LocalizedString, Copyright}};
-use super::{ParsedTrack, ParsedImage, ParsedVideo, TerritoryInfo};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ParsedRelease {

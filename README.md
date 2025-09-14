@@ -56,7 +56,7 @@ All packages published across npm, PyPI, and **crates.io**! ✅
 ✅ **crates.io Publishing** - **NEW!** All Rust crates published to the official registry  
 ✅ **Phase 4.2: Documentation** - [Docusaurus](https://ddex-suite.org) site in React  
 ✅ **Phase 4.3: Perfect Fidelity Engine** - Round-trip, deterministic output  
-✅ **Phase 4.3.5: Core Stabilization** - Stability and performance upgrades
+✅ **Phase 4.3.5: Core Stabilization** - Stability and performance upgrades  
 ✅ **Phase 4.4: Streaming Parser** - High-performance XML parser
 
 For detailed development progress and technical implementation details, see [blueprint.md](./blueprint.md).

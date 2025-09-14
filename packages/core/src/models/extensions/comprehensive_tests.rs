@@ -17,7 +17,10 @@ mod extension_tests {
         );
 
         assert_eq!(fragment.element_name, "CustomElement");
-        assert_eq!(fragment.namespace_uri, Some("http://example.com/custom".to_string()));
+        assert_eq!(
+            fragment.namespace_uri,
+            Some("http://example.com/custom".to_string())
+        );
         assert_eq!(fragment.namespace_prefix, Some("custom".to_string()));
         assert!(fragment.raw_content.contains("CustomElement"));
     }
@@ -36,12 +39,12 @@ mod extension_tests {
         fragment.text_content = Some("Hello World".to_string());
 
         let canonical = fragment.to_canonical_xml(2);
-        
+
         // Check that attributes are sorted
         assert!(canonical.contains(r#"id="123""#));
         assert!(canonical.contains(r#"name="test""#));
         assert!(canonical.contains("Hello World"));
-        
+
         // Check proper indentation (4 spaces = 2 levels * 2 spaces each)
         assert!(canonical.starts_with("    "));
     }
@@ -62,7 +65,8 @@ mod extension_tests {
 
         // Add document-level items
         extensions.add_document_comment("Test comment".to_string());
-        let pi = ProcessingInstruction::new("test-instruction".to_string(), Some("data".to_string()));
+        let pi =
+            ProcessingInstruction::new("test-instruction".to_string(), Some("data".to_string()));
         extensions.add_document_processing_instruction(pi);
 
         // Test retrieval
@@ -70,7 +74,7 @@ mod extension_tests {
         assert_eq!(extensions.global_namespaces.len(), 1);
         assert_eq!(extensions.document_comments.len(), 1);
         assert_eq!(extensions.document_processing_instructions.len(), 1);
-        
+
         // Test pattern matching
         let matches = extensions.get_fragments_matching("location1");
         assert_eq!(matches.len(), 1);
@@ -103,9 +107,15 @@ mod extension_tests {
 
     #[test]
     fn test_processing_instruction_creation() {
-        let pi = ProcessingInstruction::new("xml-stylesheet".to_string(), Some("type=\"text/xsl\" href=\"style.xsl\"".to_string()));
+        let pi = ProcessingInstruction::new(
+            "xml-stylesheet".to_string(),
+            Some("type=\"text/xsl\" href=\"style.xsl\"".to_string()),
+        );
         assert_eq!(pi.target, "xml-stylesheet");
-        assert_eq!(pi.data, Some("type=\"text/xsl\" href=\"style.xsl\"".to_string()));
+        assert_eq!(
+            pi.data,
+            Some("type=\"text/xsl\" href=\"style.xsl\"".to_string())
+        );
 
         let simple_pi = ProcessingInstruction::new("simple".to_string(), None);
         assert_eq!(simple_pi.target, "simple");
@@ -119,11 +129,14 @@ mod extension_tests {
         assert!(utils::is_ddex_namespace("http://ddex.net/xml/ern/382"));
         assert!(utils::is_ddex_namespace("http://ddex.net/xml/ern/42"));
         assert!(!utils::is_ddex_namespace("http://example.com/custom"));
-        assert!(!utils::is_ddex_namespace("http://spotify.com/ddex/extensions"));
+        assert!(!utils::is_ddex_namespace(
+            "http://spotify.com/ddex/extensions"
+        ));
 
         // Test location key generation
         let path = vec!["message", "header", "customElement"];
-        let location = utils::generate_location_key(&path, Some("http://custom.com"), "customElement");
+        let location =
+            utils::generate_location_key(&path, Some("http://custom.com"), "customElement");
         assert!(location.contains("message/header/customElement"));
         assert!(location.contains("http://custom.com"));
     }
@@ -142,16 +155,19 @@ mod extension_tests {
     #[test]
     fn test_extension_statistics() {
         let mut extensions = Extensions::new();
-        
+
         // Add various types of extensions
         let fragment1 = XmlFragment::new("element1".to_string(), "content1".to_string());
         let fragment2 = XmlFragment::new("element2".to_string(), "content2".to_string());
-        
+
         extensions.add_fragment("location1".to_string(), fragment1);
         extensions.add_fragment("location2".to_string(), fragment2);
         extensions.add_global_namespace("custom".to_string(), "http://custom.com".to_string());
         extensions.add_document_comment("Test comment".to_string());
-        extensions.add_document_processing_instruction(ProcessingInstruction::new("test".to_string(), None));
+        extensions.add_document_processing_instruction(ProcessingInstruction::new(
+            "test".to_string(),
+            None,
+        ));
 
         assert_eq!(extensions.fragments.len(), 2);
         assert_eq!(extensions.global_namespaces.len(), 1);
@@ -171,7 +187,7 @@ mod extension_tests {
         assert!(test_xml.contains("spotify:AudioFeatures"));
     }
 
-    #[test] 
+    #[test]
     fn test_youtube_extensions_detection() {
         let test_xml = DDEX_WITH_YOUTUBE_EXTENSIONS;
         assert!(test_xml.contains("xmlns:ytm"));
@@ -227,9 +243,17 @@ mod extension_tests {
     #[test]
     fn test_xml_fragment_with_comments_and_processing_instructions() {
         let mut fragment = XmlFragment::new("test".to_string(), String::new());
-        
-        fragment.comments.push(Comment::new("This is a comment".to_string(), CommentPosition::Before));
-        fragment.processing_instructions.push(ProcessingInstruction::new("test".to_string(), Some("data".to_string())));
+
+        fragment.comments.push(Comment::new(
+            "This is a comment".to_string(),
+            CommentPosition::Before,
+        ));
+        fragment
+            .processing_instructions
+            .push(ProcessingInstruction::new(
+                "test".to_string(),
+                Some("data".to_string()),
+            ));
 
         assert_eq!(fragment.comments.len(), 1);
         assert_eq!(fragment.processing_instructions.len(), 1);
@@ -255,8 +279,13 @@ mod extension_tests {
         fragment.add_attribute("alpha".to_string(), "first".to_string());
 
         // Add comments and processing instructions
-        fragment.comments.push(Comment::new("Element comment".to_string(), CommentPosition::Before));
-        fragment.processing_instructions.push(ProcessingInstruction::new("element-pi".to_string(), None));
+        fragment.comments.push(Comment::new(
+            "Element comment".to_string(),
+            CommentPosition::Before,
+        ));
+        fragment
+            .processing_instructions
+            .push(ProcessingInstruction::new("element-pi".to_string(), None));
 
         let canonical = fragment.to_canonical_xml(0);
 
@@ -277,7 +306,7 @@ mod extension_tests {
     #[test]
     fn test_extension_pattern_matching() {
         let mut extensions = Extensions::new();
-        
+
         let frag1 = XmlFragment::new("element1".to_string(), "content1".to_string());
         let frag2 = XmlFragment::new("element2".to_string(), "content2".to_string());
         let frag3 = XmlFragment::new("element3".to_string(), "content3".to_string());
@@ -299,13 +328,13 @@ mod extension_tests {
         assert!(message_matches.len() >= 1); // Implementation dependent
     }
 
-    #[test] 
+    #[test]
     fn test_html_escaping_in_xml_fragments() {
         let content_with_entities = r#"<test attr="value&amp;more">Content with &lt;tags&gt; and &quot;quotes&quot;</test>"#;
         let fragment = XmlFragment::new("test".to_string(), content_with_entities.to_string());
 
         let canonical = fragment.to_canonical_xml(0);
-        
+
         // The canonical XML should contain the original content since it preserves raw content
         // For this simple test, we'll just check that content is present
         assert!(canonical.contains("test"));
@@ -318,7 +347,7 @@ mod integration_tests {
     use super::*;
 
     // These tests will be expanded when we integrate with the actual parser/builder
-    
+
     #[test]
     fn test_extension_data_structures() {
         // Test that all our test data is well-formed XML
@@ -343,14 +372,14 @@ mod integration_tests {
     #[test]
     fn test_extension_namespace_variety() {
         let complex_xml = DDEX_WITH_MULTIPLE_EXTENSIONS;
-        
+
         // Count unique namespace declarations
         let xmlns_count = complex_xml.matches("xmlns:").count();
         assert!(xmlns_count >= 4); // Should have ern, analytics, blockchain, ml at minimum
 
         // Test that different extension types are present
         assert!(complex_xml.contains("analytics:"));
-        assert!(complex_xml.contains("blockchain:"));  
+        assert!(complex_xml.contains("blockchain:"));
         assert!(complex_xml.contains("ml:"));
     }
 
@@ -358,7 +387,7 @@ mod integration_tests {
     fn test_processing_instruction_parsing() {
         let youtube_xml = DDEX_WITH_YOUTUBE_EXTENSIONS;
         assert!(youtube_xml.contains("<?youtube-processing-instruction"));
-        
+
         let multi_xml = DDEX_WITH_MULTIPLE_EXTENSIONS;
         assert!(multi_xml.contains("<?custom-processing"));
     }
@@ -367,10 +396,10 @@ mod integration_tests {
     fn test_comment_preservation() {
         let apple_xml = DDEX_WITH_APPLE_EXTENSIONS;
         assert!(apple_xml.contains("<!--Apple Music Content Ingestion"));
-        
+
         let spotify_xml = DDEX_WITH_SPOTIFY_EXTENSIONS;
         assert!(spotify_xml.contains("<!--Generated by Spotify"));
-        
+
         let multi_xml = DDEX_WITH_MULTIPLE_EXTENSIONS;
         assert!(multi_xml.contains("<!--Multi-platform distribution"));
     }

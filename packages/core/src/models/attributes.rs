@@ -1,12 +1,12 @@
 //! # XML Attribute Preservation System
-//! 
+//!
 //! This module provides comprehensive support for preserving all XML attributes,
 //! including unknown/proprietary ones, with proper namespace handling and
 //! deterministic ordering for canonical XML generation.
 
 use indexmap::{IndexMap, IndexSet};
-use serde::{Serialize, Deserialize, Serializer, Deserializer};
-use std::fmt::{self, Display, Debug};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::fmt::{self, Debug, Display};
 use std::str::FromStr;
 use thiserror::Error;
 
@@ -42,9 +42,9 @@ impl QName {
 
     /// Create a new QName with prefix and namespace URI
     pub fn with_prefix_and_namespace(
-        local_name: impl Into<String>, 
-        prefix: impl Into<String>, 
-        namespace_uri: impl Into<String>
+        local_name: impl Into<String>,
+        prefix: impl Into<String>,
+        namespace_uri: impl Into<String>,
     ) -> Self {
         Self {
             local_name: local_name.into(),
@@ -63,23 +63,27 @@ impl QName {
 
     /// Check if this is a namespace declaration attribute
     pub fn is_namespace_declaration(&self) -> bool {
-        self.local_name == "xmlns" || 
-        (self.prefix.as_deref() == Some("xmlns"))
+        self.local_name == "xmlns" || (self.prefix.as_deref() == Some("xmlns"))
     }
 
     /// Check if this is a standard DDEX attribute
     pub fn is_ddex_standard(&self) -> bool {
+        // Always check namespace declarations first
+        if self.is_namespace_declaration() {
+            return true;
+        }
+
         match &self.namespace_uri {
-            Some(uri) => {
-                uri.contains("ddex.net") || 
-                uri.contains("w3.org/2001/XMLSchema") ||
-                self.is_namespace_declaration()
-            },
+            Some(uri) => uri.contains("ddex.net") || uri.contains("w3.org/2001/XMLSchema"),
             None => {
                 // Common DDEX attributes without namespace
-                matches!(self.local_name.as_str(), 
-                    "LanguageAndScriptCode" | "ApplicableTerritoryCode" | 
-                    "IsDefault" | "SequenceNumber" | "Namespace"
+                matches!(
+                    self.local_name.as_str(),
+                    "LanguageAndScriptCode"
+                        | "ApplicableTerritoryCode"
+                        | "IsDefault"
+                        | "SequenceNumber"
+                        | "Namespace"
                 )
             }
         }
@@ -207,7 +211,7 @@ impl AttributeValue {
                 // Convert to ISO 8601 duration format
                 let secs = dur.num_seconds();
                 format!("PT{}S", secs)
-            },
+            }
             AttributeValue::Uri(uri) => uri.clone(),
             AttributeValue::Language(lang) => lang.clone(),
             AttributeValue::Token(token) => token.clone(),
@@ -220,33 +224,25 @@ impl AttributeValue {
     pub fn parse_with_type(value: &str, type_hint: AttributeType) -> Result<Self, AttributeError> {
         match type_hint {
             AttributeType::String => Ok(AttributeValue::String(value.to_string())),
-            AttributeType::Boolean => {
-                match value.to_lowercase().as_str() {
-                    "true" | "1" => Ok(AttributeValue::Boolean(true)),
-                    "false" | "0" => Ok(AttributeValue::Boolean(false)),
-                    _ => Err(AttributeError::InvalidBoolean(value.to_string())),
-                }
+            AttributeType::Boolean => match value.to_lowercase().as_str() {
+                "true" | "1" => Ok(AttributeValue::Boolean(true)),
+                "false" | "0" => Ok(AttributeValue::Boolean(false)),
+                _ => Err(AttributeError::InvalidBoolean(value.to_string())),
             },
-            AttributeType::Integer => {
-                value.parse::<i64>()
-                    .map(AttributeValue::Integer)
-                    .map_err(|_| AttributeError::InvalidInteger(value.to_string()))
-            },
-            AttributeType::Decimal => {
-                value.parse::<f64>()
-                    .map(AttributeValue::Decimal)
-                    .map_err(|_| AttributeError::InvalidDecimal(value.to_string()))
-            },
-            AttributeType::Date => {
-                chrono::NaiveDate::parse_from_str(value, "%Y-%m-%d")
-                    .map(AttributeValue::Date)
-                    .map_err(|_| AttributeError::InvalidDate(value.to_string()))
-            },
-            AttributeType::DateTime => {
-                chrono::DateTime::parse_from_rfc3339(value)
-                    .map(|dt| AttributeValue::DateTime(dt.with_timezone(&chrono::Utc)))
-                    .map_err(|_| AttributeError::InvalidDateTime(value.to_string()))
-            },
+            AttributeType::Integer => value
+                .parse::<i64>()
+                .map(AttributeValue::Integer)
+                .map_err(|_| AttributeError::InvalidInteger(value.to_string())),
+            AttributeType::Decimal => value
+                .parse::<f64>()
+                .map(AttributeValue::Decimal)
+                .map_err(|_| AttributeError::InvalidDecimal(value.to_string())),
+            AttributeType::Date => chrono::NaiveDate::parse_from_str(value, "%Y-%m-%d")
+                .map(AttributeValue::Date)
+                .map_err(|_| AttributeError::InvalidDate(value.to_string())),
+            AttributeType::DateTime => chrono::DateTime::parse_from_rfc3339(value)
+                .map(|dt| AttributeValue::DateTime(dt.with_timezone(&chrono::Utc)))
+                .map_err(|_| AttributeError::InvalidDateTime(value.to_string())),
             AttributeType::Uri => Ok(AttributeValue::Uri(value.to_string())),
             AttributeType::Language => Ok(AttributeValue::Language(value.to_string())),
             AttributeType::Token => Ok(AttributeValue::Token(value.trim().to_string())),
@@ -266,7 +262,7 @@ impl AttributeValue {
                         allowed: allowed_values.clone(),
                     })
                 }
-            },
+            }
             AttributeValue::Uri(uri) => {
                 // Basic URI validation
                 if uri.contains(' ') || uri.is_empty() {
@@ -274,7 +270,7 @@ impl AttributeValue {
                 } else {
                     Ok(())
                 }
-            },
+            }
             AttributeValue::Language(lang) => {
                 // Basic language code validation (simplified)
                 if lang.len() < 2 || lang.len() > 8 {
@@ -282,7 +278,7 @@ impl AttributeValue {
                 } else {
                     Ok(())
                 }
-            },
+            }
             _ => Ok(()),
         }
     }
@@ -377,7 +373,11 @@ impl AttributeMap {
     }
 
     /// Insert an attribute by string name
-    pub fn insert_str(&mut self, name: &str, value: impl Into<AttributeValue>) -> Option<AttributeValue> {
+    pub fn insert_str(
+        &mut self,
+        name: &str,
+        value: impl Into<AttributeValue>,
+    ) -> Option<AttributeValue> {
         let qname = QName::from_str(name).unwrap_or_else(|_| QName::new(name));
         self.insert(qname, value.into())
     }
@@ -437,7 +437,8 @@ impl AttributeMap {
 
     /// Get all DDEX standard attributes
     pub fn standard_attributes(&self) -> IndexMap<QName, AttributeValue> {
-        self.attributes.iter()
+        self.attributes
+            .iter()
             .filter(|(qname, _)| qname.is_ddex_standard())
             .map(|(qname, value)| (qname.clone(), value.clone()))
             .collect()
@@ -445,7 +446,8 @@ impl AttributeMap {
 
     /// Get all extension/custom attributes
     pub fn extension_attributes(&self) -> IndexMap<QName, AttributeValue> {
-        self.attributes.iter()
+        self.attributes
+            .iter()
             .filter(|(qname, _)| !qname.is_ddex_standard())
             .map(|(qname, value)| (qname.clone(), value.clone()))
             .collect()
@@ -453,7 +455,8 @@ impl AttributeMap {
 
     /// Get all namespace declaration attributes
     pub fn namespace_declarations(&self) -> IndexMap<QName, AttributeValue> {
-        self.attributes.iter()
+        self.attributes
+            .iter()
             .filter(|(qname, _)| qname.is_namespace_declaration())
             .map(|(qname, value)| (qname.clone(), value.clone()))
             .collect()
@@ -467,11 +470,11 @@ impl AttributeMap {
                     AttributeMergeStrategy::PreferThis => continue,
                     AttributeMergeStrategy::PreferOther => {
                         self.attributes.insert(qname.clone(), value.clone());
-                    },
+                    }
                     AttributeMergeStrategy::Error => {
                         // In a real implementation, this would return a Result
                         eprintln!("Attribute conflict: {}", qname);
-                    },
+                    }
                 }
             } else {
                 self.attributes.insert(qname.clone(), value.clone());
@@ -492,7 +495,8 @@ impl AttributeMap {
 
     /// Convert to a simple string map for backwards compatibility
     pub fn to_string_map(&self) -> IndexMap<String, String> {
-        self.attributes.iter()
+        self.attributes
+            .iter()
             .map(|(qname, value)| (qname.to_xml_name(), value.to_xml_value()))
             .collect()
     }
@@ -506,17 +510,17 @@ impl AttributeMap {
         }
         Self { attributes }
     }
-    
+
     /// Get iterator over attribute keys
     pub fn keys(&self) -> indexmap::map::Keys<'_, QName, AttributeValue> {
         self.attributes.keys()
     }
-    
+
     /// Get all attributes in canonical order (namespace declarations first, then alphabetical)
     pub fn to_canonical_ordered(&self) -> IndexMap<QName, AttributeValue> {
         let mut namespace_attrs = IndexMap::new();
         let mut regular_attrs = IndexMap::new();
-        
+
         // Separate namespace declarations from regular attributes
         for (qname, value) in &self.attributes {
             if qname.is_namespace_declaration() {
@@ -525,19 +529,18 @@ impl AttributeMap {
                 regular_attrs.insert(qname.clone(), value.clone());
             }
         }
-        
+
         // Sort both collections by canonical sort key
         namespace_attrs.sort_by(|a, _, b, _| a.canonical_sort_key().cmp(&b.canonical_sort_key()));
         regular_attrs.sort_by(|a, _, b, _| a.canonical_sort_key().cmp(&b.canonical_sort_key()));
-        
+
         // Combine namespace declarations first, then regular attributes
         let mut result = IndexMap::new();
         result.extend(namespace_attrs);
         result.extend(regular_attrs);
-        
+
         result
     }
-    
 }
 
 impl Default for AttributeMap {
@@ -605,11 +608,18 @@ impl AttributeInheritance {
         // Common inheritable attributes
         inheritable.insert(QName::new("LanguageAndScriptCode"));
         inheritable.insert(QName::new("ApplicableTerritoryCode"));
-        inheritable.insert(QName::with_namespace("lang", "http://www.w3.org/XML/1998/namespace"));
+        inheritable.insert(QName::with_namespace(
+            "lang",
+            "http://www.w3.org/XML/1998/namespace",
+        ));
 
         // Non-inheritable attributes (element-specific)
         non_inheritable.insert(QName::new("SequenceNumber"));
-        non_inheritable.insert(QName::with_prefix_and_namespace("xsi", "type", "http://www.w3.org/2001/XMLSchema-instance"));
+        non_inheritable.insert(QName::with_prefix_and_namespace(
+            "xsi",
+            "type",
+            "http://www.w3.org/2001/XMLSchema-instance",
+        ));
 
         Self {
             inheritable_attributes: inheritable,
@@ -650,37 +660,34 @@ impl Default for AttributeInheritance {
 pub enum AttributeError {
     #[error("Invalid boolean value: {0}")]
     InvalidBoolean(String),
-    
+
     #[error("Invalid integer value: {0}")]
     InvalidInteger(String),
-    
+
     #[error("Invalid decimal value: {0}")]
     InvalidDecimal(String),
-    
+
     #[error("Invalid date value: {0}")]
     InvalidDate(String),
-    
+
     #[error("Invalid datetime value: {0}")]
     InvalidDateTime(String),
-    
+
     #[error("Invalid URI value: {0}")]
     InvalidUri(String),
-    
+
     #[error("Invalid language code: {0}")]
     InvalidLanguage(String),
-    
+
     #[error("Invalid enum value '{value}', allowed values: {}", allowed.join(", "))]
-    InvalidEnumValue {
-        value: String,
-        allowed: Vec<String>,
-    },
-    
+    InvalidEnumValue { value: String, allowed: Vec<String> },
+
     #[error("Missing required attribute: {0}")]
     MissingRequired(String),
-    
+
     #[error("Conflicting attribute values for: {0}")]
     ConflictingValues(String),
-    
+
     #[error("Invalid QName format: {0}")]
     InvalidQName(String),
 }
@@ -697,9 +704,13 @@ mod tests {
         assert_eq!(qname.prefix, None);
 
         let qname_ns = QName::with_namespace("title", "http://ddex.net/xml/ern/43");
-        assert_eq!(qname_ns.namespace_uri, Some("http://ddex.net/xml/ern/43".to_string()));
+        assert_eq!(
+            qname_ns.namespace_uri,
+            Some("http://ddex.net/xml/ern/43".to_string())
+        );
 
-        let qname_prefix = QName::with_prefix_and_namespace("title", "ern", "http://ddex.net/xml/ern/43");
+        let qname_prefix =
+            QName::with_prefix_and_namespace("title", "ern", "http://ddex.net/xml/ern/43");
         assert_eq!(qname_prefix.prefix, Some("ern".to_string()));
         assert_eq!(qname_prefix.to_xml_name(), "ern:title");
     }
@@ -752,7 +763,7 @@ mod tests {
     #[test]
     fn test_attribute_map() {
         let mut map = AttributeMap::new();
-        
+
         map.insert_str("title", "Test Title");
         map.insert_str("ern:version", "4.3");
         map.insert_str("xmlns:ern", "http://ddex.net/xml/ern/43");
@@ -763,7 +774,7 @@ mod tests {
         // Test canonical ordering
         let canonical: Vec<_> = map.iter_canonical().collect();
         assert_eq!(canonical.len(), 3);
-        
+
         // xmlns attributes should come first
         let first_attr = &canonical[0];
         assert!(first_attr.0.is_namespace_declaration());
@@ -772,10 +783,10 @@ mod tests {
     #[test]
     fn test_attribute_inheritance() {
         let inheritance = AttributeInheritance::new();
-        
+
         let lang_attr = QName::new("LanguageAndScriptCode");
         let seq_attr = QName::new("SequenceNumber");
-        
+
         assert!(inheritance.should_inherit(&lang_attr));
         assert!(!inheritance.should_inherit(&seq_attr));
     }
@@ -783,14 +794,14 @@ mod tests {
     #[test]
     fn test_attribute_validation() {
         let mut enum_val = AttributeValue::Enum(
-            "invalid".to_string(), 
-            vec!["valid1".to_string(), "valid2".to_string()]
+            "invalid".to_string(),
+            vec!["valid1".to_string(), "valid2".to_string()],
         );
         assert!(enum_val.validate().is_err());
 
         enum_val = AttributeValue::Enum(
-            "valid1".to_string(), 
-            vec!["valid1".to_string(), "valid2".to_string()]
+            "valid1".to_string(),
+            vec!["valid1".to_string(), "valid2".to_string()],
         );
         assert!(enum_val.validate().is_ok());
     }
@@ -824,6 +835,9 @@ mod tests {
         // Test round-trip through string map
         let restored = AttributeMap::from_string_map(string_map);
         assert_eq!(restored.len(), 2);
-        assert_eq!(restored.get_str("title").unwrap().to_xml_value(), "Test Title");
+        assert_eq!(
+            restored.get_str("title").unwrap().to_xml_value(),
+            "Test Title"
+        );
     }
 }

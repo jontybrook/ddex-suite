@@ -6,10 +6,10 @@ use serde::{Deserialize, Serialize};
 pub mod version;
 pub use version::ERNVersion;
 
+pub mod common;
 pub mod ern_382;
 pub mod ern_42;
 pub mod ern_43;
-pub mod common;
 
 /// Version-specific differences in DDEX ERN
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,15 +35,15 @@ pub struct VersionFeatures {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DealTermsVersion {
-    Legacy,     // 3.8.2 style
-    Standard,   // 4.2 style
-    Extended,   // 4.3 style with additional fields
+    Legacy,   // 3.8.2 style
+    Standard, // 4.2 style
+    Extended, // 4.3 style with additional fields
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PartyDescriptorVersion {
-    Basic,      // 3.8.2
-    Enhanced,   // 4.2+
+    Basic,    // 3.8.2
+    Enhanced, // 4.2+
 }
 
 impl VersionDifferences {

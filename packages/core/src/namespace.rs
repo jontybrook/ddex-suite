@@ -1,11 +1,11 @@
 //! # DDEX Namespace Management
-//! 
+//!
 //! This module provides comprehensive namespace management for the DDEX Suite,
 //! handling multiple DDEX versions and custom extensions with proper prefix
 //! management and collision detection.
 
-use indexmap::{IndexMap, IndexSet};
 use crate::models::versions::ERNVersion;
+use indexmap::{IndexMap, IndexSet};
 
 /// DDEX namespace registry for comprehensive namespace management
 #[derive(Debug, Clone)]
@@ -93,7 +93,7 @@ impl NamespaceRegistry {
             custom_namespaces: IndexMap::new(),
             reserved_prefixes: IndexSet::new(),
         };
-        
+
         registry.initialize_ddex_namespaces();
         registry
     }
@@ -210,20 +210,22 @@ impl NamespaceRegistry {
 
     /// Register a new namespace
     pub fn register_namespace(&mut self, info: NamespaceInfo) {
-        self.default_prefixes.insert(info.uri.clone(), info.preferred_prefix.clone());
+        self.default_prefixes
+            .insert(info.uri.clone(), info.preferred_prefix.clone());
         self.reserved_prefixes.insert(info.preferred_prefix.clone());
-        
+
         for alt_prefix in &info.alternative_prefixes {
             self.reserved_prefixes.insert(alt_prefix.clone());
         }
-        
+
         self.namespaces.insert(info.uri.clone(), info);
     }
 
     /// Register a custom namespace
     pub fn register_custom_namespace(&mut self, info: NamespaceInfo) -> Result<(), NamespaceError> {
         // Check for URI conflicts
-        if self.namespaces.contains_key(&info.uri) || self.custom_namespaces.contains_key(&info.uri) {
+        if self.namespaces.contains_key(&info.uri) || self.custom_namespaces.contains_key(&info.uri)
+        {
             return Err(NamespaceError::UriConflict(info.uri));
         }
 
@@ -250,29 +252,38 @@ impl NamespaceRegistry {
     /// Get all namespace URIs for a specific ERN version
     pub fn get_version_namespaces(&self, version: &ERNVersion) -> Vec<String> {
         let mut namespaces = vec![];
-        
+
         // Add the main ERN namespace
         match version {
             ERNVersion::V3_8_2 => namespaces.push("http://ddex.net/xml/ern/382".to_string()),
             ERNVersion::V4_2 => namespaces.push("http://ddex.net/xml/ern/42".to_string()),
             ERNVersion::V4_3 => namespaces.push("http://ddex.net/xml/ern/43".to_string()),
         }
-        
+
         // Add common supporting namespaces
         namespaces.push("http://ddex.net/xml/avs".to_string());
         namespaces.push("http://www.w3.org/2001/XMLSchema-instance".to_string());
-        
+
         namespaces
     }
 
     /// Get preferred prefix for a namespace URI
     pub fn get_preferred_prefix(&self, uri: &str) -> Option<&str> {
-        self.default_prefixes.get(uri).map(|s| s.as_str())
+        self.default_prefixes
+            .get(uri)
+            .map(|s| s.as_str())
+            .or_else(|| {
+                self.custom_namespaces
+                    .get(uri)
+                    .map(|info| info.preferred_prefix.as_str())
+            })
     }
 
     /// Get namespace info by URI
     pub fn get_namespace_info(&self, uri: &str) -> Option<&NamespaceInfo> {
-        self.namespaces.get(uri).or_else(|| self.custom_namespaces.get(uri))
+        self.namespaces
+            .get(uri)
+            .or_else(|| self.custom_namespaces.get(uri))
     }
 
     /// Check if a prefix is reserved
@@ -285,7 +296,7 @@ impl NamespaceRegistry {
         if !self.is_prefix_reserved(base_prefix) {
             return base_prefix.to_string();
         }
-        
+
         let mut counter = 1;
         loop {
             let candidate = format!("{}{}", base_prefix, counter);
@@ -308,27 +319,35 @@ impl NamespaceRegistry {
             ConflictResolution::PreferFirst => Ok(existing_prefix.to_string()),
             ConflictResolution::PreferLatest => Ok(new_prefix.to_string()),
             ConflictResolution::GenerateUnique => Ok(self.generate_unique_prefix(new_prefix)),
-            ConflictResolution::Error => Err(NamespaceError::PrefixConflict(new_prefix.to_string())),
+            ConflictResolution::Error => {
+                Err(NamespaceError::PrefixConflict(new_prefix.to_string()))
+            }
         }
     }
 
     /// Create minimal namespace declarations for root element
-    pub fn create_minimal_declarations(&self, used_namespaces: &[String]) -> IndexMap<String, String> {
+    pub fn create_minimal_declarations(
+        &self,
+        used_namespaces: &[String],
+    ) -> IndexMap<String, String> {
         let mut declarations = IndexMap::new();
-        
+
         for uri in used_namespaces {
             if let Some(prefix) = self.get_preferred_prefix(uri) {
                 declarations.insert(prefix.to_string(), uri.clone());
             }
         }
-        
+
         declarations
     }
 
     /// Validate namespace declarations against known namespaces
-    pub fn validate_declarations(&self, declarations: &IndexMap<String, String>) -> Vec<NamespaceWarning> {
+    pub fn validate_declarations(
+        &self,
+        declarations: &IndexMap<String, String>,
+    ) -> Vec<NamespaceWarning> {
         let mut warnings = Vec::new();
-        
+
         for (prefix, uri) in declarations {
             if let Some(info) = self.get_namespace_info(uri) {
                 // Check if using non-preferred prefix
@@ -347,7 +366,7 @@ impl NamespaceRegistry {
                 });
             }
         }
-        
+
         warnings
     }
 
@@ -399,24 +418,29 @@ impl NamespaceScope {
     /// Get all active namespace declarations (including inherited)
     pub fn get_all_declarations(&self) -> IndexMap<String, String> {
         let mut all_declarations = IndexMap::new();
-        
+
         // Start with parent declarations
         if let Some(parent) = &self.parent {
             all_declarations = parent.get_all_declarations();
         }
-        
+
         // Override with current scope declarations
         for (prefix, uri) in &self.declarations {
             all_declarations.insert(prefix.clone(), uri.clone());
         }
-        
+
         all_declarations
     }
 
     /// Check if a namespace is declared in this scope or parents
     pub fn is_namespace_declared(&self, uri: &str) -> bool {
-        self.declarations.values().any(|declared_uri| declared_uri == uri) ||
-        self.parent.as_ref().is_some_and(|parent| parent.is_namespace_declared(uri))
+        self.declarations
+            .values()
+            .any(|declared_uri| declared_uri == uri)
+            || self
+                .parent
+                .as_ref()
+                .is_some_and(|parent| parent.is_namespace_declared(uri))
     }
 
     /// Find the prefix for a namespace URI
@@ -426,7 +450,7 @@ impl NamespaceScope {
                 return Some(prefix.clone());
             }
         }
-        
+
         if let Some(parent) = &self.parent {
             parent.find_prefix_for_uri(uri)
         } else {
@@ -473,30 +497,35 @@ pub enum NamespaceWarning {
         preferred_prefix: String,
     },
     /// Unknown/unregistered namespace
-    UnknownNamespace {
-        uri: String,
-        prefix: String,
-    },
+    UnknownNamespace { uri: String, prefix: String },
     /// Redundant namespace declaration
-    RedundantDeclaration {
-        uri: String,
-        prefix: String,
-    },
+    RedundantDeclaration { uri: String, prefix: String },
 }
 
 impl std::fmt::Display for NamespaceWarning {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            NamespaceWarning::NonStandardPrefix { uri, used_prefix, preferred_prefix } => {
-                write!(f, "Non-standard prefix '{}' for namespace '{}', prefer '{}'", 
-                       used_prefix, uri, preferred_prefix)
-            },
+            NamespaceWarning::NonStandardPrefix {
+                uri,
+                used_prefix,
+                preferred_prefix,
+            } => {
+                write!(
+                    f,
+                    "Non-standard prefix '{}' for namespace '{}', prefer '{}'",
+                    used_prefix, uri, preferred_prefix
+                )
+            }
             NamespaceWarning::UnknownNamespace { uri, prefix } => {
                 write!(f, "Unknown namespace '{}' with prefix '{}'", uri, prefix)
-            },
+            }
             NamespaceWarning::RedundantDeclaration { uri, prefix } => {
-                write!(f, "Redundant declaration of namespace '{}' with prefix '{}'", uri, prefix)
-            },
+                write!(
+                    f,
+                    "Redundant declaration of namespace '{}' with prefix '{}'",
+                    uri, prefix
+                )
+            }
         }
     }
 }
@@ -520,23 +549,40 @@ mod tests {
     #[test]
     fn test_namespace_registry_creation() {
         let registry = NamespaceRegistry::new();
-        assert!(registry.get_preferred_prefix("http://ddex.net/xml/ern/43").is_some());
-        assert_eq!(registry.get_preferred_prefix("http://ddex.net/xml/ern/43"), Some("ern"));
+        assert!(registry
+            .get_preferred_prefix("http://ddex.net/xml/ern/43")
+            .is_some());
+        assert_eq!(
+            registry.get_preferred_prefix("http://ddex.net/xml/ern/43"),
+            Some("ern")
+        );
     }
 
     #[test]
     fn test_version_detection() {
         let registry = NamespaceRegistry::new();
-        assert_eq!(registry.detect_version("http://ddex.net/xml/ern/382"), Some(ERNVersion::V3_8_2));
-        assert_eq!(registry.detect_version("http://ddex.net/xml/ern/42"), Some(ERNVersion::V4_2));
-        assert_eq!(registry.detect_version("http://ddex.net/xml/ern/43"), Some(ERNVersion::V4_3));
-        assert_eq!(registry.detect_version("http://unknown.com/namespace"), None);
+        assert_eq!(
+            registry.detect_version("http://ddex.net/xml/ern/382"),
+            Some(ERNVersion::V3_8_2)
+        );
+        assert_eq!(
+            registry.detect_version("http://ddex.net/xml/ern/42"),
+            Some(ERNVersion::V4_2)
+        );
+        assert_eq!(
+            registry.detect_version("http://ddex.net/xml/ern/43"),
+            Some(ERNVersion::V4_3)
+        );
+        assert_eq!(
+            registry.detect_version("http://unknown.com/namespace"),
+            None
+        );
     }
 
     #[test]
     fn test_custom_namespace_registration() {
         let mut registry = NamespaceRegistry::new();
-        
+
         let custom_ns = NamespaceInfo {
             uri: "http://example.com/custom".to_string(),
             preferred_prefix: "ex".to_string(),
@@ -547,13 +593,16 @@ mod tests {
         };
 
         assert!(registry.register_custom_namespace(custom_ns).is_ok());
-        assert_eq!(registry.get_preferred_prefix("http://example.com/custom"), Some("ex"));
+        assert_eq!(
+            registry.get_preferred_prefix("http://example.com/custom"),
+            Some("ex")
+        );
     }
 
     #[test]
     fn test_prefix_conflict_detection() {
         let mut registry = NamespaceRegistry::new();
-        
+
         let conflicting_ns = NamespaceInfo {
             uri: "http://example.com/conflict".to_string(),
             preferred_prefix: "ern".to_string(), // Conflicts with existing ERN prefix
@@ -563,21 +612,30 @@ mod tests {
             required: false,
         };
 
-        assert!(matches!(registry.register_custom_namespace(conflicting_ns), Err(NamespaceError::PrefixConflict(_))));
+        assert!(matches!(
+            registry.register_custom_namespace(conflicting_ns),
+            Err(NamespaceError::PrefixConflict(_))
+        ));
     }
 
     #[test]
     fn test_namespace_scope() {
         let mut root_scope = NamespaceScope::new();
         root_scope.declare_namespace("ern".to_string(), "http://ddex.net/xml/ern/43".to_string());
-        
+
         let mut child_scope = root_scope.new_child();
         child_scope.declare_namespace("avs".to_string(), "http://ddex.net/xml/avs".to_string());
-        
+
         // Child should resolve both its own and parent declarations
-        assert_eq!(child_scope.resolve_prefix("ern"), Some("http://ddex.net/xml/ern/43".to_string()));
-        assert_eq!(child_scope.resolve_prefix("avs"), Some("http://ddex.net/xml/avs".to_string()));
-        
+        assert_eq!(
+            child_scope.resolve_prefix("ern"),
+            Some("http://ddex.net/xml/ern/43".to_string())
+        );
+        assert_eq!(
+            child_scope.resolve_prefix("avs"),
+            Some("http://ddex.net/xml/avs".to_string())
+        );
+
         // Parent should not see child declarations
         assert_eq!(root_scope.resolve_prefix("avs"), None);
     }
@@ -585,11 +643,11 @@ mod tests {
     #[test]
     fn test_unique_prefix_generation() {
         let mut registry = NamespaceRegistry::new();
-        
+
         // Reserve some test prefixes
         registry.reserved_prefixes.insert("test".to_string());
         registry.reserved_prefixes.insert("test1".to_string());
-        
+
         let unique = registry.generate_unique_prefix("test");
         assert_eq!(unique, "test2");
     }
@@ -601,9 +659,15 @@ mod tests {
             "http://ddex.net/xml/ern/43".to_string(),
             "http://ddex.net/xml/avs".to_string(),
         ];
-        
+
         let declarations = registry.create_minimal_declarations(&used_namespaces);
-        assert_eq!(declarations.get("ern"), Some(&"http://ddex.net/xml/ern/43".to_string()));
-        assert_eq!(declarations.get("avs"), Some(&"http://ddex.net/xml/avs".to_string()));
+        assert_eq!(
+            declarations.get("ern"),
+            Some(&"http://ddex.net/xml/ern/43".to_string())
+        );
+        assert_eq!(
+            declarations.get("avs"),
+            Some(&"http://ddex.net/xml/avs".to_string())
+        );
     }
 }

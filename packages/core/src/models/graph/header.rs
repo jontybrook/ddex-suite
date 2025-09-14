@@ -1,9 +1,12 @@
 // core/src/models/graph/header.rs
 //! Message header types
 
-use serde::{Deserialize, Serialize};
+use crate::models::{
+    common::{Identifier, LocalizedString},
+    AttributeMap, Comment, Extensions,
+};
 use chrono::{DateTime, Utc};
-use crate::models::{Extensions, Comment, AttributeMap, common::{Identifier, LocalizedString}};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MessageHeader {

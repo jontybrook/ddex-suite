@@ -3,16 +3,20 @@
 //! This module provides builder patterns and streaming-optimized types
 //! that can handle partial data during streaming XML parsing.
 
-use super::*;
+use super::common::{Copyright, Identifier, LocalizedString};
 use super::graph::*;
-use super::common::{Identifier, LocalizedString, Copyright};
+use super::*;
 use serde::{Deserialize, Serialize};
 
 /// Error types for conversion operations
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConversionError {
     MissingRequired(String),
-    InvalidFormat { field: String, value: String, expected: String },
+    InvalidFormat {
+        field: String,
+        value: String,
+        expected: String,
+    },
     ValidationFailed(String),
     ReferenceNotResolved(String),
 }
@@ -20,12 +24,24 @@ pub enum ConversionError {
 impl std::fmt::Display for ConversionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ConversionError::MissingRequired(field) => write!(f, "Missing required field: {}", field),
-            ConversionError::InvalidFormat { field, value, expected } => {
-                write!(f, "Invalid format for {}: got '{}', expected {}", field, value, expected)
+            ConversionError::MissingRequired(field) => {
+                write!(f, "Missing required field: {}", field)
+            }
+            ConversionError::InvalidFormat {
+                field,
+                value,
+                expected,
+            } => {
+                write!(
+                    f,
+                    "Invalid format for {}: got '{}', expected {}",
+                    field, value, expected
+                )
             }
             ConversionError::ValidationFailed(msg) => write!(f, "Validation failed: {}", msg),
-            ConversionError::ReferenceNotResolved(ref_id) => write!(f, "Reference not resolved: {}", ref_id),
+            ConversionError::ReferenceNotResolved(ref_id) => {
+                write!(f, "Reference not resolved: {}", ref_id)
+            }
         }
     }
 }
@@ -89,17 +105,18 @@ impl ReleaseBuilder {
 
     pub fn add_resource_reference(&mut self, resource_ref: String) {
         self.pending_resource_refs.push(resource_ref.clone());
-        self.release_resource_reference_list.push(ReleaseResourceReference {
-            resource_reference: resource_ref,
-            sequence_number: Some(self.release_resource_reference_list.len() as i32 + 1),
-            disc_number: Some(1),
-            track_number: Some(self.release_resource_reference_list.len() as i32 + 1),
-            side: None,
-            is_hidden: false,
-            is_bonus: false,
-            extensions: None,
-            comments: None,
-        });
+        self.release_resource_reference_list
+            .push(ReleaseResourceReference {
+                resource_reference: resource_ref,
+                sequence_number: Some(self.release_resource_reference_list.len() as i32 + 1),
+                disc_number: Some(1),
+                track_number: Some(self.release_resource_reference_list.len() as i32 + 1),
+                side: None,
+                is_hidden: false,
+                is_bonus: false,
+                extensions: None,
+                comments: None,
+            });
         self.field_count += 1;
     }
 
@@ -122,10 +139,14 @@ impl ReleaseBuilder {
 impl Validate for ReleaseBuilder {
     fn validate(&self) -> Result<(), ConversionError> {
         if self.release_reference.is_none() {
-            return Err(ConversionError::MissingRequired("release_reference".to_string()));
+            return Err(ConversionError::MissingRequired(
+                "release_reference".to_string(),
+            ));
         }
         if self.release_title.is_empty() {
-            return Err(ConversionError::MissingRequired("release_title".to_string()));
+            return Err(ConversionError::MissingRequired(
+                "release_title".to_string(),
+            ));
         }
         Ok(())
     }
@@ -222,10 +243,14 @@ impl ResourceBuilder {
 impl Validate for ResourceBuilder {
     fn validate(&self) -> Result<(), ConversionError> {
         if self.resource_reference.is_none() {
-            return Err(ConversionError::MissingRequired("resource_reference".to_string()));
+            return Err(ConversionError::MissingRequired(
+                "resource_reference".to_string(),
+            ));
         }
         if self.reference_title.is_empty() {
-            return Err(ConversionError::MissingRequired("reference_title".to_string()));
+            return Err(ConversionError::MissingRequired(
+                "reference_title".to_string(),
+            ));
         }
         Ok(())
     }
@@ -390,13 +415,19 @@ impl Validate for MessageHeaderBuilder {
             return Err(ConversionError::MissingRequired("message_id".to_string()));
         }
         if self.message_created_date_time.is_none() {
-            return Err(ConversionError::MissingRequired("message_created_date_time".to_string()));
+            return Err(ConversionError::MissingRequired(
+                "message_created_date_time".to_string(),
+            ));
         }
         if self.message_sender.is_none() {
-            return Err(ConversionError::MissingRequired("message_sender".to_string()));
+            return Err(ConversionError::MissingRequired(
+                "message_sender".to_string(),
+            ));
         }
         if self.message_recipient.is_none() {
-            return Err(ConversionError::MissingRequired("message_recipient".to_string()));
+            return Err(ConversionError::MissingRequired(
+                "message_recipient".to_string(),
+            ));
         }
         Ok(())
     }
@@ -442,7 +473,11 @@ pub mod builders {
         }
     }
 
-    pub fn create_identifier(value: String, id_type: IdentifierType, namespace: Option<String>) -> Identifier {
+    pub fn create_identifier(
+        value: String,
+        id_type: IdentifierType,
+        namespace: Option<String>,
+    ) -> Identifier {
         Identifier {
             id_type,
             namespace,
@@ -499,13 +534,16 @@ pub mod builders {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::builders::*;
+    use super::*;
 
     #[test]
     fn test_release_builder() {
         let mut builder = ReleaseBuilder::new("REL001".to_string());
-        builder.add_title(create_localized_string("Test Release".to_string(), Some("en".to_string())));
+        builder.add_title(create_localized_string(
+            "Test Release".to_string(),
+            Some("en".to_string()),
+        ));
         builder.add_genre(create_genre("Rock".to_string(), None));
         builder.set_release_type(ReleaseType::Album);
 
@@ -537,7 +575,10 @@ mod tests {
         let mut builder = MessageHeaderBuilder::new();
         builder.set_message_id("MSG001".to_string());
         builder.set_created_date_time_from_text("2023-01-01T00:00:00Z".to_string());
-        builder.set_sender(create_message_sender("Test Sender".to_string(), Some("SENDER001".to_string())));
+        builder.set_sender(create_message_sender(
+            "Test Sender".to_string(),
+            Some("SENDER001".to_string()),
+        ));
         builder.set_recipient(create_message_recipient("Test Recipient".to_string()));
 
         assert!(builder.is_complete());

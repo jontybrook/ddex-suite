@@ -1,18 +1,13 @@
 // core/src/models/versions/ern_43.rs
 //! ERN 4.3 specific model variations (latest and most complete)
 
-use serde::{Deserialize, Serialize};
+use super::common::{
+    DistributionChannel43, MessageAuditTrail43, MessageControlType43, PartyDescriptor43,
+    PriceInformation43, TerritoryCode43, ValidityPeriod43,
+};
 use crate::models::common::LocalizedString;
 use chrono::{DateTime, Utc};
-use super::common::{
-    ValidityPeriod43, 
-    MessageControlType43,
-    PartyDescriptor43,
-    MessageAuditTrail43,
-    TerritoryCode43,
-    DistributionChannel43,
-    PriceInformation43,
-};  // Import from common module
+use serde::{Deserialize, Serialize}; // Import from common module
 
 /// MessageHeader for ERN 4.3 (most complete)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -25,7 +20,7 @@ pub struct MessageHeader43 {
     pub message_created_date_time: DateTime<Utc>,
     pub message_audit_trail: Option<MessageAuditTrail43>,
     pub message_control_type: Option<MessageControlType43>,
-    pub profile: Option<ReleaseProfile43>,  // New in 4.3
+    pub profile: Option<ReleaseProfile43>, // New in 4.3
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,7 +28,7 @@ pub enum MessageType43 {
     NewReleaseMessage,
     CatalogListMessage,
     UpdateReleaseMessage,
-    TakedownMessage,  // New in 4.3
+    TakedownMessage, // New in 4.3
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,9 +51,9 @@ pub struct DealTerms43 {
     pub distribution_channel: Vec<DistributionChannel43>,
     pub price_information: Vec<PriceInformation43>,
     pub validity_period: Option<ValidityPeriod43>,
-    pub pre_order_date: Option<DateTime<Utc>>,  // New in 4.3
-    pub pre_order_preview_date: Option<DateTime<Utc>>,  // New in 4.3
-    pub instant_gratification_date: Option<DateTime<Utc>>,  // New in 4.3
+    pub pre_order_date: Option<DateTime<Utc>>, // New in 4.3
+    pub pre_order_preview_date: Option<DateTime<Utc>>, // New in 4.3
+    pub instant_gratification_date: Option<DateTime<Utc>>, // New in 4.3
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -66,8 +61,8 @@ pub enum CommercialModelType43 {
     PayAsYouGoModel,
     SubscriptionModel,
     AdSupportedModel,
-    FreeOfChargeModel,  // New in 4.3
-    BundledModel,  // New in 4.3
+    FreeOfChargeModel, // New in 4.3
+    BundledModel,      // New in 4.3
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -76,8 +71,8 @@ pub enum UseType43 {
     Download,
     OnDemandStream,
     NonInteractiveStream,
-    ConditionalDownload,  // New in 4.3
-    TetheredDownload,  // New in 4.3
+    ConditionalDownload, // New in 4.3
+    TetheredDownload,    // New in 4.3
 }
 
 /// ResourceGroup introduced in ERN 4.3
@@ -102,7 +97,7 @@ pub enum ResourceGroupType43 {
 pub struct ChapterInformation43 {
     pub chapter_reference: String,
     pub chapter_title: Vec<LocalizedString>,
-    pub start_time: String,  // ISO 8601 duration
+    pub start_time: String, // ISO 8601 duration
     pub end_time: String,
     pub chapter_type: Option<String>,
 }

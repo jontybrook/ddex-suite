@@ -1,8 +1,8 @@
 // core/src/models/graph/party.rs
 //! Party types
 
-use serde::{Deserialize, Serialize};
 use crate::models::common::{Identifier, LocalizedString};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Party {
