@@ -14,8 +14,8 @@ pip install ddex-parser
 ```
 
 ## Security Notice
-**v0.4.0 fixes a critical security vulnerability (RUSTSEC-2025-0020).** 
-All users should upgrade immediately for PyO3 0.24 compatibility and enhanced security.
+**v0.4.1 includes enhanced data structure implementation with complete data access.**
+Built on v0.4.0's security fixes (RUSTSEC-2025-0020) with PyO3 0.24 compatibility.
 
 ## Quick Start
 

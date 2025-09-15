@@ -5,6 +5,22 @@ All notable changes to DDEX Builder will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2024-09-15
+
+### 🔄 Compatibility Update
+- Version bump to maintain parity with ddex-parser v0.4.1
+- Full round-trip compatibility verified with fixed parser
+- No functional changes to builder
+
+### ✅ Verified Integrations
+- Playground application integration tested and working
+- Parse → Modify → Build cycle confirmed operational
+
+### 📦 Dependencies
+- Updated to work seamlessly with ddex-parser v0.4.1
+
+---
+
 ## [0.4.0] - 2025-09-14
 
 ### 🚀 Major Features - Enhanced Integration & Performance

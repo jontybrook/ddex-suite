@@ -1571,36 +1571,36 @@ ddex-suite/
 │   ├── docs/
 │   ├── npm-test/
 │   ├── public/
-│   │   └── index.html                # 
+│   │   └── index.html                # Firebase hosting welcome page
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── HomepageFeatures/
-│   │   │   │   ├── index.tsx         # 
-│   │   │   │   └── styles.module.css  # 
+│   │   │   │   ├── index.tsx         # Main feature cards component
+│   │   │   │   └── styles.module.css # Feature section styling rules
 │   │   ├── css/
-│   │   │   ├── custom.css            # 
-│   │   │   └── landing.css           # 
+│   │   │   ├── custom.css            # Global theme color variables
+│   │   │   └── landing.css           # Landing page specific styles
 │   │   ├── pages/
-│   │   │   ├── index.module.css      # 
-│   │   │   ├── index.tsx             # 
-│   │   │   └── playground.tsx        # 
+│   │   │   ├── index.module.css      # Homepage component styling module
+│   │   │   ├── index.tsx             # Main landing page component
+│   │   │   └── playground.tsx        # Interactive DDEX playground page
 │   │   ├── types/
-│   │   │   └── wasm.d.ts             # 
+│   │   │   └── wasm.d.ts             # TypeScript WASM module definitions
 │   │   └── utils/
-│   │       └── wasmLoader.ts         # 
+│   │       └── wasmLoader.ts         # WASM module loading utilities
 │   ├── static/
 │   │   ├── wasm/
-│   │   │   ├── ddex_builder_wasm.d.ts  # 
-│   │   │   ├── ddex_builder_wasm.js  # 
-│   │   │   ├── ddex_parser_wasm.d.ts  # 
-│   │   │   ├── ddex_parser_wasm.js   # 
-│   │   │   └── package.json          # 
-│   ├── docusaurus.config.ts          # 
-│   ├── firebase.json                 # 
-│   ├── package.json                  # 
-│   ├── README.md                     # 
-│   ├── sidebars.ts                   # 
-│   └── tsconfig.json                 # 
+│   │   │   ├── ddex_builder_wasm.d.ts  # Builder WASM TypeScript definitions
+│   │   │   ├── ddex_builder_wasm.js  # Builder WASM JavaScript bindings
+│   │   │   ├── ddex_parser_wasm.d.ts  # Parser WASM TypeScript definitions
+│   │   │   ├── ddex_parser_wasm.js   # Parser WASM JavaScript bindings
+│   │   │   └── package.json          # WASM package metadata configuration
+│   ├── docusaurus.config.ts          # Main Docusaurus site configuration
+│   ├── firebase.json                 # Firebase hosting deployment settings
+│   ├── package.json                  # Website NPM dependencies manifest
+│   ├── README.md                     #
+│   ├── sidebars.ts                   # Documentation sidebar navigation structure
+│   └── tsconfig.json                 # TypeScript compiler configuration settings
 │
 ├── blueprint.md                      # This document
 ├── Cargo.toml                        # Root workspace config

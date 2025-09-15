@@ -6,6 +6,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub](https://img.shields.io/badge/GitHub-ddex--suite-blue)](https://github.com/daddykev/ddex-suite)
 
+> **v0.4.1** - Full compatibility with ddex-parser v0.4.1 for complete round-trip workflows
+
 Generate deterministic, industry-compliant DDEX XML files with smart normalization. Transform messy DDEX data from any source into clean, compliant DDEX 4.3 with comprehensive validation, partner-specific presets, and data integrity preservation.
 
 Part of the [DDEX Suite](https://github.com/daddykev/ddex-suite) - a comprehensive toolkit for working with DDEX metadata in the music industry.

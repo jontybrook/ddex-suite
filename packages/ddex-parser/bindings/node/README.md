@@ -1,11 +1,12 @@
 # DDEX Parser - JavaScript/TypeScript Bindings
+## DDEX XML Parser for Node.js
 
 [![npm version](https://img.shields.io/npm/v/ddex-parser.svg)](https://www.npmjs.com/package/ddex-parser)
 [![Downloads](https://img.shields.io/npm/dm/ddex-parser.svg)](https://www.npmjs.com/package/ddex-parser)
 [![Bundle Size](https://img.shields.io/bundlephobia/minzip/ddex-parser)](https://bundlephobia.com/package/ddex-parser)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Blazing-fast DDEX XML parser for JavaScript and TypeScript with native Node.js bindings and WASM browser support. Parse DDEX files 15x faster than traditional parsers with comprehensive TypeScript definitions and modern framework integration.
+Fully functional DDEX XML parser for JavaScript and TypeScript with complete data structure access. Built on Rust with native Node.js bindings and WASM browser support - parse DDEX files with full access to releases, resources, deals, and tracks.
 
 ## Installation
 
@@ -19,15 +20,29 @@ yarn add ddex-parser
 
 ### Node.js (ESM/CommonJS)
 
-```typescript
-import { DDEXParser } from 'ddex-parser';
+```javascript
+const { DdexParser } = require('ddex-parser');
+const fs = require('fs');
 
-const parser = new DDEXParser();
-const result = await parser.parseFile('release.xml');
+const parser = new DdexParser();
+const xmlContent = fs.readFileSync('release.xml', 'utf8');
+const result = parser.parseSync(xmlContent);
 
-console.log(`Release: ${result.flattened.releaseTitle}`);
-console.log(`Artist: ${result.flattened.mainArtist}`);
-console.log(`Tracks: ${result.flattened.tracks.length}`);
+// Full access to parsed data structures
+console.log('Message ID:', result.messageId);
+console.log('Total Releases:', result.releases.length);
+console.log('Total Resources:', Object.keys(result.resources).length);
+console.log('Total Deals:', result.deals.length);
+
+// Access individual releases
+result.releases.forEach((release, index) => {
+  console.log(`Release ${index + 1}:`, {
+    id: release.releaseId,
+    title: release.title,
+    artist: release.displayArtist,
+    trackCount: release.tracks.length
+  });
+});
 ```
 
 ### Browser (ES Modules)
@@ -71,25 +86,219 @@ result.flattened.tracks.forEach(track => {
 - Image and audio resource handling
 - Genre and mood classification support
 
-## API Reference
+## Complete Data Structure
 
-### DDEXParser
+The parser now provides full access to all DDEX data structures:
 
 ```typescript
-class DDEXParser {
-  constructor(options?: ParserOptions);
-  
-  // File parsing
-  parseFile(path: string): Promise<DDEXResult>;
-  parseString(xml: string): Promise<DDEXResult>;
-  parseBuffer(buffer: Buffer): Promise<DDEXResult>;
-  
-  // Streaming (Node.js only)
-  parseStream(stream: ReadableStream): AsyncIterable<DDEXResult>;
-  
+interface ParsedMessage {
+  // Message metadata
+  messageId: string;
+  messageType: string;
+  messageDate: string;
+  senderName: string;
+  senderId: string;
+  recipientName: string;
+  recipientId: string;
+  version: string;
+  profile?: string;
+
+  // Legacy counts (for backward compatibility)
+  releaseCount: number;
+  trackCount: number;
+  dealCount: number;
+  resourceCount: number;
+  totalDurationSeconds: number;
+
+  // COMPLETE DATA STRUCTURES
+  releases: Release[];              // Full release objects with tracks
+  resources: { [key: string]: Resource }; // Resource dictionary with IDs as keys
+  deals: Deal[];                   // Complete deal information
+
+  // Enhanced features
+  statistics?: ParseStatistics;
+  fidelityInfo?: FidelityInfo;
+}
+
+interface Release {
+  releaseId: string;
+  title: string;
+  defaultTitle: string;
+  subtitle?: string;
+  displayArtist: string;
+  releaseType: string;
+  genre?: string;
+  subGenre?: string;
+  trackCount: number;
+  discCount?: number;
+  releaseDate?: string;
+  originalReleaseDate?: string;
+  labelName?: string;
+  tracks: Track[];                 // Full track array
+}
+
+interface Track {
+  trackId: string;
+  title: string;
+  artist: string;
+  duration?: string;
+  position?: number;
+  discNumber?: number;
+  isrc?: string;
+  resourceReference?: string;
+}
+
+interface Resource {
+  resourceId: string;
+  resourceType: string;
+  title: string;
+  durationSeconds?: number;
+  durationString?: string;
+  fileFormat?: string;
+  bitrate?: number;
+  sampleRate?: number;
+  fileSize?: string;
+}
+
+interface Deal {
+  dealId: string;
+  releases: string[];
+  startDate?: string;
+  endDate?: string;
+  territories: string[];
+  usageRights: string[];
+  restrictions: string[];
+  commercialModel: string;
+}
+```
+
+## API Reference
+
+### DdexParser
+
+```typescript
+class DdexParser {
+  constructor();
+
+  // Synchronous parsing with complete data access
+  parseSync(xml: string, options?: ParseOptions): ParsedMessage;
+
+  // Asynchronous parsing with complete data access
+  parse(xml: string, options?: ParseOptions): Promise<ParsedMessage>;
+
   // Utilities
-  detectVersion(xml: string): DDEXVersion;
-  validate(xml: string): ValidationResult;
+  detectVersion(xml: string): string;
+  sanityCheck(xml: string): Promise<SanityCheckResult>;
+
+  // Streaming (returns async iterator)
+  stream(xml: string, options?: StreamOptions): ReleaseStream;
+}
+```
+
+## Comprehensive Usage Examples
+
+### Working with Releases and Tracks
+
+```javascript
+const { DdexParser } = require('ddex-parser');
+const parser = new DdexParser();
+const result = parser.parseSync(xmlContent);
+
+// Access all releases
+console.log(`Found ${result.releases.length} releases`);
+
+result.releases.forEach(release => {
+  console.log(`\nRelease: ${release.title}`);
+  console.log(`Artist: ${release.displayArtist}`);
+  console.log(`Type: ${release.releaseType}`);
+  console.log(`Release Date: ${release.releaseDate}`);
+  console.log(`Track Count: ${release.tracks.length}`);
+
+  // Access individual tracks
+  release.tracks.forEach((track, index) => {
+    console.log(`  Track ${index + 1}: ${track.title}`);
+    console.log(`    Artist: ${track.artist}`);
+    console.log(`    Duration: ${track.duration}`);
+    console.log(`    ISRC: ${track.isrc}`);
+  });
+});
+```
+
+### Working with Resources
+
+```javascript
+const parser = new DdexParser();
+const result = parser.parseSync(xmlContent);
+
+// Access all resources
+const resourceIds = Object.keys(result.resources);
+console.log(`Found ${resourceIds.length} resources`);
+
+resourceIds.forEach(resourceId => {
+  const resource = result.resources[resourceId];
+  console.log(`\nResource: ${resource.title}`);
+  console.log(`Type: ${resource.resourceType}`);
+  console.log(`Duration: ${resource.durationString}`);
+  console.log(`File Format: ${resource.fileFormat}`);
+  console.log(`Bitrate: ${resource.bitrate}`);
+  console.log(`Sample Rate: ${resource.sampleRate}`);
+});
+```
+
+### Working with Deals
+
+```javascript
+const parser = new DdexParser();
+const result = parser.parseSync(xmlContent);
+
+// Access all deals
+console.log(`Found ${result.deals.length} deals`);
+
+result.deals.forEach(deal => {
+  console.log(`\nDeal: ${deal.dealId}`);
+  console.log(`Releases: ${deal.releases.join(', ')}`);
+  console.log(`Territories: ${deal.territories.join(', ')}`);
+  console.log(`Start Date: ${deal.startDate}`);
+  console.log(`End Date: ${deal.endDate}`);
+  console.log(`Commercial Model: ${deal.commercialModel}`);
+  console.log(`Usage Rights: ${deal.usageRights.join(', ')}`);
+});
+```
+
+### Async Parsing
+
+```javascript
+const parser = new DdexParser();
+
+try {
+  const result = await parser.parse(xmlContent);
+  console.log('Successfully parsed:', {
+    messageId: result.messageId,
+    releases: result.releases.length,
+    resources: Object.keys(result.resources).length,
+    deals: result.deals.length
+  });
+} catch (error) {
+  console.error('Parse failed:', error.message);
+}
+```
+
+### Version Detection and Validation
+
+```javascript
+const parser = new DdexParser();
+
+// Detect DDEX version
+const version = parser.detectVersion(xmlContent);
+console.log('DDEX Version:', version); // e.g., "V4_3"
+
+// Comprehensive validation
+const sanityResult = await parser.sanityCheck(xmlContent);
+if (sanityResult.isValid) {
+  console.log(`Valid DDEX ${sanityResult.version}`);
+} else {
+  console.log('Validation errors:', sanityResult.errors);
+  console.log('Warnings:', sanityResult.warnings);
 }
 ```
 
@@ -113,31 +322,6 @@ Performance comparison in different environments:
 | 1MB       | 65ms        | 750ms     | 1.8s   | 11x-28x |
 
 Memory usage is consistently 40-60% lower across all environments.
-
-## Round-Trip Compatibility
-
-Perfect integration with ddex-builder for complete workflows:
-
-```typescript
-import { DDEXParser } from 'ddex-parser';
-import { DDEXBuilder } from 'ddex-builder';
-
-// Parse existing DDEX file
-const parser = new DDEXParser();
-const original = await parser.parseFile('input.xml');
-
-// Modify data
-const modified = { ...original.flattened };
-modified.tracks[0].title = "New Title";
-
-// Build new DDEX file with deterministic output
-const builder = new DDEXBuilder();
-const newXML = await builder.buildFromFlattened(modified);
-
-// Verify round-trip integrity
-const reparsed = await parser.parseString(newXML);
-assert.deepEqual(reparsed.tracks[0].title, "New Title"); // ✅ Perfect fidelity
-```
 
 ## License
 

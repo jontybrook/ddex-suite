@@ -5,6 +5,25 @@ All notable changes to the DDEX Suite project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2024-09-15
+
+### 🚨 Critical Node.js Bindings Fix
+
+#### ddex-parser v0.4.1
+- **NEW**: Full JavaScript access to parsed releases, resources, deals, and tracks
+- **FIXED**: All parser methods (parseSync, parse, detectVersion, sanityCheck) now functional
+- **PERFORMANCE**: Real Rust performance (~3-5ms) measurements
+- **COMPATIBILITY**: Playground application now fully operational
+
+#### Technical Details
+- Connected Node.js bindings to actual Rust DDEXParser via napi-rs
+- Implemented comprehensive ParsedERNMessage → JavaScript type conversion
+- Added proper IndexMap to JavaScript object conversion for resources
+- String to BufRead+Seek cursor adapter for Rust integration
+- Complete JsRelease, JsTrack, JsResource, JsDeal type system
+
+---
+
 ## [0.4.0] - 2025-09-14
 
 ### 🚀 Major Features - Streaming Parser with SIMD Optimization

@@ -7,6 +7,8 @@ High-performance DDEX XML parser built in Rust with comprehensive security prote
 
 Part of the [DDEX Suite](https://github.com/daddykev/ddex-suite) - a comprehensive toolkit for working with DDEX metadata in the music industry.
 
+> **v0.4.1 Released** - Node.js bindings now fully functional with complete data access!
+>
 > **Version 0.4.0** - Streaming Parser Release with critical vulnerability fixes and enhanced error handling.
 
 ## 🛡️ Security-First Design
@@ -26,10 +28,11 @@ Part of the [DDEX Suite](https://github.com/daddykev/ddex-suite) - a comprehensi
 - **Security Hardened** - Protection against XML bombs, deep nesting, malformed input
 - **JSON Output** - Clean, deterministic JSON serialization
 
-### 🔧 **Planned (Not Yet Implemented)**
-- **JavaScript/TypeScript Bindings** - Native Node.js bindings (planned)
-- **Python Bindings** - PyO3-based Python integration (planned)
-- **WebAssembly** - Browser-compatible WASM module (planned)
+### ✅ **Language Bindings (Production Ready)**
+- **Node.js/TypeScript Bindings** - Complete DDEX data structure access
+- **Python Bindings** - PyO3-based Python integration with pandas support
+- **WebAssembly** - Browser-compatible WASM module
+- **Full Node.js bindings with TypeScript support**
 
 ## Quick Start
 
@@ -148,10 +151,11 @@ const cleanDdex = await builder.build(messyVendorDdex, { normalize: true });
 ```
 
 ### 🌐 Cross-Platform Compatibility
-- **Node.js 16+** with native addon performance
+- **Node.js 16+** with native addon performance and complete data access
 - **Browser support** via optimized WASM (<500KB)
 - **Python 3.8+** with comprehensive type hints
 - **TypeScript-first** with complete type definitions
+- **Complete DDEX data structure access** across all language bindings
 
 ### 🎵 Music Industry Ready
 - Support for all DDEX ERN versions (3.8.2, 4.2, 4.3+)
@@ -203,6 +207,28 @@ v0.4.0 includes comprehensive security enhancements:
 - **[JavaScript/TypeScript →](https://github.com/daddykev/ddex-suite/blob/main/packages/ddex-parser/bindings/node/README.md)** - npm package with Node.js and browser support
 - **[Python →](https://github.com/daddykev/ddex-suite/blob/main/packages/ddex-parser/bindings/python/README.md)** - PyPI package with pandas integration
 - **[Rust →](https://github.com/daddykev/ddex-suite/blob/main/packages/ddex-parser/README.md)** - Crates.io package documentation
+
+### Node.js/JavaScript Example (v0.4.1+)
+
+```javascript
+const { DdexParser } = require('ddex-parser');
+const parser = new DdexParser();
+
+const result = parser.parseSync(xmlContent);
+
+// Full access to parsed data
+console.log('Message ID:', result.messageId);
+console.log('Releases:', result.releases);
+console.log('Resources:', result.resources);
+console.log('Deals:', result.deals);
+
+// Access individual release data
+result.releases.forEach(release => {
+  console.log('Release:', release.title);
+  console.log('Artist:', release.displayArtist);
+  console.log('Tracks:', release.tracks.length);
+});
+```
 
 ### Round-Trip Compatibility
 

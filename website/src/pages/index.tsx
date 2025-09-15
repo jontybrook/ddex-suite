@@ -139,7 +139,7 @@ function PerformanceBenchmarks() {
         </div>
         <div className={styles.chartContainer}>
           <div className={styles.performanceChart}>
-            <h3>v0.4.0 Streaming Performance</h3>
+            <h3>v0.4.1 Enhanced Performance</h3>
             <div className={styles.chartBars}>
               <div className={styles.chartBar} style={{ height: '15%' }}>
                 <span>10KB<br/>&lt;5ms</span>

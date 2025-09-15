@@ -530,7 +530,7 @@ function PlaygroundComponent() {
         backgroundColor: 'var(--ifm-background-color)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-          <h1 style={{ margin: 0, fontSize: '1.5rem' }}>DDEX Suite Playground v0.4.0</h1>
+          <h1 style={{ margin: 0, fontSize: '1.5rem' }}>DDEX Suite Playground v0.4.1</h1>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button
               className={`button ${state.mode === 'parser' ? 'button--primary' : 'button--secondary'}`}
@@ -699,9 +699,9 @@ function PlaygroundComponent() {
         fontSize: '0.8rem',
         color: 'var(--ifm-color-emphasis-600)'
       }}>
-        <strong>DDEX Suite v0.4.0</strong> - Using browser-compatible WASM modules for ddex-parser and ddex-builder.
+        <strong>DDEX Suite v0.4.1</strong> - Using browser-compatible WASM modules for ddex-parser and ddex-builder.
         <br/>
-        <strong>Features:</strong> Real-time parsing with v0.4.0 enhanced streaming • Deterministic XML building •
+        <strong>Features:</strong> Real-time parsing with v0.4.1 enhanced data access • Deterministic XML building •
         Batch processing • Preset configurations • Round-trip compatibility • Browser-native performance
       </div>
     </div>
@@ -710,7 +710,7 @@ function PlaygroundComponent() {
 
 export default function Playground() {
   return (
-    <Layout title="DDEX Playground v0.4.0" description="Interactive DDEX Suite playground with v0.4.0 features">
+    <Layout title="DDEX Playground v0.4.1" description="Interactive DDEX Suite playground with v0.4.1 features">
       <BrowserOnly fallback={<div>Loading playground...</div>}>
         {() => <PlaygroundComponent />}
       </BrowserOnly>
