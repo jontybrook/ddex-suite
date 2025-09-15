@@ -7,7 +7,7 @@ High-performance DDEX XML parser built in Rust with comprehensive security prote
 
 Part of the [DDEX Suite](https://github.com/daddykev/ddex-suite) - a comprehensive toolkit for working with DDEX metadata in the music industry.
 
-> **Version 0.4.0** - Security & Stability Release with critical vulnerability fixes and enhanced error handling.
+> **Version 0.4.0** - Streaming Parser Release with critical vulnerability fixes and enhanced error handling.
 
 ## 🛡️ Security-First Design
 

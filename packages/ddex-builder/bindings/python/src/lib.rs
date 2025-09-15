@@ -626,7 +626,7 @@ impl DdexBuilder {
         let mut issues = Vec::new();
 
         // 1. Parse the original XML
-        let parser = DDEXParser::new();
+        let mut parser = DDEXParser::new();
         let cursor = Cursor::new(original_xml.as_bytes());
         let parsed_result = match parser.parse_with_options(cursor, Default::default()) {
             Ok(result) => result,

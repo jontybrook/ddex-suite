@@ -39,10 +39,11 @@ fn example_default_fast_parsing() -> Result<(), Box<dyn std::error::Error>> {
     let start = Instant::now();
 
     let iterator = parser.parse_streaming(&mut reader, None)?;
-    let stats = iterator.stats();
+    let elements: Vec<_> = iterator.collect();
     let elapsed = start.elapsed();
 
-    let elements: Vec<_> = iterator.collect();
+    // Get stats after consuming iterator
+    let stats = parser.get_stats();
 
     println!("   Results:");
     println!("   - Elements parsed: {}", elements.len());
@@ -92,11 +93,14 @@ fn example_custom_configuration() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let iterator = parser.parse_streaming(&mut reader, Some(progress_callback))?;
-    let stats = iterator.stats();
 
-    let releases: Vec<_> =
-        iterator.filter_by_type(ddex_parser::streaming::FastElementType::Release);
+    let releases: Vec<_> = iterator
+        .filter(|el| matches!(el.element_type, ddex_parser::streaming::FastElementType::Release))
+        .collect();
     let elapsed = start.elapsed();
+
+    // Get stats after consuming iterator
+    let stats = parser.get_stats();
 
     println!("   Results:");
     println!("   - Total elements: {}", stats.total_elements);
@@ -144,9 +148,10 @@ fn example_large_file_parsing() -> Result<(), Box<dyn std::error::Error>> {
     let mut total_releases = 0;
     let mut total_elements = 0;
 
-    let progress_callback = Box::new(|progress: ddex_parser::streaming::StreamingProgress| {
-        let percent = if total_size > 0 {
-            (progress.bytes_processed as f64 / total_size as f64) * 100.0
+    let total_size_owned = total_size; // Copy the value
+    let progress_callback = Box::new(move |progress: ddex_parser::streaming::StreamingProgress| {
+        let percent = if total_size_owned > 0 {
+            (progress.bytes_processed as f64 / total_size_owned as f64) * 100.0
         } else {
             0.0
         };
@@ -161,7 +166,6 @@ fn example_large_file_parsing() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let iterator = parser.parse_streaming(&mut reader, Some(progress_callback))?;
-    let stats = iterator.stats();
 
     // Process elements in chunks to manage memory
     for element in iterator {
@@ -178,6 +182,9 @@ fn example_large_file_parsing() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let elapsed = start.elapsed();
+
+    // Get stats after consuming iterator
+    let stats = parser.get_stats();
 
     println!("   Results:");
     println!("   - Total releases processed: {}", total_releases);
@@ -237,9 +244,11 @@ fn example_performance_comparison() -> Result<(), Box<dyn std::error::Error>> {
 
         let start = Instant::now();
         let iterator = parser.parse_streaming(&mut reader, None)?;
-        let stats = iterator.stats();
-        let elapsed = start.elapsed();
         let elements: Vec<_> = iterator.collect();
+        let elapsed = start.elapsed();
+
+        // Get stats after consuming iterator
+        let stats = parser.get_stats();
 
         println!(
             "   {:<15} | {:>6} elements | {:>6.0}ms | {:>6.2}MB/s | {:>8.0} elem/s",
