@@ -258,10 +258,13 @@ interface BuildRequest {
 **Scenario**: XYZ Music Group needs to migrate their entire back catalog (3M+ recordings) from a legacy system to a new distribution platform requiring DDEX ERN 4.3.
 
 ```typescript
-import { DDEXBuilder } from 'ddex-builder';
-import { DatabaseConnection } from './legacy-db';
+// Parse DDEX
+const { DdexParser } = require('ddex-parser');
+const parser = new DdexParser();
 
-const builder = new DDEXBuilder();
+// Build DDEX
+const { DdexBuilder } = require('ddex-builder');
+const builder = new DdexBuilder();
 const db = new DatabaseConnection();
 
 // Apply deterministic configuration for reproducible migration
@@ -317,11 +320,11 @@ for await (const batch of catalogStream) {
 **Scenario**: XYZ needs to generate weekly DDEX feeds for all new releases across their labels for 50+ DSP partners.
 
 ```python
-from ddex_builder import DDEXBuilder
+from ddex_builder import DdexBuilder
 from datetime import datetime, timedelta
 import pandas as pd
 
-builder = DDEXBuilder()
+builder = DdexBuilder()
 
 # Load this week's releases from data warehouse
 releases_df = pd.read_sql("""
@@ -364,10 +367,11 @@ for dsp, dsp_config in DSP_CONFIGS.items():
 **Scenario**: Independent Distributor delivers 100,000+ new releases daily from independent artists and needs to generate DDEX feeds for multiple platforms.
 
 ```typescript
-import { DDEXBuilder } from 'ddex-builder';
-import { Queue } from 'bull';
+// Build DDEX
+const { DdexBuilder } = require('ddex-builder');
+const { Queue } = require('bull');
 
-const builder = new DDEXBuilder();
+const builder = new DdexBuilder();
 const releaseQueue = new Queue('releases');
 
 releaseQueue.process(async (job) => {
@@ -426,12 +430,12 @@ releaseQueue.process(async (job) => {
 **Scenario**: YouTube receives 1M+ DDEX messages daily and needs to normalize them for internal processing.
 
 ```python
-from ddex_parser import DDEXParser
-from ddex_builder import DDEXBuilder
+from ddex_parser import DdexParser
+from ddex_builder import DdexBuilder
 import asyncio
 
-parser = DDEXParser()
-builder = DDEXBuilder()
+parser = DdexParser()
+builder = DdexBuilder()
 
 async def normalize_incoming_ddex(raw_xml: bytes) -> dict:
     """Normalize any DDEX version to internal format"""
@@ -480,7 +484,7 @@ async def normalize_incoming_ddex(raw_xml: bytes) -> dict:
 **Scenario**: XYZ Music Group needs to deliver the same release in different formats (physical, digital, streaming) with format-specific metadata.
 
 ```python
-from ddex_builder import DDEXBuilder
+from ddex_builder import DdexBuilder
 from enum import Enum
 
 class ReleaseFormat(Enum):
@@ -491,7 +495,7 @@ class ReleaseFormat(Enum):
 
 class MultiFormatBuilder:
     def __init__(self):
-        self.builder = DDEXBuilder()
+        self.builder = DdexBuilder()
     
     def build_format_specific_release(self, master_release, format_type):
         """Generate format-specific DDEX from master release"""
@@ -531,12 +535,14 @@ class MultiFormatBuilder:
 This is the primary use case, demonstrating the power of the full suite:
 
 ```typescript
-import { DDEXParser } from 'ddex-parser';
-import { DDEXBuilder } from 'ddex-builder';
-import * as fs from 'fs/promises';
+// Parse DDEX
+const { DdexParser } = require('ddex-parser');
+const parser = new DdexParser();
 
-const parser = new DDEXParser();
-const builder = new DDEXBuilder();
+// Build DDEX
+const { DdexBuilder } = require('ddex-builder');
+const builder = new DdexBuilder();
+const fs = require('fs/promises');
 
 // Apply generic baseline configuration
 builder.applyPreset('audio_album', { lock: true });
@@ -699,8 +705,8 @@ pub struct SecurityConfig {
 ### Parser API (Unified Across Languages)
 
 ```typescript
-// TypeScript
-class DDEXParser {
+// TypeScript/JavaScript
+class DdexParser {
   parse(xml: string | Buffer, options?: ParseOptions): Promise<ParsedERNMessage>;
   parseSync(xml: string | Buffer, options?: ParseOptions): ParsedERNMessage;
   stream(source: ReadableStream, options?: StreamOptions): AsyncIterator<ParsedRelease>;
@@ -729,7 +735,7 @@ interface ParseOptions {
 }
 
 // Python
-class DDEXParser:
+class DdexParser:
     def parse(self, xml: Union[str, bytes], options: Optional[ParseOptions] = None) -> ParsedERNMessage
     async def parse_async(self, xml: Union[str, bytes], options: Optional[ParseOptions] = None) -> ParsedERNMessage
     def stream(self, source: IO, options: Optional[StreamOptions] = None) -> Iterator[ParsedRelease]
@@ -740,8 +746,8 @@ class DDEXParser:
 ### Builder API (Unified Across Languages)
 
 ```typescript
-// TypeScript
-class DDEXBuilder {
+// TypeScript/JavaScript
+class DdexBuilder {
   build(request: BuildRequest, options?: BuildOptions): Promise<BuildResult>;
   buildSync(request: BuildRequest, options?: BuildOptions): BuildResult;
   stream(request: BuildRequest, options?: StreamOptions): WritableStream;
@@ -784,7 +790,7 @@ interface BuildResult {
 }
 
 // Python
-class DDEXBuilder:
+class DdexBuilder:
     def build(self, request: BuildRequest, options: Optional[BuildOptions] = None) -> BuildResult: ...
     async def build_async(self, request: BuildRequest, options: Optional[BuildOptions] = None) -> BuildResult: ...
     def preflight(self, request: BuildRequest) -> PreflightResult: ...
@@ -798,7 +804,8 @@ class DDEXBuilder:
 #### JavaScript/Node.js
 ```typescript
 // Async iterator with backpressure support
-const parser = new DDEXParser();
+const { DdexParser } = require('ddex-parser');
+const parser = new DdexParser();
 const stream = parser.stream(fileStream, {
   chunkSize: 100,
   onProgress: ({ bytes, releases }) => console.log(`Processed ${releases} releases`)
@@ -812,7 +819,7 @@ for await (const release of stream) {
 #### Python
 ```python
 # Iterator with optional async support
-parser = DDEXParser()
+parser = DdexParser()
 
 # Synchronous iteration
 for release in parser.stream(file):
@@ -826,7 +833,8 @@ async for release in parser.stream_async(file):
 #### Browser/WASM
 ```typescript
 // Web Streams API with Worker support
-const parser = new DDEXParser();
+const { DdexParser } = require('ddex-parser');
+const parser = new DdexParser();
 const stream = parser.stream(response.body, {
   useWorker: true,  // Parse in Web Worker
   chunkSize: 100
@@ -861,7 +869,7 @@ mapping = {
 }
 
 # Usage
-builder = DDEXBuilder()
+builder = DdexBuilder()
 df = pd.read_csv('catalog.csv')
 request = builder.from_dataframe(df, mapping)
 result = builder.build(request)
@@ -932,7 +940,8 @@ Even with normalization, DDEX Suite preserves all business-critical data:
 ### Configuration Options
 
 ```typescript
-const builder = new DDEXBuilder({
+const { DdexBuilder } = require('ddex-builder');
+const builder = new DdexBuilder({
   normalize: true,              // Enable smart normalization (default: true)
   target_version: '4.3',        // Target DDEX version (default: '4.3')
   preserve_extensions: true,    // Keep partner extensions (default: true)
@@ -1226,7 +1235,7 @@ Using `napi-rs` with `prebuildify` for maximum compatibility:
   },
   "scripts": {
     "prebuildify": "prebuildify --platform win32,darwin,linux --arch x64,arm64 --strip",
-    "test:import": "node -e \"import('ddex-parser').then(m => console.log(m.version))\""
+    "test:import": "node -e \"const { DdexParser } = require('ddex-parser'); console.log('imported successfully')\""
   }
 }
 ```
@@ -1254,7 +1263,7 @@ archs = ["universal2"]
 archs = ["AMD64", "ARM64"]
 
 [tool.cibuildwheel.test]
-test-command = "python -c 'import ddex_parser; print(ddex_parser.__version__)'"
+test-command = "python -c 'from ddex_parser import DdexParser; print(\"imported successfully\")'"
 ```
 
 ### WASM Distribution

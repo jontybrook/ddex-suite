@@ -115,7 +115,13 @@ DDEX Builder solves this by:
 ### Build & Normalization Features
 
 ```typescript
-const builder = new DDEXBuilder({
+// Build DDEX
+const { DdexBuilder } = require('ddex-builder');
+const builder = new DdexBuilder();
+builder.applyPreset('audio_album'); // Apply baseline preset
+
+// Configuration options
+builder.setConfig({
   canonical: true,           // Consistent, deterministic output
   validate: true,            // Ensure DDEX compliance
   version: '4.3',           // Target DDEX version
@@ -123,6 +129,8 @@ const builder = new DDEXBuilder({
 });
 
 // Parse messy vendor DDEX → Output clean DDEX
+const { DdexParser } = require('ddex-parser');
+const parser = new DdexParser();
 const parsed = await parser.parse(messyVendorFile);
 const cleanDdex = await builder.build(parsed);
 // Result: Beautiful, compliant DDEX 4.3
@@ -215,9 +223,9 @@ cargo add ddex-builder   # ✅ Latest: v0.4.0
 ### Browser/WASM
 ```html
 <script type="module">
-import init, { DDEXParser, DdexBuilder } from '@ddex/wasm';
+import init, { DdexParser, DdexBuilder } from '@ddex/wasm';
 await init();
-const parser = new DDEXParser();
+const parser = new DdexParser();
 const builder = new DdexBuilder();
 </script>
 ```
@@ -230,18 +238,18 @@ Bundle sizes (v0.4.0):
 
 ### JavaScript/TypeScript
 ```typescript
-import { DDEXParser } from 'ddex-parser';
-import { DDEXBuilder } from 'ddex-builder';
-
-// Parse DDEX message
-const parser = new DDEXParser();
+// Parse DDEX
+const { DdexParser } = require('ddex-parser');
+const parser = new DdexParser();
 const result = await parser.parse(xmlContent);
 
 // Modify the parsed data
 result.flat.releases[0].title = "Updated Title";
 
-// Build deterministic XML
-const builder = new DDEXBuilder();
+// Build DDEX
+const { DdexBuilder } = require('ddex-builder');
+const builder = new DdexBuilder();
+builder.applyPreset('audio_album'); // optional
 const xml = await builder.build(result.toBuildRequest());
 
 // Round-trip with beneficial normalization
@@ -251,12 +259,12 @@ assert.deepEqual(reparsed.graph, result.graph); // ✅ Identical
 
 ### Python (v0.4.0 - Native Implementation)
 ```python
-from ddex_parser import DDEXParser
-from ddex_builder import DDEXBuilder
+from ddex_parser import DdexParser
+from ddex_builder import DdexBuilder
 import pandas as pd
 
 # Parse DDEX message with native performance
-parser = DDEXParser()
+parser = DdexParser()
 message = parser.parse(xml_content)
 
 # Export to DataFrame for analysis (NEW!)
@@ -267,7 +275,7 @@ print(f"Found {len(df)} releases")
 df.loc[0, 'title'] = 'Updated Album Title'
 
 # Build from DataFrame (Round-trip support)
-builder = DDEXBuilder()
+builder = DdexBuilder()
 xml = builder.from_dataframe(df, version='4.3')
 
 # Traditional object-based building also supported
@@ -290,11 +298,11 @@ xml = builder.build({
 
 ### Rust
 ```rust
-use ddex_parser::DDEXParser;
-use ddex_builder::DDEXBuilder;
+use ddex_parser::DdexParser;
+use ddex_builder::DdexBuilder;
 
 // Parse DDEX message
-let parser = DDEXParser::new();
+let parser = DdexParser::new();
 let result = parser.parse(&xml_content)?;
 
 // Modify the parsed data
@@ -302,7 +310,7 @@ let mut build_request = result.to_build_request();
 build_request.releases[0].title = "Updated Title".to_string();
 
 // Build deterministic XML
-let builder = DDEXBuilder::new();
+let builder = DdexBuilder::new();
 let xml = builder.build(&build_request)?;
 
 // Round-trip with beneficial normalization and type safety
