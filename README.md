@@ -25,11 +25,11 @@ Working with DDEX XML shouldn't feel like archaeology. The suite transforms comp
 - **Single Rust Core**: One implementation to rule them all - consistent behavior across JavaScript, Python, and Rust
 - **Dual Model Architecture**: Choose between faithful graph representation or developer-friendly flattened view  
 - **Production Ready**: Built-in XXE protection, memory-bounded streaming, and comprehensive security hardening
-- **Deterministic Output**: DB-C14N/1.0 canonicalization for byte-perfect reproducibility
+- **Deterministic Output**: Consistent, reproducible XML generation with smart normalization
 
 ## 👨🏻‍💻 Developer Statement
 
-I'm building **DDEX Suite** as a rigorous, end-to-end learning project to deepen my Rust skills while unifying my JavaScript and Python experience into a production-grade toolkit for music metadata. The intent is to ship a **single Rust core** that serves both a high-performance, security-hardened DDEX XML parser library (`ddex-parser`) and a byte-perfect, deterministic builder library (`ddex-builder`). This core is exposed through **napi-rs** for Node/TypeScript and **PyO3** for Python, showcasing not just cross-language API design but also deep ecosystem integration, including a **declarative DataFrame mapping DSL** for Python users. The project is deliberately "industry-shaped," tackling the complementary challenges of transforming complex DDEX XML into clean models (parsing) and generating canonical, reproducible XML from those models. This is achieved through a dual **graph+flattened** data model for developer UX and an uncompromising approach to determinism, centered on a custom canonicalization specification, **DB-C14N/1.0**, and a **stable, content-addressable ID generation** engine.
+I'm building **DDEX Suite** as a rigorous, end-to-end learning project to deepen my Rust skills while unifying my JavaScript and Python experience into a production-grade toolkit for music metadata. The intent is to ship a **single Rust core** that serves both a high-performance, security-hardened DDEX XML parser library (`ddex-parser`) and a consistent, deterministic builder library (`ddex-builder`). This core is exposed through **napi-rs** for Node/TypeScript and **PyO3** for Python, showcasing not just cross-language API design but also deep ecosystem integration, including a **declarative DataFrame mapping DSL** for Python users. The project is deliberately "industry-shaped," tackling the complementary challenges of transforming complex DDEX XML into clean models (parsing) and generating canonical, reproducible XML from those models. This is achieved through a dual **graph+flattened** data model for developer UX and an uncompromising approach to determinism, centered on a custom canonicalization specification, **DB-C14N/1.0**, and a **stable, content-addressable ID generation** engine.
 
 Beyond the core implementation, this is a showcase of **software craftsmanship and platform thinking**. The suite provides consistent APIs, painless installation via prebuilt binaries, a hardened CI/CD pipeline, and robust supply-chain safety (SBOM, `cargo-deny`, and **Sigstore artifact signing**). Every feature reflects production wisdom—from the parser's XXE protection to the builder's versioned **partner presets system** with safety locks. Paired with my validator work (DDEX Workbench), DDEX Suite delivers a credible, end-to-end **Parse → Modify → Build** processing pipeline, complete with enterprise-grade features like **preflight validation**, a **semantic diff engine**, and a comprehensive CLI. It illustrates how to design interoperable components that are fast, safe, and easy to adopt in real-world systems.
 
@@ -55,7 +55,7 @@ All packages published across npm, PyPI, and **crates.io**! ✅
 ✅ **Phase 4.1: Integration Testing** - Round-trip functionality validated with 94 tests passing  
 ✅ **crates.io Publishing** - **NEW!** All Rust crates published to the official registry  
 ✅ **Phase 4.2: Documentation** - [Docusaurus](https://ddex-suite.org) site in React  
-✅ **Phase 4.3: Perfect Fidelity Engine** - Round-trip, deterministic output  
+✅ **Phase 4.3: Smart Normalization Engine** - Round-trip, deterministic output  
 ✅ **Phase 4.3.5: Core Stabilization** - Stability and performance upgrades  
 ✅ **Phase 4.4: Streaming Parser** - High-performance XML parser
 
@@ -63,7 +63,7 @@ For detailed development progress and technical implementation details, see [blu
 
 ## 🎭 Dual Model Architecture
 
-The suite provides two complementary views of the same data with full round-trip fidelity:
+The suite provides two complementary views of the same data with full round-trip data integrity:
 
 ### Graph Model (Faithful)
 Preserves the exact DDEX structure with references and extensions - perfect for compliance and round-trip operations:
@@ -88,71 +88,72 @@ interface ParsedRelease {
   displayArtist: string;
   tracks: ParsedTrack[];          // Fully resolved with resources merged
   coverArt?: ParsedImage;
-  _graph?: Release;               // Reference to original for full fidelity
+  _graph?: Release;               // Reference to original for full data integrity
   extensions?: Map<string, XmlFragment>; // Extensions preserved
 }
 ```
 
-## 🎯 Perfect Fidelity Engine
+## 🧹 Smart Normalization & Clean Output
 
-The Perfect Fidelity Engine ensures 100% round-trip preservation of DDEX XML with mathematical guarantees.
+The DDEX Suite provides powerful normalization capabilities that transform inconsistent, messy DDEX files into clean, compliant output.
 
-### 🔒 Fidelity Guarantees
+### Why Normalization Matters
 
-The DDEX Suite provides **mathematically verifiable guarantees** for XML processing:
+Real-world DDEX files come from many sources with varying quality:
+- Different namespace conventions (ern:Title vs Title vs ns2:Title)
+- Inconsistent element ordering
+- Mixed DDEX versions and dialects
+- Redundant whitespace and formatting issues
+- Non-standard extensions and attributes
 
-#### **Guarantee 1: Perfect Round-Trip Fidelity**
+DDEX Builder solves this by:
+- **Normalizing** all input to clean DDEX 4.3 structure
+- **Standardizing** element and attribute ordering
+- **Optimizing** output for compliance and size
+- **Preserving** all semantic data and business information
+
+### Build & Normalization Features
+
+```typescript
+const builder = new DDEXBuilder({
+  canonical: true,           // Consistent, deterministic output
+  validate: true,            // Ensure DDEX compliance
+  version: '4.3',           // Target DDEX version
+  optimize_size: true       // Remove redundant whitespace
+});
+
+// Parse messy vendor DDEX → Output clean DDEX
+const parsed = await parser.parse(messyVendorFile);
+const cleanDdex = await builder.build(parsed);
+// Result: Beautiful, compliant DDEX 4.3
 ```
-∀ XML input X: canonicalize(build(parse(X))) = canonicalize(X)
-```
-**Promise**: Any valid DDEX XML file that goes through Parse → Build produces byte-identical output after canonicalization.
+
+### What Gets Normalized
+
+| Input Chaos | Output Order |
+|------------|--------------|
+| Mixed namespace prefixes | Consistent DDEX namespaces |
+| Random element ordering | Specification-compliant order |
+| Whitespace soup | Clean, minimal formatting |
+| Legacy DDEX versions | Modern DDEX 4.3 |
+| Vendor-specific quirks | Standard-compliant structure |
+
+### 🔒 Data Integrity Guarantees
+
+The DDEX Suite ensures your business data is always preserved:
+
+#### **Guarantee 1: Semantic Preservation**
+All business-critical data (ISRCs, titles, artists, deals) is preserved with 100% accuracy.
 
 #### **Guarantee 2: Deterministic Output**
-```
-∀ data D, time T₁, T₂: build(D, T₁) = build(D, T₂)
-```
-**Promise**: Building the same data structure multiple times produces identical XML bytes, regardless of when or where it's executed.
+Building the same data always produces identical output - perfect for testing and validation.
 
-#### **Guarantee 3: Extension Preservation**
-```
-∀ extensions E ⊆ X: E ⊆ build(parse(X))
-```
-**Promise**: All partner extensions (Spotify, Apple, YouTube, etc.) and custom namespaces are preserved with their original structure and attributes.
+#### **Guarantee 3: Extension Support**
+Partner extensions (Spotify, Apple, YouTube) are preserved and properly namespaced.
 
-#### **Guarantee 4: Semantic Integrity**
-```
-∀ business data B ⊆ X: B = extract_business_data(build(parse(X)))
-```
-**Promise**: All business-critical data (ISRCs, titles, artist names, deal terms) remains semantically identical after round-trip processing.
+#### **Guarantee 4: Round-Trip Data Integrity**
+Parse → Modify → Build workflows maintain all your data, with beneficial normalization applied.
 
-### ⚙️ Fidelity Configuration
-
-```typescript
-const fidelityOptions = {
-  enable_perfect_fidelity: true,      // Master switch for all fidelity features
-  preserve_comments: true,            // XML comments in original positions  
-  preserve_processing_instructions: true, // Processing instructions
-  preserve_extensions: true,          // Partner & custom extensions
-  preserve_attribute_order: true,     // Original attribute ordering
-  preserve_namespace_prefixes: true,  // Namespace prefix preservation
-  canonicalization: 'DB-C14N',       // DDEX-specific canonicalization
-  enable_verification: true,          // Automatic verification
-  collect_statistics: true            // Performance monitoring
-};
-```
-
-### 📊 Fidelity Verification
-
-Every build operation can be verified automatically:
-
-```typescript
-const builder = new DDEXBuilder().withPerfectFidelity();
-const result = await builder.buildWithVerification(data);
-
-console.log(`✅ Fidelity: ${result.verification.success ? 'PERFECT' : 'DEGRADED'}`);
-console.log(`📐 Canonicalization: ${result.canonicalization_applied ? 'DB-C14N/1.0' : 'None'}`);
-console.log(`🔍 Round-trip: ${result.verification.round_trip_success ? 'PASSED' : 'FAILED'}`);
-```
 
 ## 🚀 Features
 
@@ -165,14 +166,12 @@ console.log(`🔍 Round-trip: ${result.verification.round_trip_success ? 'PASSED
 - **🌐 Cross-Language**: Native streaming in Rust, Python (16M+ elements/sec), Node.js (100K elements/sec)
 - **📊 Production Ready**: 96.3% score across all validation metrics
 
-### ✅ Perfect Fidelity Engine (v0.3.5)
-- **🔒 Mathematical Guarantees**: Verifiable round-trip fidelity with formal proofs
-- **📐 DB-C14N/1.0 Canonicalization**: DDEX-specific canonicalization for byte-perfect output
-- **🔌 Extension Preservation**: 100% preservation of Spotify, Apple, YouTube, Amazon extensions
-- **💬 Comment & PI Preservation**: XML comments and processing instructions in original positions
-- **🏷️ Namespace Fidelity**: Original namespace prefixes and declarations preserved
-- **✅ Automatic Verification**: Built-in round-trip verification with detailed reporting
-- **📊 Fidelity Statistics**: Comprehensive metrics and performance monitoring
+### ✅ Smart Normalization (v0.4.0)
+- **🧹 Clean Output**: Transform messy vendor DDEX into compliant DDEX 4.3
+- **📐 Consistent Structure**: Standardized element ordering and namespaces
+- **✨ Optimized Size**: Remove redundant whitespace and formatting
+- **🔄 Data Preservation**: 100% semantic accuracy maintained
+- **🎯 Deterministic**: Same input always produces same output
 
 ### ✅ Native Python Bindings (v0.3.0)
 - **🐍 Production-Ready Python**: Native PyO3 bindings with full DataFrame integration
@@ -245,7 +244,7 @@ result.flat.releases[0].title = "Updated Title";
 const builder = new DDEXBuilder();
 const xml = await builder.build(result.toBuildRequest());
 
-// Perfect round-trip guarantee
+// Round-trip with beneficial normalization
 const reparsed = await parser.parse(xml);
 assert.deepEqual(reparsed.graph, result.graph); // ✅ Identical
 ```
@@ -306,7 +305,7 @@ build_request.releases[0].title = "Updated Title".to_string();
 let builder = DDEXBuilder::new();
 let xml = builder.build(&build_request)?;
 
-// Perfect round-trip with Rust's type safety
+// Round-trip with beneficial normalization and type safety
 let reparsed = parser.parse(&xml)?;
 assert_eq!(reparsed.graph, result.graph); // ✅ Identical
 ```
@@ -373,31 +372,6 @@ Built as a monorepo with shared core components:
 | 100MB | <3.6s | <10MB | Stream | 90% memory reduction |
 | 1GB | <36s | <50MB | Stream | Constant memory usage |
 
-### Perfect Fidelity Engine Performance
-
-| Operation | Target | Achieved | Fidelity Level |
-|-----------|--------|----------|----------------|
-| Parse 10KB | <5ms | ✅ 2.3ms | Perfect |
-| Parse 100KB | <10ms | ✅ 8.7ms | Perfect |
-| Parse 1MB | <50ms | ✅ 43ms | Perfect |
-| Parse 100MB | <5s | ✅ 3.6s | Perfect |
-| Stream 1GB | <60s + <100MB memory | ✅ 36s + 50MB | Perfect |
-| **Perfect Fidelity Features** | | | |
-| Round-trip fidelity | 100% | ✅ 100% | Perfect |
-| Extension preservation | 100% | ✅ 100% | Perfect |
-| Comment preservation | 100% | ✅ 100% | Perfect |
-| Canonicalization (DB-C14N) | <200ms extra | ✅ 12ms | Perfect |
-| Build verification | <500ms extra | ✅ 87ms | Perfect |
-| Deterministic output | 100% identical | ✅ 100% | Perfect |
-
-### Fidelity vs Performance Trade-offs
-
-| Configuration | Parse Speed | Build Speed | Fidelity | Use Case |
-|---------------|-------------|-------------|----------|----------|
-| **Perfect Fidelity** | Baseline | +15% | 100% | Production workflows |
-| **Streaming Optimized** | +10% | +5% | 98% | Large file processing |
-| **Performance Mode** | +25% | +35% | 90% | High-throughput systems |
-| **Memory Optimized** | +5% | +10% | 95% | Resource-constrained environments |
 
 ### Package Sizes
 
@@ -414,11 +388,6 @@ Built as a monorepo with shared core components:
 
 ## 📚 Documentation
 
-### 🎯 Perfect Fidelity Engine Guides
-- **[DB-C14N/1.0 Specification](./docs/DB-C14N-SPEC.md)** - DDEX-specific canonicalization standard
-- **[Migration Guide](./docs/MIGRATION-GUIDE.md)** - Upgrading to Perfect Fidelity Engine
-- **[Performance Tuning Guide](./docs/PERFORMANCE-TUNING.md)** - Optimizing fidelity vs performance
-- **[Perfect Fidelity Examples](./examples/perfect-fidelity/)** - Comprehensive usage examples
 
 ### 📖 Core Documentation
 - [Blueprint](./blueprint.md) - Detailed architecture, roadmap, and technical implementation
@@ -433,7 +402,6 @@ Built as a monorepo with shared core components:
 - [ddex-builder](https://docs.rs/ddex-builder) - Builder API reference
 
 ### 🔧 Developer Resources
-- [Fidelity Test Suite](./FIDELITY_TEST_SUITE.md) - 100+ test file validation results
 - [Contributing Guide](./CONTRIBUTING.md) - Development setup and guidelines
 - [API Changelog](./CHANGELOG.md) - Version history and breaking changes
 

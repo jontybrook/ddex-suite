@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub](https://img.shields.io/badge/GitHub-ddex--suite-blue)](https://github.com/daddykev/ddex-suite)
 
-Generate deterministic, industry-compliant DDEX XML files with byte-perfect reproducibility. Build DDEX messages from structured data with comprehensive validation, partner-specific presets, and perfect round-trip compatibility with ddex-parser.
+Generate deterministic, industry-compliant DDEX XML files with smart normalization. Transform messy DDEX data from any source into clean, compliant DDEX 4.3 with comprehensive validation, partner-specific presets, and data integrity preservation.
 
 Part of the [DDEX Suite](https://github.com/daddykev/ddex-suite) - a comprehensive toolkit for working with DDEX metadata in the music industry.
 
@@ -144,7 +144,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ### 🎯 Deterministic Output
 - **100% reproducible** XML generation with stable hash IDs
-- **DB-C14N/1.0** canonicalization for byte-perfect consistency  
+- **Smart normalization** for consistent, compliant output  
 - **Content-addressable** resource IDs for reliable references
 - **Stable ordering** ensures identical output across all platforms
 
@@ -169,6 +169,37 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 - **Streaming generation** for large catalogs (>100,000 tracks)
 - **Memory-efficient processing** with configurable limits
 - **Parallel resource processing** for maximum throughput
+
+## 🧹 Smart Normalization
+
+DDEX Builder transforms inconsistent, messy DDEX data from various sources into clean, compliant output:
+
+### Input Sources Supported
+- **Vendor DDEX files** with mixed namespace conventions
+- **Legacy DDEX versions** (3.8.2, 4.2) normalized to 4.3
+- **Inconsistent element ordering** from different systems
+- **Mixed formatting** with redundant whitespace
+- **Non-standard extensions** properly preserved and namespaced
+
+### Normalization Benefits
+- **Consistent namespaces**: Standardizes `ern:Title` vs `Title` vs `ns2:Title` variations
+- **Specification-compliant ordering**: Elements arranged per DDEX standard
+- **Clean formatting**: Removes redundant whitespace and formatting issues
+- **Version standardization**: Upgrades legacy DDEX to modern 4.3 structure
+- **Extension preservation**: Maintains partner extensions (Spotify, YouTube, Apple) with proper namespacing
+
+```typescript
+// Transform messy vendor DDEX into clean output
+const builder = new DDEXBuilder({
+  normalize: true,        // Enable smart normalization
+  target_version: '4.3',  // Standardize to DDEX 4.3
+  optimize_size: true     // Remove redundant formatting
+});
+
+const messyVendorData = /* mixed formatting, legacy version */;
+const cleanDdex = await builder.build(messyVendorData);
+// Result: Clean, compliant DDEX 4.3 with preserved semantics
+```
 
 ## Performance Benchmarks
 
@@ -211,7 +242,7 @@ v0.4.0 includes comprehensive security enhancements:
 
 ### Round-Trip Compatibility
 
-Perfect integration with ddex-parser for complete workflows:
+Seamless integration with ddex-parser for complete workflows with smart normalization:
 
 ```typescript
 import { DDEXParser } from 'ddex-parser';
@@ -229,7 +260,7 @@ modified.releases[0].title = 'Remastered Edition';
 const builder = new DDEXBuilder({ canonical: true });
 const newXml = await builder.buildFromFlattened(modified);
 
-// Perfect round-trip fidelity guaranteed
+// Round-trip with beneficial normalization
 const reparsed = await parser.parseString(newXml);
 console.assert(reparsed.releases[0].title === 'Remastered Edition');
 ```

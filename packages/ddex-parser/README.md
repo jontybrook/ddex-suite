@@ -131,7 +131,21 @@ cargo bench --release     # Benchmarking
 ### 🎭 Dual Model Architecture
 - **Graph Model**: Faithful DDEX structure with references (perfect for compliance)
 - **Flattened Model**: Developer-friendly denormalized data (easy to consume)
-- Full round-trip fidelity between both representations
+- Full round-trip data integrity between both representations
+
+### 🧹 Parser + Builder Workflow
+DDEX Parser extracts data faithfully, while **ddex-builder** provides smart normalization:
+- **Parser role**: Preserves exact input structure and semantics
+- **Builder role**: Transforms data into clean, compliant DDEX 4.3
+- **Combined workflow**: Parse messy vendor DDEX → Modify data → Generate clean output
+- **Data integrity**: All business data (ISRCs, titles, deals) preserved through round-trip
+
+```typescript
+// Parser preserves input exactly as received
+const messyVendorDdex = await parser.parse(vendorFile);
+// Builder normalizes output to clean DDEX 4.3
+const cleanDdex = await builder.build(messyVendorDdex, { normalize: true });
+```
 
 ### 🌐 Cross-Platform Compatibility
 - **Node.js 16+** with native addon performance
@@ -192,7 +206,7 @@ v0.4.0 includes comprehensive security enhancements:
 
 ### Round-Trip Compatibility
 
-Perfect integration with ddex-builder for complete workflows:
+Seamless integration with ddex-builder for complete workflows with smart normalization:
 
 ```typescript
 import { DDEXParser } from 'ddex-parser';
@@ -206,13 +220,13 @@ const original = await parser.parseFile('input.xml');
 const modified = { ...original.flattened };
 modified.tracks[0].title = "New Title";
 
-// Build new DDEX file with deterministic output
+// Build new DDEX file with smart normalization
 const builder = new DDEXBuilder();
 const newXML = await builder.buildFromFlattened(modified);
 
-// Verify round-trip integrity
+// Verify round-trip integrity (with beneficial normalization)
 const reparsed = await parser.parseString(newXML);
-assert.deepEqual(reparsed.tracks[0].title, "New Title"); // ✅ Perfect fidelity
+assert.deepEqual(reparsed.tracks[0].title, "New Title"); // ✅ Data integrity preserved
 ```
 
 ## License

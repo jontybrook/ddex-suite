@@ -5,7 +5,7 @@ build-backend = "maturin"
 [project]
 name = "ddex-builder"
 version = "0.4.0"
-description = "High-performance DDEX XML builder with deterministic output and DB-C14N/1.0 canonicalization"
+description = "High-performance DDEX XML builder with deterministic output and smart normalization"
 readme = "README.md"
 authors = [{name = "Kevin Marques Moo"}]
 license = {text = "MIT"}

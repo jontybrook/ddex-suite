@@ -1,7 +1,7 @@
 {
   "name": "ddex-builder",
   "version": "0.4.0",
-  "description": "DDEX XML builder with deterministic output and DB-C14N/1.0 canonicalization",
+  "description": "DDEX XML builder with deterministic output and smart normalization",
   "keywords": [
     "ddex",
     "xml",
