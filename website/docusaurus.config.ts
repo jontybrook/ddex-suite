@@ -68,6 +68,7 @@ const config: Config = {
   //   ],
   // ],
 
+
   themeConfig: {
     image: 'img/ddex-suite-social.jpg',
     navbar: {

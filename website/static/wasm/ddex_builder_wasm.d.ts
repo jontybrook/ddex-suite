@@ -4,6 +4,29 @@ export function main(): void;
 export function batchBuild(requests: any): Promise<string[]>;
 export function validateStructure(xml: string): ValidationResult;
 export function version(): string;
+export class BuildResult {
+  free(): void;
+  constructor(xml: string);
+  xml: string;
+  get statistics(): BuildStatistics | undefined;
+  set statistics(value: BuildStatistics | null | undefined);
+  get verification(): VerificationResult | undefined;
+  set verification(value: VerificationResult | null | undefined);
+}
+export class BuildStatistics {
+  free(): void;
+  constructor(build_time_ms: number, memory_used_bytes: number, xml_size_bytes: number, element_count: number, attribute_count: number, namespace_count: number, extension_count: number, canonicalization_time_ms: number);
+  build_time_ms: number;
+  memory_used_bytes: number;
+  xml_size_bytes: number;
+  element_count: number;
+  attribute_count: number;
+  namespace_count: number;
+  extension_count: number;
+  canonicalization_time_ms: number;
+  get verification_time_ms(): number | undefined;
+  set verification_time_ms(value: number | null | undefined);
+}
 export class BuilderStats {
   free(): void;
   constructor();
@@ -13,6 +36,53 @@ export class BuilderStats {
   last_build_size_bytes: number;
   validation_errors: number;
   validation_warnings: number;
+}
+export class DdexDiffViewer {
+  free(): void;
+  /**
+   * Create a new diff viewer
+   */
+  constructor();
+  /**
+   * Create a new diff viewer with custom configuration
+   */
+  static with_config(config_json: string): DdexDiffViewer;
+  /**
+   * Compare two DDEX XML strings and return HTML diff viewer
+   */
+  diff_to_html(old_xml: string, new_xml: string): string;
+  /**
+   * Compare two DDEX XML strings and return JSON diff
+   */
+  diff_to_json(old_xml: string, new_xml: string): string;
+  /**
+   * Get diff summary as text
+   */
+  diff_to_summary(old_xml: string, new_xml: string): string;
+  /**
+   * Generate JSON Patch from diff
+   */
+  diff_to_json_patch(old_xml: string, new_xml: string): string;
+}
+export class FidelityOptions {
+  free(): void;
+  constructor();
+  static createPerfectFidelity(): FidelityOptions;
+  static createFastProcessing(): FidelityOptions;
+  enable_perfect_fidelity: boolean;
+  canonicalization: string;
+  preserve_comments: boolean;
+  preserve_processing_instructions: boolean;
+  preserve_extensions: boolean;
+  preserve_attribute_order: boolean;
+  preserve_namespace_prefixes: boolean;
+  enable_verification: boolean;
+  collect_statistics: boolean;
+  enable_deterministic_ordering: boolean;
+  memory_optimization: string;
+  streaming_mode: boolean;
+  chunk_size: number;
+  enable_checksums: boolean;
 }
 export class Release {
   free(): void;
@@ -60,21 +130,46 @@ export class ValidationResult {
   errors: string[];
   warnings: string[];
 }
+export class VerificationResult {
+  free(): void;
+  constructor(round_trip_success: boolean, fidelity_score: number, canonicalization_consistent: boolean, determinism_verified: boolean);
+  round_trip_success: boolean;
+  fidelity_score: number;
+  canonicalization_consistent: boolean;
+  determinism_verified: boolean;
+  issues: string[];
+  get checksums_match(): boolean | undefined;
+  set checksums_match(value: boolean | null | undefined);
+}
 export class WasmDdexBuilder {
   free(): void;
   constructor();
   addRelease(release: Release): void;
   addResource(resource: Resource): void;
   build(): Promise<string>;
+  buildWithFidelity(fidelity_options?: FidelityOptions | null): Promise<BuildResult>;
+  testRoundTripFidelity(original_xml: string, fidelity_options?: FidelityOptions | null): Promise<VerificationResult>;
+  canonicalizeXml(xml: string, canonicalization: string): string;
   validate(): ValidationResult;
   getStats(): BuilderStats;
   reset(): void;
+  getAvailablePresets(): string[];
+  getPresetInfo(preset_name: string): any;
+  applyPreset(preset_name: string): void;
+  getPresetValidationRules(preset_name: string): any;
 }
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
+  readonly __wbg_ddexdiffviewer_free: (a: number, b: number) => void;
+  readonly ddexdiffviewer_new: () => number;
+  readonly ddexdiffviewer_with_config: (a: number, b: number, c: number) => void;
+  readonly ddexdiffviewer_diff_to_html: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+  readonly ddexdiffviewer_diff_to_json: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+  readonly ddexdiffviewer_diff_to_summary: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+  readonly ddexdiffviewer_diff_to_json_patch: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
   readonly main: () => void;
   readonly __wbg_release_free: (a: number, b: number) => void;
   readonly __wbg_get_release_release_id: (a: number, b: number) => void;
@@ -143,22 +238,103 @@ export interface InitOutput {
   readonly __wbg_set_builderstats_validation_errors: (a: number, b: number) => void;
   readonly __wbg_get_builderstats_validation_warnings: (a: number) => number;
   readonly __wbg_set_builderstats_validation_warnings: (a: number, b: number) => void;
+  readonly __wbg_fidelityoptions_free: (a: number, b: number) => void;
+  readonly __wbg_get_fidelityoptions_enable_perfect_fidelity: (a: number) => number;
+  readonly __wbg_set_fidelityoptions_enable_perfect_fidelity: (a: number, b: number) => void;
+  readonly __wbg_get_fidelityoptions_canonicalization: (a: number, b: number) => void;
+  readonly __wbg_set_fidelityoptions_canonicalization: (a: number, b: number, c: number) => void;
+  readonly __wbg_get_fidelityoptions_preserve_comments: (a: number) => number;
+  readonly __wbg_set_fidelityoptions_preserve_comments: (a: number, b: number) => void;
+  readonly __wbg_get_fidelityoptions_preserve_processing_instructions: (a: number) => number;
+  readonly __wbg_set_fidelityoptions_preserve_processing_instructions: (a: number, b: number) => void;
+  readonly __wbg_get_fidelityoptions_preserve_extensions: (a: number) => number;
+  readonly __wbg_set_fidelityoptions_preserve_extensions: (a: number, b: number) => void;
+  readonly __wbg_get_fidelityoptions_preserve_attribute_order: (a: number) => number;
+  readonly __wbg_set_fidelityoptions_preserve_attribute_order: (a: number, b: number) => void;
+  readonly __wbg_get_fidelityoptions_preserve_namespace_prefixes: (a: number) => number;
+  readonly __wbg_set_fidelityoptions_preserve_namespace_prefixes: (a: number, b: number) => void;
+  readonly __wbg_get_fidelityoptions_enable_verification: (a: number) => number;
+  readonly __wbg_set_fidelityoptions_enable_verification: (a: number, b: number) => void;
+  readonly __wbg_get_fidelityoptions_collect_statistics: (a: number) => number;
+  readonly __wbg_set_fidelityoptions_collect_statistics: (a: number, b: number) => void;
+  readonly __wbg_get_fidelityoptions_enable_deterministic_ordering: (a: number) => number;
+  readonly __wbg_set_fidelityoptions_enable_deterministic_ordering: (a: number, b: number) => void;
+  readonly __wbg_get_fidelityoptions_memory_optimization: (a: number, b: number) => void;
+  readonly __wbg_set_fidelityoptions_memory_optimization: (a: number, b: number, c: number) => void;
+  readonly __wbg_get_fidelityoptions_streaming_mode: (a: number) => number;
+  readonly __wbg_set_fidelityoptions_streaming_mode: (a: number, b: number) => void;
+  readonly __wbg_get_fidelityoptions_enable_checksums: (a: number) => number;
+  readonly __wbg_set_fidelityoptions_enable_checksums: (a: number, b: number) => void;
+  readonly fidelityoptions_new: () => number;
+  readonly fidelityoptions_createPerfectFidelity: () => number;
+  readonly fidelityoptions_createFastProcessing: () => number;
+  readonly __wbg_buildstatistics_free: (a: number, b: number) => void;
+  readonly __wbg_get_buildstatistics_build_time_ms: (a: number) => number;
+  readonly __wbg_set_buildstatistics_build_time_ms: (a: number, b: number) => void;
+  readonly __wbg_get_buildstatistics_memory_used_bytes: (a: number) => number;
+  readonly __wbg_set_buildstatistics_memory_used_bytes: (a: number, b: number) => void;
+  readonly __wbg_get_buildstatistics_xml_size_bytes: (a: number) => number;
+  readonly __wbg_set_buildstatistics_xml_size_bytes: (a: number, b: number) => void;
+  readonly __wbg_get_buildstatistics_element_count: (a: number) => number;
+  readonly __wbg_set_buildstatistics_element_count: (a: number, b: number) => void;
+  readonly __wbg_get_buildstatistics_attribute_count: (a: number) => number;
+  readonly __wbg_set_buildstatistics_attribute_count: (a: number, b: number) => void;
+  readonly __wbg_get_buildstatistics_namespace_count: (a: number) => number;
+  readonly __wbg_set_buildstatistics_namespace_count: (a: number, b: number) => void;
+  readonly __wbg_get_buildstatistics_extension_count: (a: number) => number;
+  readonly __wbg_set_buildstatistics_extension_count: (a: number, b: number) => void;
+  readonly __wbg_get_buildstatistics_canonicalization_time_ms: (a: number) => number;
+  readonly __wbg_set_buildstatistics_canonicalization_time_ms: (a: number, b: number) => void;
+  readonly buildstatistics_new: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => number;
+  readonly buildstatistics_verification_time_ms: (a: number, b: number) => void;
+  readonly buildstatistics_set_verification_time_ms: (a: number, b: number, c: number) => void;
+  readonly __wbg_verificationresult_free: (a: number, b: number) => void;
+  readonly __wbg_get_verificationresult_canonicalization_consistent: (a: number) => number;
+  readonly __wbg_set_verificationresult_canonicalization_consistent: (a: number, b: number) => void;
+  readonly __wbg_get_verificationresult_determinism_verified: (a: number) => number;
+  readonly __wbg_set_verificationresult_determinism_verified: (a: number, b: number) => void;
+  readonly verificationresult_new: (a: number, b: number, c: number, d: number) => number;
+  readonly verificationresult_issues: (a: number, b: number) => void;
+  readonly verificationresult_set_issues: (a: number, b: number, c: number) => void;
+  readonly verificationresult_checksums_match: (a: number) => number;
+  readonly verificationresult_set_checksums_match: (a: number, b: number) => void;
+  readonly __wbg_buildresult_free: (a: number, b: number) => void;
+  readonly __wbg_get_buildresult_xml: (a: number, b: number) => void;
+  readonly __wbg_set_buildresult_xml: (a: number, b: number, c: number) => void;
+  readonly buildresult_new: (a: number, b: number) => number;
+  readonly buildresult_statistics: (a: number) => number;
+  readonly buildresult_set_statistics: (a: number, b: number) => void;
+  readonly buildresult_verification: (a: number) => number;
+  readonly buildresult_set_verification: (a: number, b: number) => void;
   readonly builderstats_new: () => number;
   readonly __wbg_wasmddexbuilder_free: (a: number, b: number) => void;
   readonly wasmddexbuilder_new: (a: number) => void;
   readonly wasmddexbuilder_addRelease: (a: number, b: number) => void;
   readonly wasmddexbuilder_addResource: (a: number, b: number) => void;
   readonly wasmddexbuilder_build: (a: number) => number;
+  readonly wasmddexbuilder_buildWithFidelity: (a: number, b: number) => number;
+  readonly wasmddexbuilder_testRoundTripFidelity: (a: number, b: number, c: number, d: number) => number;
+  readonly wasmddexbuilder_canonicalizeXml: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
   readonly wasmddexbuilder_validate: (a: number) => number;
   readonly wasmddexbuilder_getStats: (a: number) => number;
   readonly wasmddexbuilder_reset: (a: number) => void;
+  readonly wasmddexbuilder_getAvailablePresets: (a: number, b: number) => void;
+  readonly wasmddexbuilder_getPresetInfo: (a: number, b: number, c: number, d: number) => void;
+  readonly wasmddexbuilder_applyPreset: (a: number, b: number, c: number, d: number) => void;
+  readonly wasmddexbuilder_getPresetValidationRules: (a: number, b: number, c: number, d: number) => void;
   readonly batchBuild: (a: number) => number;
   readonly validateStructure: (a: number, b: number) => number;
   readonly version: (a: number) => void;
-  readonly __wbindgen_export_0: (a: number) => void;
-  readonly __wbindgen_export_1: (a: number, b: number, c: number) => void;
-  readonly __wbindgen_export_2: (a: number, b: number) => number;
-  readonly __wbindgen_export_3: (a: number, b: number, c: number, d: number) => number;
+  readonly __wbg_set_fidelityoptions_chunk_size: (a: number, b: number) => void;
+  readonly __wbg_set_verificationresult_fidelity_score: (a: number, b: number) => void;
+  readonly __wbg_set_verificationresult_round_trip_success: (a: number, b: number) => void;
+  readonly __wbg_get_verificationresult_round_trip_success: (a: number) => number;
+  readonly __wbg_get_fidelityoptions_chunk_size: (a: number) => number;
+  readonly __wbg_get_verificationresult_fidelity_score: (a: number) => number;
+  readonly __wbindgen_export_0: (a: number, b: number) => number;
+  readonly __wbindgen_export_1: (a: number, b: number, c: number, d: number) => number;
+  readonly __wbindgen_export_2: (a: number) => void;
+  readonly __wbindgen_export_3: (a: number, b: number, c: number) => void;
   readonly __wbindgen_export_4: WebAssembly.Table;
   readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
   readonly __wbindgen_export_5: (a: number, b: number, c: number) => void;

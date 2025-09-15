@@ -27,8 +27,10 @@
     "@monaco-editor/react": "^4.7.0",
     "allotment": "^1.20.4",
     "clsx": "^2.0.0",
-    "ddex-builder": "^0.2.5",
-    "ddex-parser": "^0.2.5",
+    "ddex-builder": "^0.4.0",
+    "ddex-builder-wasm": "file:../packages/ddex-builder/bindings/wasm/pkg",
+    "ddex-parser": "^0.4.0",
+    "ddex-parser-wasm": "file:../packages/ddex-parser/bindings/wasm/pkg",
     "firebase": "^12.2.1",
     "prism-react-renderer": "^2.3.0",
     "react": "^19.0.0",
@@ -40,6 +42,8 @@
     "@docusaurus/module-type-aliases": "3.8.1",
     "@docusaurus/tsconfig": "3.8.1",
     "@docusaurus/types": "3.8.1",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
     "typescript": "~5.6.2"
   },
   "browserslist": {

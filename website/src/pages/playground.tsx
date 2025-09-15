@@ -5,14 +5,8 @@ import { Allotment } from 'allotment';
 import Editor from '@monaco-editor/react';
 import 'allotment/dist/style.css';
 
-// WASM will be loaded dynamically
-type WasmModule = {
-  WasmDdexBuilder: new () => any;
-  Release: new (releaseId: string, releaseType: string, title: string, artist: string) => any;
-  Resource: new (resourceId: string, resourceType: string, title: string, artist: string) => any;
-  default: (wasmPath?: string) => Promise<any>;
-};
-
+// Import WASM loader utility
+import { wasmLoader, type BuildRequest, type ParsedDdexResult } from '../utils/wasmLoader';
 
 // Sample DDEX XML files for testing
 const SAMPLE_FILES = {
@@ -272,20 +266,47 @@ const SAMPLE_FILES = {
       commercialModelType: "Subscription",
       dealStartDate: "2024-03-01"
     }]
-  }, null, 2)
+  }, null, 2),
+
+  'Batch Build Template': JSON.stringify([
+    {
+      messageHeader: {
+        messageId: "MSG_BATCH_001",
+        messageSenderName: "Batch Label",
+        messageRecipientName: "DSP Platform"
+      },
+      releases: [{
+        releaseId: "BATCH_REL_001",
+        title: "First Album",
+        artist: "Artist One",
+        releaseType: "Album"
+      }]
+    },
+    {
+      messageHeader: {
+        messageId: "MSG_BATCH_002",
+        messageSenderName: "Batch Label",
+        messageRecipientName: "DSP Platform"
+      },
+      releases: [{
+        releaseId: "BATCH_REL_002",
+        title: "Second Album",
+        artist: "Artist Two",
+        releaseType: "Single"
+      }]
+    }
+  ], null, 2)
 };
 
 interface PlaygroundState {
-  mode: 'parser' | 'builder';
+  mode: 'parser' | 'builder' | 'batch';
   input: string;
   output: string;
   loading: boolean;
   error: string;
-  wasmLoaded: boolean;
-  parserLoaded: boolean;
+  librariesLoaded: boolean;
+  selectedPreset: string;
 }
-
-let wasmModule: WasmModule | null = null;
 
 function PlaygroundComponent() {
   const [state, setState] = useState<PlaygroundState>({
@@ -294,208 +315,108 @@ function PlaygroundComponent() {
     output: '',
     loading: false,
     error: '',
-    wasmLoaded: false,
-    parserLoaded: false
+    librariesLoaded: false,
+    selectedPreset: 'none'
   });
 
-  // Load modules on component mount
+  // Load WASM libraries on component mount
   useEffect(() => {
-    const loadModules = async () => {
-      // Load Builder WASM
-      if (!wasmModule) {
-        try {
-          wasmModule = await import('/wasm/ddex_builder_wasm.js') as WasmModule;
-          await wasmModule.default('/wasm/ddex_builder_wasm_bg.wasm');
-          setState(prev => ({ ...prev, wasmLoaded: true }));
-        } catch (error) {
-          console.error('Failed to load Builder WASM module:', error);
-          setState(prev => ({ 
-            ...prev, 
-            error: 'Failed to load DDEX Builder. Please refresh the page.' 
-          }));
-        }
-      } else {
-        setState(prev => ({ ...prev, wasmLoaded: true }));
+    async function initializeWasm() {
+      try {
+        setState(prev => ({ ...prev, librariesLoaded: true }));
+        console.log('WASM modules ready for dynamic loading');
+      } catch (error) {
+        console.error('Failed to initialize WASM environment:', error);
+        setState(prev => ({
+          ...prev,
+          error: 'Failed to initialize WASM environment. Please check browser compatibility.'
+        }));
       }
+    }
 
-      // Parser is now built-in, no need to load external module
-      setState(prev => ({ ...prev, parserLoaded: true }));
-    };
-    
-    loadModules();
+    initializeWasm();
   }, []);
 
-  const parseXML = useCallback(async (xml: string) => {
-    // Simple XML parser that extracts key information from DDEX XML
+  const parseXML = useCallback(async (xml: string): Promise<ParsedDdexResult> => {
     try {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(xml, 'text/xml');
-      
-      // Check for parsing errors
-      const parseError = doc.querySelector('parsererror');
-      if (parseError) {
-        throw new Error(`XML parsing error: ${parseError.textContent}`);
-      }
-      
-      // Extract version from namespace or schema version
-      const root = doc.documentElement;
-      const namespaceURI = root.namespaceURI || '';
-      let version = '4.3'; // default
-      if (namespaceURI.includes('/42')) version = '4.2';
-      else if (namespaceURI.includes('/382')) version = '3.8.2';
-      
-      // Extract basic message info
-      const messageId = doc.querySelector('MessageId')?.textContent || 'Unknown';
-      const messageCreatedDateTime = doc.querySelector('MessageCreatedDateTime')?.textContent || '';
-      
-      // Extract parties
-      const parties = Array.from(doc.querySelectorAll('Party')).map(party => ({
-        partyReference: party.querySelector('PartyReference')?.textContent || '',
-        partyName: party.querySelector('PartyName FullName')?.textContent || '',
-        partyId: party.querySelector('PartyId')?.textContent || ''
-      }));
-      
-      // Extract resources
-      const resources = Array.from(doc.querySelectorAll('SoundRecording, Image, Video')).map(resource => ({
-        resourceReference: resource.querySelector('ResourceReference')?.textContent || '',
-        title: resource.querySelector('Title TitleText')?.textContent || '',
-        displayArtist: resource.querySelector('DisplayArtist PartyName FullName')?.textContent || '',
-        isrc: resource.querySelector('SoundRecordingId ISRC')?.textContent || '',
-        duration: resource.querySelector('Duration')?.textContent || '',
-        genre: resource.querySelector('Genre GenreText')?.textContent || ''
-      }));
-      
-      // Extract releases
-      const releases = Array.from(doc.querySelectorAll('Release')).map(release => ({
-        releaseReference: release.querySelector('ReleaseReference')?.textContent || '',
-        title: release.querySelector('Title TitleText')?.textContent || '',
-        displayArtist: release.querySelector('DisplayArtist PartyName FullName')?.textContent || '',
-        releaseType: release.querySelector('ReleaseType')?.textContent || '',
-        upc: release.querySelector('ReleaseId ICPN, ReleaseId UPC')?.textContent || '',
-        pLine: release.querySelector('PLine')?.textContent || '',
-        cLine: release.querySelector('CLine')?.textContent || '',
-        genre: release.querySelector('Genre GenreText')?.textContent || '',
-        trackReferences: Array.from(release.querySelectorAll('ReleaseResourceReference')).map(ref => ref.textContent || '')
-      }));
-      
-      // Extract deals
-      const deals = Array.from(doc.querySelectorAll('ReleaseDeal, ResourceDeal')).map(deal => ({
-        dealReference: deal.querySelector('DealReference')?.textContent || '',
-        commercialModelType: deal.querySelector('CommercialModelType')?.textContent || '',
-        useTypes: Array.from(deal.querySelectorAll('UseType')).map(use => use.textContent || ''),
-        territories: Array.from(deal.querySelectorAll('TerritoryCode')).map(territory => territory.textContent || ''),
-        startDate: deal.querySelector('StartDate')?.textContent || '',
-        endDate: deal.querySelector('EndDate')?.textContent || ''
-      }));
-      
-      // Create flattened representation
-      const flatReleases = releases.map(release => ({
-        title: release.title,
-        artist: release.displayArtist,
-        releaseType: release.releaseType,
-        upc: release.upc,
-        label: parties.find(p => p.partyReference !== release.displayArtist)?.partyName || '',
-        genre: release.genre,
-        territories: deals.flatMap(d => d.territories),
-        tracks: release.trackReferences.map(ref => {
-          const resource = resources.find(r => r.resourceReference === ref);
-          return {
-            title: resource?.title || '',
-            artist: resource?.displayArtist || '',
-            isrc: resource?.isrc || '',
-            duration: resource?.duration || '',
-            genre: resource?.genre || ''
-          };
-        }).filter(track => track.title) // Only include tracks with titles
-      }));
-      
-      return {
-        messageId,
-        version,
-        graph: {
-          messageHeader: {
-            messageId,
-            messageCreatedDateTime
-          },
-          parties,
-          resources,
-          releases,
-          deals
-        },
-        flat: {
-          releases: flatReleases
-        }
-      };
+      // Use WASM loader to parse XML
+      const result = await wasmLoader.parseXml(xml);
+      return result;
     } catch (error) {
       console.error('Error parsing XML:', error);
       throw new Error(`Failed to parse DDEX XML: ${error.message || error}`);
     }
   }, []);
 
-  const buildXML = useCallback(async (json: string) => {
-    if (!wasmModule) {
-      throw new Error('DDEX Builder WASM module not loaded');
-    }
-    
+  const buildXML = useCallback(async (json: string): Promise<string> => {
     // Check if input looks like XML instead of JSON
     const trimmedInput = json.trim();
     if (trimmedInput.startsWith('<?xml') || trimmedInput.startsWith('<')) {
       throw new Error('Builder mode requires JSON input, but XML was provided. Please switch to Parser mode or load the "Builder Template" sample.');
     }
-    
+
     try {
       const data = JSON.parse(json);
-      const builder = new wasmModule.WasmDdexBuilder();
-      
-      // Add resources first
-      if (data.resources && Array.isArray(data.resources)) {
-        for (const resource of data.resources) {
-          const wasmResource = new wasmModule.Resource(
-            resource.resourceId || 'RES_GENERATED',
-            resource.resourceType || 'SoundRecording',
-            resource.title || 'Untitled Track',
-            resource.artist || 'Unknown Artist'
-          );
-          
-          if (resource.isrc) wasmResource.isrc = resource.isrc;
-          if (resource.duration) wasmResource.duration = resource.duration;
-          if (resource.trackNumber) wasmResource.track_number = resource.trackNumber;
-          
-          builder.addResource(wasmResource);
-        }
-      }
-      
-      // Add releases
-      if (data.releases && Array.isArray(data.releases)) {
-        for (const release of data.releases) {
-          const wasmRelease = new wasmModule.Release(
-            release.releaseId || 'REL_GENERATED',
-            release.releaseType || 'Album',
-            release.title || 'Untitled',
-            release.artist || 'Unknown Artist'
-          );
-          
-          if (release.label) wasmRelease.label = release.label;
-          if (release.upc) wasmRelease.upc = release.upc;
-          if (release.releaseDate) wasmRelease.release_date = release.releaseDate;
-          if (release.genres) {
-            wasmRelease.genre = Array.isArray(release.genres) ? release.genres.join(', ') : release.genres;
-          }
-          if (release.trackIds && Array.isArray(release.trackIds)) {
-            wasmRelease.track_ids = release.trackIds;
-          }
-          
-          builder.addRelease(wasmRelease);
-        }
-      }
-      
-      // Build the XML using the actual WASM ddex-builder
-      const xml = await builder.build();
+
+      // Convert to BuildRequest format
+      const buildRequest: BuildRequest = {
+        messageHeader: data.messageHeader || {
+          messageId: data.message_id || 'MSG_' + Date.now(),
+          messageSenderName: data.message_sender_name || 'DDEX Playground',
+          messageRecipientName: data.message_recipient_name || 'DSP Platform',
+          messageCreatedDateTime: data.message_created_date_time || new Date().toISOString()
+        },
+        releases: data.releases || [],
+        resources: data.resources || [],
+        deals: data.deals || []
+      };
+
+      // Use WASM loader to build XML
+      const xml = await wasmLoader.buildXml(buildRequest, state.selectedPreset);
       return xml;
-      
+
     } catch (error) {
       console.error('Error building XML:', error);
       throw new Error(`Failed to build DDEX XML: ${error.message || error}`);
+    }
+  }, [state.selectedPreset]);
+
+  const batchBuildXML = useCallback(async (json: string): Promise<string> => {
+    // Check if input looks like XML instead of JSON
+    const trimmedInput = json.trim();
+    if (trimmedInput.startsWith('<?xml') || trimmedInput.startsWith('<')) {
+      throw new Error('Batch mode requires JSON array input. Please switch to Parser mode or load the "Batch Build Template" sample.');
+    }
+
+    try {
+      const data = JSON.parse(json);
+
+      if (!Array.isArray(data)) {
+        throw new Error('Batch build requires an array of build requests');
+      }
+
+      // Convert to BuildRequest format
+      const buildRequests: BuildRequest[] = data.map(item => ({
+        messageHeader: item.messageHeader || {
+          messageId: item.message_id || 'MSG_' + Date.now(),
+          messageSenderName: item.message_sender_name || 'DDEX Playground',
+          messageRecipientName: item.message_recipient_name || 'DSP Platform',
+          messageCreatedDateTime: item.message_created_date_time || new Date().toISOString()
+        },
+        releases: item.releases || [],
+        resources: item.resources || [],
+        deals: item.deals || []
+      }));
+
+      // Use WASM loader for batch build
+      const results = await wasmLoader.batchBuildXml(buildRequests);
+
+      // Format the results as an array of XML strings
+      return JSON.stringify(results, null, 2);
+
+    } catch (error) {
+      console.error('Error in batch build:', error);
+      throw new Error(`Failed to batch build DDEX XML: ${error.message || error}`);
     }
   }, []);
 
@@ -513,6 +434,8 @@ function PlaygroundComponent() {
       if (state.mode === 'parser') {
         const parsed = await parseXML(state.input);
         result = JSON.stringify(parsed, null, 2);
+      } else if (state.mode === 'batch') {
+        result = await batchBuildXML(state.input);
       } else {
         result = await buildXML(state.input);
       }
@@ -527,13 +450,16 @@ function PlaygroundComponent() {
         output: `Error: ${errorMessage}`
       }));
     }
-  }, [state.input, state.mode, parseXML, buildXML]);
+  }, [state.input, state.mode, parseXML, buildXML, batchBuildXML]);
 
-  const handleModeChange = useCallback((newMode: 'parser' | 'builder') => {
-    // Always reset input to appropriate default when switching modes
-    const defaultInput = newMode === 'parser' 
-      ? SAMPLE_FILES['ERN 4.3 Simple']
-      : SAMPLE_FILES['Builder Template'];
+  const handleModeChange = useCallback((newMode: 'parser' | 'builder' | 'batch') => {
+    // Reset input to appropriate default when switching modes
+    let defaultInput = SAMPLE_FILES['ERN 4.3 Simple'];
+    if (newMode === 'builder') {
+      defaultInput = SAMPLE_FILES['Builder Template'];
+    } else if (newMode === 'batch') {
+      defaultInput = SAMPLE_FILES['Batch Build Template'];
+    }
     
     setState(prev => ({
       ...prev,
@@ -548,13 +474,14 @@ function PlaygroundComponent() {
     const sampleContent = SAMPLE_FILES[sampleName];
     const isXmlSample = sampleName.startsWith('ERN');
     const isJsonSample = sampleName === 'Builder Template';
+    const isBatchSample = sampleName === 'Batch Build Template';
     
     // Warn if loading incompatible sample type
     let warning = '';
-    if (state.mode === 'builder' && isXmlSample) {
-      warning = 'XML samples are for Parser mode. Switch to Parser mode or choose "Builder Template".';
-    } else if (state.mode === 'parser' && isJsonSample) {
-      warning = 'JSON template is for Builder mode. Switch to Builder mode or choose an ERN sample.';
+    if ((state.mode === 'builder' || state.mode === 'batch') && isXmlSample) {
+      warning = 'XML samples are for Parser mode. Switch to Parser mode or choose a JSON template.';
+    } else if (state.mode === 'parser' && (isJsonSample || isBatchSample)) {
+      warning = 'JSON templates are for Builder/Batch mode. Switch modes or choose an ERN sample.';
     }
     
     setState(prev => ({
@@ -568,13 +495,26 @@ function PlaygroundComponent() {
   const exportOutput = useCallback(() => {
     if (!state.output) return;
     
+    const isBatchOutput = state.mode === 'batch';
+    const isJsonOutput = state.mode === 'parser' || isBatchOutput;
+    
     const blob = new Blob([state.output], { 
-      type: state.mode === 'parser' ? 'application/json' : 'application/xml' 
+      type: isJsonOutput ? 'application/json' : 'application/xml' 
     });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = state.mode === 'parser' ? 'parsed-data.json' : 'generated.xml';
+    
+    let filename = 'output';
+    if (state.mode === 'parser') {
+      filename = 'parsed-data.json';
+    } else if (state.mode === 'batch') {
+      filename = 'batch-results.json';
+    } else {
+      filename = 'generated.xml';
+    }
+    
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -590,7 +530,7 @@ function PlaygroundComponent() {
         backgroundColor: 'var(--ifm-background-color)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-          <h1 style={{ margin: 0, fontSize: '1.5rem' }}>Playground</h1>
+          <h1 style={{ margin: 0, fontSize: '1.5rem' }}>DDEX Suite Playground v0.4.0</h1>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button
               className={`button ${state.mode === 'parser' ? 'button--primary' : 'button--secondary'}`}
@@ -604,40 +544,62 @@ function PlaygroundComponent() {
             >
               Builder Mode
             </button>
+            <button
+              className={`button ${state.mode === 'batch' ? 'button--primary' : 'button--secondary'}`}
+              onClick={() => handleModeChange('batch')}
+            >
+              Batch Mode
+            </button>
           </div>
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
           <div>
             <label style={{ marginRight: '0.5rem', fontSize: '0.9rem' }}>Load Sample:</label>
-            <select onChange={(e) => loadSample(e.target.value as keyof typeof SAMPLE_FILES)}>
+            <select 
+              onChange={(e) => loadSample(e.target.value as keyof typeof SAMPLE_FILES)}
+              value=""
+            >
               <option value="">Choose a sample...</option>
               {Object.keys(SAMPLE_FILES).map(name => {
                 const isXmlSample = name.startsWith('ERN');
                 const isJsonSample = name === 'Builder Template';
+                const isBatchSample = name === 'Batch Build Template';
                 const isCompatible = (state.mode === 'parser' && isXmlSample) || 
                                    (state.mode === 'builder' && isJsonSample) ||
-                                   (!isXmlSample && !isJsonSample);
+                                   (state.mode === 'batch' && isBatchSample);
                 return (
                   <option key={name} value={name} disabled={!isCompatible}>
-                    {name} {!isCompatible ? `(for ${isXmlSample ? 'Parser' : 'Builder'} mode)` : ''}
+                    {name} {!isCompatible ? `(for ${isXmlSample ? 'Parser' : isBatchSample ? 'Batch' : 'Builder'} mode)` : ''}
                   </option>
                 );
               })}
             </select>
           </div>
+
+          {state.mode === 'builder' && (
+            <div>
+              <label style={{ marginRight: '0.5rem', fontSize: '0.9rem' }}>Preset:</label>
+              <select
+                value={state.selectedPreset}
+                onChange={(e) => setState(prev => ({ ...prev, selectedPreset: e.target.value }))}
+              >
+                <option value="none">No Preset</option>
+                <option value="generic">Generic</option>
+                <option value="youtube_music">YouTube Music</option>
+              </select>
+            </div>
+          )}
           
           <button
             className="button button--primary"
             onClick={handleProcess}
-            disabled={state.loading || 
-                     (state.mode === 'builder' && !state.wasmLoaded) || 
-                     (state.mode === 'parser' && !state.parserLoaded)}
+            disabled={state.loading || !state.librariesLoaded}
           >
             {state.loading ? 'Processing...' : 
-             (state.mode === 'builder' && !state.wasmLoaded) ? 'Loading Builder...' : 
-             (state.mode === 'parser' && !state.parserLoaded) ? 'Loading Parser...' :
-             (state.mode === 'parser' ? 'Parse XML' : 'Build XML')}
+             !state.librariesLoaded ? 'Loading Libraries...' :
+             state.mode === 'parser' ? 'Parse XML' : 
+             state.mode === 'batch' ? 'Batch Build' : 'Build XML'}
           </button>
           
           {state.output && (
@@ -645,7 +607,7 @@ function PlaygroundComponent() {
               className="button button--secondary"
               onClick={exportOutput}
             >
-              Export {state.mode === 'parser' ? 'JSON' : 'XML'}
+              Export {state.mode === 'parser' ? 'JSON' : state.mode === 'batch' ? 'Results' : 'XML'}
             </button>
           )}
         </div>
@@ -706,11 +668,11 @@ function PlaygroundComponent() {
                 fontSize: '0.9rem',
                 fontWeight: 'bold'
               }}>
-                Output ({state.mode === 'parser' ? 'JSON' : 'XML'})
+                Output ({state.mode === 'parser' ? 'JSON' : state.mode === 'batch' ? 'JSON Results' : 'XML'})
               </div>
               <div style={{ flex: 1 }}>
                 <Editor
-                  language={state.mode === 'parser' ? 'json' : 'xml'}
+                  language={state.mode === 'parser' || state.mode === 'batch' ? 'json' : 'xml'}
                   value={state.output}
                   options={{
                     readOnly: true,
@@ -737,9 +699,10 @@ function PlaygroundComponent() {
         fontSize: '0.8rem',
         color: 'var(--ifm-color-emphasis-600)'
       }}>
-        <strong>Note:</strong> This playground uses the actual DDEX Suite libraries for real parsing and building.
-        Parser mode uses the ddex-parser package and Builder mode uses the ddex-builder WASM package.
-        Try switching between modes, loading samples, editing content, and exporting results.
+        <strong>DDEX Suite v0.4.0</strong> - Using browser-compatible WASM modules for ddex-parser and ddex-builder.
+        <br/>
+        <strong>Features:</strong> Real-time parsing with v0.4.0 enhanced streaming • Deterministic XML building •
+        Batch processing • Preset configurations • Round-trip compatibility • Browser-native performance
       </div>
     </div>
   );
@@ -747,7 +710,7 @@ function PlaygroundComponent() {
 
 export default function Playground() {
   return (
-    <Layout title="DDEX Playground" description="Interactive DDEX Suite playground">
+    <Layout title="DDEX Playground v0.4.0" description="Interactive DDEX Suite playground with v0.4.0 features">
       <BrowserOnly fallback={<div>Loading playground...</div>}>
         {() => <PlaygroundComponent />}
       </BrowserOnly>
