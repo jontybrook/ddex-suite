@@ -1566,6 +1566,42 @@ ddex-suite/
 │   ├── generate_test_corpus.py       # 
 │   └── README.md                     #
 │
+├── website/                          # Docusaurus site hosted by Firebase
+│   ├── build/                        # .gitignored
+│   ├── docs/
+│   ├── npm-test/
+│   ├── public/
+│   │   └── index.html                # 
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── HomepageFeatures/
+│   │   │   │   ├── index.tsx         # 
+│   │   │   │   └── styles.module.css  # 
+│   │   ├── css/
+│   │   │   ├── custom.css            # 
+│   │   │   └── landing.css           # 
+│   │   ├── pages/
+│   │   │   ├── index.module.css      # 
+│   │   │   ├── index.tsx             # 
+│   │   │   └── playground.tsx        # 
+│   │   ├── types/
+│   │   │   └── wasm.d.ts             # 
+│   │   └── utils/
+│   │       └── wasmLoader.ts         # 
+│   ├── static/
+│   │   ├── wasm/
+│   │   │   ├── ddex_builder_wasm.d.ts  # 
+│   │   │   ├── ddex_builder_wasm.js  # 
+│   │   │   ├── ddex_parser_wasm.d.ts  # 
+│   │   │   ├── ddex_parser_wasm.js   # 
+│   │   │   └── package.json          # 
+│   ├── docusaurus.config.ts          # 
+│   ├── firebase.json                 # 
+│   ├── package.json                  # 
+│   ├── README.md                     # 
+│   ├── sidebars.ts                   # 
+│   └── tsconfig.json                 # 
+│
 ├── blueprint.md                      # This document
 ├── Cargo.toml                        # Root workspace config
 ├── karma.conf.js                     # 
