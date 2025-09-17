@@ -280,7 +280,8 @@ async function buildHandler(request, response) {
               upc: release.upc || release.icpn || '',
               releaseDate: release.releaseDate || release.release_date || new Date().toISOString().split('T')[0],
               territories: release.territories || ['Worldwide'],
-              genres: release.genres || []
+              genres: release.genres || [],
+              trackIds: release.trackIds || release.track_ids || []
             };
 
             if (Release && Resource) {
