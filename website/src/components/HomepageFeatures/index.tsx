@@ -6,8 +6,8 @@ import styles from './styles.module.css';
 
 type FeatureItem = {
   title: string;
-  icon: JSX.Element;
-  description: JSX.Element;
+  icon: React.ReactElement;
+  description: React.ReactElement;
 };
 
 const FeatureList: FeatureItem[] = [
@@ -85,7 +85,7 @@ function Feature({title, icon, description}: FeatureItem) {
   );
 }
 
-export default function HomepageFeatures(): JSX.Element {
+export default function HomepageFeatures(): React.ReactElement {
   return (
     <section className={styles.features}>
       <div className="container">

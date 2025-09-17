@@ -1,0 +1,28 @@
+FROM node:20-bullseye
+
+# Install Rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the entire project structure from the correct context
+WORKDIR /workspace
+COPY . ./
+
+# Change to the parser bindings directory and install Node dependencies
+WORKDIR /workspace/packages/ddex-parser/bindings/node
+RUN npm install
+
+# Build the Linux binary using cargo directly from workspace root
+WORKDIR /workspace
+RUN cd packages/ddex-parser/bindings/node && cargo build --release
+
+# Copy the built binary to output
+RUN mkdir -p /output
+RUN find target/release -name "*.so" -exec cp {} /output/ddex-parser-node.linux-x64-gnu.node \; || echo "No .so files found"
+RUN ls -la /output/

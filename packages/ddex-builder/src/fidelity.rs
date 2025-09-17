@@ -2,7 +2,7 @@
 //!
 //! This module provides comprehensive fidelity preservation features for the DDEX Builder,
 //! ensuring perfect round-trip compatibility with the DDEX Parser and maintaining
-//! byte-perfect XML reproduction when required.
+//! semantic XML reproduction while maintaining structure and content.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

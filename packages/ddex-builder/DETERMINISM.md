@@ -1,6 +1,6 @@
 # Determinism Guarantees
 
-The DDEX Builder provides comprehensive determinism guarantees to ensure byte-perfect, reproducible XML output across all environments and conditions.
+The DDEX Builder provides comprehensive determinism guarantees to ensure consistent, reproducible XML output across all environments and conditions.
 
 ## Overview
 
@@ -89,7 +89,7 @@ Determinism is a core principle of the DDEX Builder. Every build of the same inp
 **Guarantee**: XML output follows DB-C14N/1.0 canonicalization specification.
 
 **Implementation**:
-- DB-C14N/1.0 canonicalization for byte-perfect output
+- DB-C14N/1.0 canonicalization for consistent output
 - Consistent whitespace handling
 - Proper XML character escaping
 
@@ -389,7 +389,7 @@ Deterministic builds provide security benefits:
 - **Supply chain verification**: Identical builds prove identical source
 - **Reproducible releases**: Users can verify build authenticity
 - **Attack detection**: Non-deterministic output may indicate compromise
-- **Audit trails**: Byte-perfect output enables forensic analysis
+- **Audit trails**: Consistent output enables forensic analysis
 
 ## Troubleshooting
 

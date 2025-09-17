@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const { DdexParser } = require('ddex-parser');
+const { DdexBuilder } = require('ddex-builder');
 
 // Helper function to extract actual data from DDEX XML
 // Since the Node.js parser returns mock data, we'll parse the XML directly
@@ -131,6 +132,111 @@ app.post('/api/parse', async (req, res) => {
   }
 });
 
+// Build DDEX XML endpoint
+app.post('/api/build', async (req, res) => {
+  try {
+    const { buildRequest, preset } = req.body;
+
+    if (!buildRequest) {
+      return res.status(400).json({
+        success: false,
+        error: 'Build request is required'
+      });
+    }
+
+    console.log('Building XML from request:', buildRequest);
+
+    // Initialize the builder
+    const builder = new DdexBuilder();
+
+    const xml = await builder.build(buildRequest);
+    console.log('Build completed, XML length:', xml.length);
+
+    res.json({
+      success: true,
+      xml: xml
+    });
+  } catch (error) {
+    console.error('Build error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Batch build DDEX XML endpoint
+app.post('/api/batch-build', async (req, res) => {
+  try {
+    const { requests } = req.body;
+
+    if (!requests || !Array.isArray(requests)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Requests array is required'
+      });
+    }
+
+    console.log('Batch building', requests.length, 'requests');
+
+    const builder = new DdexBuilder();
+    const results = [];
+
+    for (const request of requests) {
+      const xml = await builder.build(request);
+      results.push(xml);
+    }
+
+    console.log('Batch build completed, generated', results.length, 'XML files');
+
+    res.json({
+      success: true,
+      results: results
+    });
+  } catch (error) {
+    console.error('Batch build error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Get available presets endpoint
+app.get('/api/presets', (req, res) => {
+  try {
+    const presets = ['none', 'generic', 'youtube_music'];
+    res.json({
+      success: true,
+      presets: presets
+    });
+  } catch (error) {
+    console.error('Presets error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    services: {
+      parser: 'ddex-parser v0.4.1',
+      builder: 'ddex-builder v0.4.1'
+    }
+  });
+});
+
 app.listen(port, () => {
-  console.log(`DDEX Parser API server running at http://localhost:${port}`);
+  console.log(`DDEX Suite API server running at http://localhost:${port}`);
+  console.log('Available endpoints:');
+  console.log(`  GET  http://localhost:${port}/health - Health check`);
+  console.log(`  POST http://localhost:${port}/api/parse - Parse DDEX XML`);
+  console.log(`  POST http://localhost:${port}/api/build - Build DDEX XML`);
+  console.log(`  POST http://localhost:${port}/api/batch-build - Batch build DDEX XML`);
+  console.log(`  GET  http://localhost:${port}/api/presets - Get available presets`);
 });

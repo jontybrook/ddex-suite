@@ -6,7 +6,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Generate deterministic, industry-compliant DDEX XML files from JavaScript/TypeScript with byte-perfect reproducibility. Build DDEX messages with full TypeScript support, streaming capabilities, and partner-specific presets for major platforms.
+Generate deterministic, industry-compliant DDEX XML files from JavaScript/TypeScript with consistent reproducibility. Build DDEX messages with full TypeScript support, streaming capabilities, and partner-specific presets for major platforms.
 
 ## Installation
 
@@ -57,7 +57,7 @@ console.log('Generated DDEX XML:', xml.length, 'bytes');
 
 ### 🎯 Deterministic Output
 - **100% reproducible** XML generation with stable hash IDs
-- DB-C14N/1.0 canonicalization for byte-perfect consistency
+- DB-C14N/1.0 canonicalization for deterministic consistency
 - Stable ordering ensures identical output across Node.js versions
 - Content-addressable resource IDs for reliable references
 

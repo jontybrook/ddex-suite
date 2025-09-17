@@ -8,12 +8,12 @@ The comprehensive test suite consists of three main components:
 
 ### 2.1 Fidelity Test Suite (`tests/fidelity/`)
 
-The fidelity test suite ensures that parse → build → parse round-trips preserve all data and achieve byte-perfect reproduction when using the Perfect Fidelity Engine.
+The fidelity test suite ensures that parse → build → parse round-trips preserve all data and maintain semantic equivalence.
 
 **Key Features:**
 - Tests 100+ real-world DDEX XML files across ERN 3.8.2, 4.2, and 4.3
 - Validates round-trip fidelity (Parse → Modify → Build → Parse)
-- Measures byte-perfect reproduction rates with Perfect Fidelity Engine
+- Measures semantic equivalence rates for round-trip operations
 - Monitors performance metrics (parse time, build time, throughput)
 - Generates comprehensive test data when real-world samples aren't available
 
@@ -36,7 +36,7 @@ cargo test perfect_fidelity_byte_comparison_test
 
 **Expected Results:**
 - ≥95% round-trip success rate
-- ≥90% byte-perfect reproduction with Perfect Fidelity Engine
+- ≥90% semantic equivalence for round-trip operations
 - Processing times within performance thresholds
 
 ### 2.2 Property-Based Determinism Testing (`tests/determinism/`)
@@ -226,7 +226,7 @@ The test suite validates these performance targets:
 - Parse time: <5ms for 10KB, <50ms for 1MB files
 - Build time: <15ms for typical releases
 - Round-trip fidelity: 100% for valid inputs
-- Byte-perfect reproduction: ≥90% with Perfect Fidelity Engine
+- Semantic equivalence: ≥90% for round-trip operations
 
 ### Determinism Testing  
 - Deterministic output: 100% identical across builds

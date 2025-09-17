@@ -135,7 +135,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Deterministic Output
 - **DB-C14N/1.0**: Custom canonicalization specification implementation
-- **Byte-Perfect**: Identical input always produces identical output
+- **Deterministic**: Identical input always produces identical output
 - **Cross-Platform**: Same output on Windows, macOS, Linux
 - **Cryptographic Integrity**: Enables digital signatures and hash verification
 
@@ -163,7 +163,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **Core Features:**
 - Complete DDEX ERN 4.3, 4.2, and 3.8.2 XML generation support
-- DB-C14N/1.0 deterministic canonicalization for byte-perfect reproducibility
+- DB-C14N/1.0 deterministic canonicalization for reproducible output
 - Comprehensive security framework with XXE protection and input validation
 - High-performance XML generation with optimized serialization
 - Memory-efficient streaming support for large catalogs

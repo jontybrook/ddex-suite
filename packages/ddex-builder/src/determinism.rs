@@ -1,7 +1,7 @@
 //! # Determinism Configuration and Enforcement
 //!
 //! This module provides the core determinism guarantees that make DDEX Builder
-//! unique in the market. By ensuring byte-perfect reproducible output, we enable
+//! unique in the market. By ensuring consistent reproducible output, we enable
 //! supply chain integrity, reproducible builds, and cryptographic signing.
 //!
 //! ## Core Principle

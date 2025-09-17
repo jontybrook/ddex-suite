@@ -1,14 +1,14 @@
 //! # DDEX Builder - Deterministic DDEX XML Generation
 //!
 //! A high-performance, memory-safe DDEX XML builder that generates deterministic,
-//! byte-perfect XML using DB-C14N/1.0 canonicalization. Built in Rust with
+//! deterministic XML using DB-C14N/1.0 canonicalization. Built in Rust with
 //! comprehensive security features and bindings for JavaScript, Python, and WebAssembly.
 //!
 //! ## Key Features
 //!
 //! - **🔒 Security First**: XXE protection, input validation, rate limiting, and comprehensive security measures
 //! - **⚡ High Performance**: Sub-millisecond generation for typical releases, memory-optimized streaming
-//! - **🎯 Deterministic Output**: Guaranteed byte-perfect reproducibility using DB-C14N/1.0
+//! - **🎯 Deterministic Output**: Guaranteed reproducible output using DB-C14N/1.0
 //! - **🔄 Round-trip Fidelity**: Perfect compatibility with ddex-parser for Parse → Build → Parse workflows
 //! - **🛠️ Partner Presets**: Pre-configured settings for Spotify, YouTube, Apple Music, and other platforms
 //! - **🌐 Multi-platform**: Native Rust, Node.js, Python, and WebAssembly bindings
@@ -413,7 +413,7 @@ impl Default for BuildStatistics {
 ///
 /// ## Features
 ///
-/// - **Deterministic Output**: Uses DB-C14N/1.0 for byte-perfect reproducibility
+/// - **Deterministic Output**: Uses DB-C14N/1.0 for reproducible output
 /// - **Partner Presets**: Pre-configured settings for major music platforms
 /// - **Version Management**: Support for ERN 3.8.2, 4.2, and 4.3 with conversion
 /// - **Security**: Built-in validation, rate limiting, and XXE protection
@@ -516,7 +516,7 @@ impl Builder {
     /// Creates a new DDEX Builder with default configuration.
     ///
     /// The builder is initialized with:
-    /// - Default determinism configuration for byte-perfect output
+    /// - Default determinism configuration for reproducible output
     /// - All available partner presets loaded
     /// - No preset locked (can be changed)
     /// - Latest supported DDEX version as target

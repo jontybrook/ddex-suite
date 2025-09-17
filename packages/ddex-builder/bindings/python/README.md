@@ -5,7 +5,7 @@
 [![Downloads](https://img.shields.io/pypi/dm/ddex-builder.svg)](https://pypi.org/project/ddex-builder/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Generate deterministic, industry-compliant DDEX XML files from Python data structures with byte-perfect reproducibility. Build DDEX messages from dictionaries, DataFrames, or parsed objects with built-in validation and partner-specific presets.
+Generate deterministic, industry-compliant DDEX XML files from Python data structures with consistent reproducibility. Build DDEX messages from dictionaries, DataFrames, or parsed objects with built-in validation and partner-specific presets.
 
 ## Installation
 
@@ -50,7 +50,7 @@ print(xml_output[:100] + '...')
 
 ### 🎯 Deterministic Output
 - **100% reproducible** XML generation with stable hash IDs
-- DB-C14N/1.0 canonicalization for byte-perfect consistency
+- DB-C14N/1.0 canonicalization for deterministic consistency
 - IndexMap-based ordering ensures identical output across runs
 - Content-addressable resource IDs for reliable references
 

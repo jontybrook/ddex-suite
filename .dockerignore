@@ -1,0 +1,14 @@
+target/
+node_modules/
+.git/
+*.node
+website/build/
+website/node_modules/
+packages/*/node_modules/
+packages/*/target/
+packages/*/bindings/*/node_modules/
+packages/*/bindings/*/target/
+packages/*/bindings/*/pkg/
+*.log
+.DS_Store
+.firebase/
