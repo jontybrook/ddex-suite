@@ -1567,6 +1567,14 @@ ddex-suite/
 │   └── README.md                     #
 │
 ├── website/                          # Docusaurus site hosted by Firebase
+│   ├── api/
+│   │   ├── server.js                 # Main Express server with CORS
+│   │   ├── package.json              # Dependencies with ddex-parser@0.4.1 & ddex-builder@0.4.1
+│   │   ├── .env.example              # Environment configuration template
+│   │   └── routes/
+│   │       ├── parse.js              # XML parsing endpoints
+│   │       ├── build.js              # JSON to XML building endpoints
+│   │       └── batch.js              # Batch processing endpoints
 │   ├── build/                        # .gitignored
 │   ├── docs/
 │   ├── npm-test/

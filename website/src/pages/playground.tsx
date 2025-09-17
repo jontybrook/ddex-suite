@@ -5,8 +5,7 @@ import { Allotment } from 'allotment';
 import Editor from '@monaco-editor/react';
 import 'allotment/dist/style.css';
 
-// Import WASM loader utility
-import { wasmLoader, type BuildRequest, type ParsedDdexResult } from '../utils/wasmLoader';
+// API response handling for DDEX operations
 
 // Sample DDEX XML files for testing
 const SAMPLE_FILES = {
@@ -304,8 +303,8 @@ interface PlaygroundState {
   output: string;
   loading: boolean;
   error: string;
-  librariesLoaded: boolean;
   selectedPreset: string;
+  apiStatus: 'checking' | 'online' | 'offline';
 }
 
 function PlaygroundComponent() {
@@ -315,110 +314,158 @@ function PlaygroundComponent() {
     output: '',
     loading: false,
     error: '',
-    librariesLoaded: false,
-    selectedPreset: 'none'
+    selectedPreset: 'none',
+    apiStatus: 'checking'
   });
 
-  // Load WASM libraries on component mount
+  // Check API health on component mount
   useEffect(() => {
-    async function initializeWasm() {
+    async function checkApiHealth() {
       try {
-        setState(prev => ({ ...prev, librariesLoaded: true }));
-        console.log('WASM modules ready for dynamic loading');
+        const response = await fetch('/health');
+        if (response.ok) {
+          setState(prev => ({ ...prev, apiStatus: 'online' }));
+          console.log('DDEX API is online and ready');
+        } else {
+          setState(prev => ({ ...prev, apiStatus: 'offline' }));
+        }
       } catch (error) {
-        console.error('Failed to initialize WASM environment:', error);
-        setState(prev => ({
-          ...prev,
-          error: 'Failed to initialize WASM environment. Please check browser compatibility.'
-        }));
+        console.error('API health check failed:', error);
+        setState(prev => ({ ...prev, apiStatus: 'offline' }));
       }
     }
 
-    initializeWasm();
+    checkApiHealth();
   }, []);
 
-  const parseXML = useCallback(async (xml: string): Promise<ParsedDdexResult> => {
+  const parseXML = useCallback(async (xml: string): Promise<any> => {
     try {
-      // Use WASM loader to parse XML
-      const result = await wasmLoader.parseXml(xml);
-      return result;
+      const response = await fetch('/api/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/xml' },
+        body: xml
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Parse failed');
+      }
+
+      return result.data;
     } catch (error) {
       console.error('Error parsing XML:', error);
-      throw new Error(`Failed to parse DDEX XML: ${error.message || error}`);
+      throw error;
     }
   }, []);
 
   const buildXML = useCallback(async (json: string): Promise<string> => {
-    // Check if input looks like XML instead of JSON
     const trimmedInput = json.trim();
     if (trimmedInput.startsWith('<?xml') || trimmedInput.startsWith('<')) {
-      throw new Error('Builder mode requires JSON input, but XML was provided. Please switch to Parser mode or load the "Builder Template" sample.');
+      throw new Error('Builder mode requires JSON input. Please switch to Parser mode or load the "Builder Template" sample.');
     }
 
     try {
       const data = JSON.parse(json);
 
-      // Convert to BuildRequest format
-      const buildRequest: BuildRequest = {
-        messageHeader: data.messageHeader || {
-          messageId: data.message_id || 'MSG_' + Date.now(),
-          messageSenderName: data.message_sender_name || 'DDEX Playground',
-          messageRecipientName: data.message_recipient_name || 'DSP Platform',
-          messageCreatedDateTime: data.message_created_date_time || new Date().toISOString()
-        },
-        releases: data.releases || [],
-        resources: data.resources || [],
-        deals: data.deals || []
-      };
+      const response = await fetch('/api/build', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: {
+            messageHeader: data.messageHeader || {
+              messageId: data.message_id || 'MSG_' + Date.now(),
+              messageSenderName: data.message_sender_name || 'DDEX Playground',
+              messageRecipientName: data.message_recipient_name || 'DSP Platform',
+              messageCreatedDateTime: data.message_created_date_time || new Date().toISOString()
+            },
+            releases: data.releases || [],
+            resources: data.resources || [],
+            deals: data.deals || []
+          },
+          preset: state.selectedPreset
+        })
+      });
 
-      // Use WASM loader to build XML
-      const xml = await wasmLoader.buildXml(buildRequest, state.selectedPreset);
-      return xml;
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Build failed' }));
+        throw new Error(error.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
 
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Build failed');
+      }
+
+      return result.xml;
     } catch (error) {
-      console.error('Error building XML:', error);
-      throw new Error(`Failed to build DDEX XML: ${error.message || error}`);
+      if (error instanceof SyntaxError) {
+        throw new Error('Invalid JSON input. Please check your JSON syntax.');
+      }
+      throw error;
     }
   }, [state.selectedPreset]);
 
   const batchBuildXML = useCallback(async (json: string): Promise<string> => {
-    // Check if input looks like XML instead of JSON
     const trimmedInput = json.trim();
     if (trimmedInput.startsWith('<?xml') || trimmedInput.startsWith('<')) {
-      throw new Error('Batch mode requires JSON array input. Please switch to Parser mode or load the "Batch Build Template" sample.');
+      throw new Error('Batch mode requires JSON array input.');
     }
 
     try {
-      const data = JSON.parse(json);
-
-      if (!Array.isArray(data)) {
-        throw new Error('Batch build requires an array of build requests');
+      const items = JSON.parse(json);
+      if (!Array.isArray(items)) {
+        throw new Error('Batch mode requires an array of build requests');
       }
 
-      // Convert to BuildRequest format
-      const buildRequests: BuildRequest[] = data.map(item => ({
-        messageHeader: item.messageHeader || {
-          messageId: item.message_id || 'MSG_' + Date.now(),
-          messageSenderName: item.message_sender_name || 'DDEX Playground',
-          messageRecipientName: item.message_recipient_name || 'DSP Platform',
-          messageCreatedDateTime: item.message_created_date_time || new Date().toISOString()
-        },
-        releases: item.releases || [],
-        resources: item.resources || [],
-        deals: item.deals || []
-      }));
+      const response = await fetch('/api/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operation: 'build',
+          documents: items.map((item, index) => ({
+            id: `batch_${index}`,
+            data: {
+              messageHeader: item.messageHeader || {
+                messageId: 'MSG_' + Date.now() + '_' + index,
+                messageSenderName: 'DDEX Playground Batch',
+                messageRecipientName: 'DSP Platform',
+                messageCreatedDateTime: new Date().toISOString()
+              },
+              releases: item.releases || [],
+              resources: item.resources || [],
+              deals: item.deals || []
+            }
+          })),
+          globalOptions: {
+            preset: state.selectedPreset
+          }
+        })
+      });
 
-      // Use WASM loader for batch build
-      const results = await wasmLoader.batchBuildXml(buildRequests);
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Batch processing failed' }));
+        throw new Error(error.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
 
-      // Format the results as an array of XML strings
-      return JSON.stringify(results, null, 2);
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Batch processing failed');
+      }
 
+      // Format batch results
+      return JSON.stringify(result.results, null, 2);
     } catch (error) {
-      console.error('Error in batch build:', error);
-      throw new Error(`Failed to batch build DDEX XML: ${error.message || error}`);
+      if (error instanceof SyntaxError) {
+        throw new Error('Invalid JSON input. Please check your JSON syntax.');
+      }
+      throw error;
     }
-  }, []);
+  }, [state.selectedPreset]);
 
   const handleProcess = useCallback(async () => {
     if (!state.input.trim()) {
@@ -531,7 +578,7 @@ function PlaygroundComponent() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
           <h1 style={{ margin: 0, fontSize: '1.5rem' }}>DDEX Suite Playground v0.4.1</h1>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <button
               className={`button ${state.mode === 'parser' ? 'button--primary' : 'button--secondary'}`}
               onClick={() => handleModeChange('parser')}
@@ -550,6 +597,18 @@ function PlaygroundComponent() {
             >
               Batch Mode
             </button>
+
+            <div style={{ marginLeft: 'auto', fontSize: '0.9rem', fontWeight: '500' }}>
+              {state.apiStatus === 'online' && (
+                <span style={{ color: '#28a745' }}>● API Online</span>
+              )}
+              {state.apiStatus === 'offline' && (
+                <span style={{ color: '#dc3545' }}>● API Offline</span>
+              )}
+              {state.apiStatus === 'checking' && (
+                <span style={{ color: '#ffc107' }}>● Checking API...</span>
+              )}
+            </div>
           </div>
         </div>
         
@@ -594,11 +653,12 @@ function PlaygroundComponent() {
           <button
             className="button button--primary"
             onClick={handleProcess}
-            disabled={state.loading || !state.librariesLoaded}
+            disabled={state.loading || state.apiStatus !== 'online'}
           >
-            {state.loading ? 'Processing...' : 
-             !state.librariesLoaded ? 'Loading Libraries...' :
-             state.mode === 'parser' ? 'Parse XML' : 
+            {state.loading ? 'Processing...' :
+             state.apiStatus === 'checking' ? 'Checking API...' :
+             state.apiStatus === 'offline' ? 'API Offline' :
+             state.mode === 'parser' ? 'Parse XML' :
              state.mode === 'batch' ? 'Batch Build' : 'Build XML'}
           </button>
           
@@ -699,10 +759,10 @@ function PlaygroundComponent() {
         fontSize: '0.8rem',
         color: 'var(--ifm-color-emphasis-600)'
       }}>
-        <strong>DDEX Suite v0.4.1</strong> - Using browser-compatible WASM modules for ddex-parser and ddex-builder.
+        <strong>DDEX Suite v0.4.1</strong> - Using Firebase Functions API with ddex-parser and ddex-builder v0.4.1
         <br/>
-        <strong>Features:</strong> Real-time parsing with v0.4.1 enhanced data access • Deterministic XML building •
-        Batch processing • Preset configurations • Round-trip compatibility • Browser-native performance
+        <strong>Features:</strong> Real-time parsing • Deterministic XML building • Batch processing •
+        Preset configurations • Round-trip compatibility • Cloud-powered performance
       </div>
     </div>
   );
@@ -710,7 +770,7 @@ function PlaygroundComponent() {
 
 export default function Playground() {
   return (
-    <Layout title="DDEX Playground v0.4.1" description="Interactive DDEX Suite playground with v0.4.1 features">
+    <Layout title="Playground v0.4.1" description="Interactive DDEX Suite playground with v0.4.1 features">
       <BrowserOnly fallback={<div>Loading playground...</div>}>
         {() => <PlaygroundComponent />}
       </BrowserOnly>

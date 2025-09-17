@@ -13,6 +13,7 @@
   },
   "main": "index.js",
   "dependencies": {
+    "cors": "^2.8.5",
     "ddex-builder": "^0.4.1",
     "ddex-parser": "^0.4.1",
     "firebase-admin": "^12.6.0",

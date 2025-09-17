@@ -4,8 +4,12 @@
  */
 
 const {setGlobalOptions} = require("firebase-functions");
-const {onRequest} = require("firebase-functions/https");
+const {onRequest} = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
+const cors = require("cors");
+
+// Import DDEX handlers
+const { parseHandler, buildHandler, batchHandler } = require('./ddex-handlers');
 
 // Import DDEX packages - try native first, then fallback to WASM
 let DdexParser, DdexBuilder;
@@ -140,6 +144,8 @@ function handleError(res, error, operation) {
 
 // Parser API endpoint
 exports.parseXML = onRequest({
+  memory: '1GiB',
+  timeoutSeconds: 60,
   maxInstances: 5,
   cors: true
 }, async (req, res) => {
@@ -213,6 +219,8 @@ exports.parseXML = onRequest({
 
 // Builder API endpoint
 exports.buildXML = onRequest({
+  memory: '1GiB',
+  timeoutSeconds: 60,
   maxInstances: 5,
   cors: true
 }, async (req, res) => {
@@ -288,6 +296,8 @@ exports.buildXML = onRequest({
 
 // Round-trip API endpoint (Parse → Modify → Build)
 exports.roundTrip = onRequest({
+  memory: '1GiB',
+  timeoutSeconds: 120,
   maxInstances: 3,
   cors: true
 }, async (req, res) => {
@@ -387,7 +397,11 @@ exports.roundTrip = onRequest({
 });
 
 // Health check endpoint
-exports.health = onRequest({ cors: true }, (req, res) => {
+exports.health = onRequest({
+  memory: '256MiB',
+  timeoutSeconds: 10,
+  cors: true
+}, (req, res) => {
   setCORSHeaders(res);
 
   res.json({
@@ -403,7 +417,11 @@ exports.health = onRequest({ cors: true }, (req, res) => {
 });
 
 // API documentation endpoint
-exports.docs = onRequest({ cors: true }, (req, res) => {
+exports.docs = onRequest({
+  memory: '256MiB',
+  timeoutSeconds: 10,
+  cors: true
+}, (req, res) => {
   setCORSHeaders(res);
 
   const docs = {
@@ -466,3 +484,22 @@ exports.docs = onRequest({ cors: true }, (req, res) => {
 
   res.json(docs);
 });
+
+// DDEX API endpoints using handlers
+exports.ddexParse = onRequest({
+  memory: '1GiB',
+  timeoutSeconds: 60,
+  cors: true
+}, parseHandler);
+
+exports.ddexBuild = onRequest({
+  memory: '1GiB',
+  timeoutSeconds: 60,
+  cors: true
+}, buildHandler);
+
+exports.ddexBatch = onRequest({
+  memory: '1GiB',
+  timeoutSeconds: 60,
+  cors: true
+}, batchHandler);
