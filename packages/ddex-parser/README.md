@@ -7,6 +7,8 @@ High-performance DDEX XML parser built in Rust with comprehensive security prote
 
 Part of the [DDEX Suite](https://github.com/daddykev/ddex-suite) - a comprehensive toolkit for working with DDEX metadata in the music industry.
 
+> **v0.4.2 Released** - Linux x64 Node.js binaries added for cloud deployment compatibility!
+>
 > **v0.4.1 Released** - Node.js bindings now fully functional with complete data access!
 >
 > **Version 0.4.0** - Streaming Parser Release with critical vulnerability fixes and enhanced error handling.
@@ -208,7 +210,7 @@ v0.4.0 includes comprehensive security enhancements:
 - **[Python →](https://github.com/daddykev/ddex-suite/blob/main/packages/ddex-parser/bindings/python/README.md)** - PyPI package with pandas integration
 - **[Rust →](https://github.com/daddykev/ddex-suite/blob/main/packages/ddex-parser/README.md)** - Crates.io package documentation
 
-### Node.js/JavaScript Example (v0.4.1+)
+### Node.js/JavaScript Example (v0.4.2+)
 
 ```javascript
 const { DdexParser } = require('ddex-parser');

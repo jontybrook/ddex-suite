@@ -1,6 +1,6 @@
 {
   "name": "ddex-builder-wasm",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "WASM bindings for DDEX Builder",
   "main": "pkg/ddex_builder_wasm.js",
   "files": [

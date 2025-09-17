@@ -5,7 +5,29 @@ All notable changes to DDEX Builder will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.4.1] - 2024-09-15
+## [0.4.2] - 2025-09-17
+
+### 🌐 Cloud Deployment Enhancement
+
+#### Linux x64 Node.js Binaries Added
+- **NEW**: Native Linux x64 GNU binaries for Node.js (Node 18+ compatible)
+- **IMPROVED**: Cloud deployment support for Google Cloud, AWS, Azure
+- **FIXED**: Server-side rendering and cloud function compatibility
+- **ENHANCED**: Complete platform coverage (macOS, Windows, Linux)
+
+### 📦 Distribution Updates
+- Added `ddex-builder-node.linux-x64-gnu.node` binary
+- Updated package.json optionalDependencies to include Linux targets
+- Enhanced index.js platform detection for Linux environments
+- Version consistency across all binding packages
+
+### 🎯 Impact
+- Full Node.js compatibility in cloud environments
+- Server-side DDEX building now supported
+- Production deployment ready for all major cloud platforms
+- Maintains compatibility with ddex-parser v0.4.2
+
+## [0.4.1] - 2025-09-15
 
 ### 🔄 Compatibility Update
 - Version bump to maintain parity with ddex-parser v0.4.1

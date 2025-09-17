@@ -1,6 +1,27 @@
 # Changelog - ddex-parser
 
-## [0.4.1] - 2024-12-XX
+## [0.4.2] - 2025-09-17
+
+### 🌐 Cloud Deployment Enhancement
+
+#### Linux x64 Node.js Binaries Added
+- **NEW**: Native Linux x64 GNU binaries for Node.js (Node 18+ compatible)
+- **IMPROVED**: Cloud deployment support for Google Cloud, AWS, Azure
+- **FIXED**: Server-side rendering and cloud function compatibility
+- **ENHANCED**: Complete platform coverage (macOS, Windows, Linux)
+
+### 📦 Distribution Updates
+- Added `ddex-parser-node.linux-x64-gnu.node` binary
+- Updated package.json optionalDependencies to include Linux targets
+- Enhanced index.js platform detection for Linux environments
+- Version consistency across all binding packages
+
+### 🎯 Impact
+- Full Node.js compatibility in cloud environments
+- Server-side DDEX processing now supported
+- Production deployment ready for all major cloud platforms
+
+## [0.4.1] - 2025-09-15
 
 ### 🚨 Critical Fixes
 

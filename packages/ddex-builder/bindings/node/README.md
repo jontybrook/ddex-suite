@@ -21,9 +21,9 @@ yarn add ddex-builder
 ### TypeScript
 
 ```typescript
-import { DDEXBuilder } from 'ddex-builder';
+import { DdexBuilder } from 'ddex-builder';
 
-const builder = new DDEXBuilder({ validate: true });
+const builder = new DdexBuilder({ validate: true });
 
 const releaseData = {
   messageHeader: {
@@ -109,11 +109,11 @@ Memory usage remains constant with streaming mode regardless of dataset size.
 Perfect integration with ddex-parser for complete workflows:
 
 ```typescript
-import { DDEXParser } from 'ddex-parser';
-import { DDEXBuilder } from 'ddex-builder';
+import { DdexParser } from 'ddex-parser';
+import { DdexBuilder } from 'ddex-builder';
 
 // Parse existing DDEX file
-const parser = new DDEXParser();
+const parser = new DdexParser();
 const original = await parser.parseFile('input.xml');
 
 // Modify specific fields
@@ -121,7 +121,7 @@ const modified = { ...original.flattened };
 modified.releases[0].title = 'Remastered Edition';
 
 // Build new deterministic XML
-const builder = new DDEXBuilder({ canonical: true });
+const builder = new DdexBuilder({ canonical: true });
 const newXml = await builder.buildFromFlattened(modified);
 
 // Perfect round-trip fidelity guaranteed

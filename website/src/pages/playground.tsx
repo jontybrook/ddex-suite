@@ -342,8 +342,8 @@ function PlaygroundComponent() {
     try {
       const response = await fetch('/api/parse', {
         method: 'POST',
-        headers: { 'Content-Type': 'text/xml' },
-        body: xml
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ xml: xml })
       });
 
       if (!response.ok) {
@@ -577,7 +577,7 @@ function PlaygroundComponent() {
         backgroundColor: 'var(--ifm-background-color)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-          <h1 style={{ margin: 0, fontSize: '1.5rem' }}>DDEX Suite Playground v0.4.1</h1>
+          <h1 style={{ margin: 0, fontSize: '1.5rem' }}>Playground v0.4.1</h1>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <button
               className={`button ${state.mode === 'parser' ? 'button--primary' : 'button--secondary'}`}

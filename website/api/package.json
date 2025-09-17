@@ -10,8 +10,8 @@
   "dependencies": {
     "express": "^4.18.2",
     "cors": "^2.8.5",
-    "ddex-parser": "0.4.1",
-    "ddex-builder": "0.4.1"
+    "ddex-parser": "0.4.2",
+    "ddex-builder": "0.4.2"
   },
   "engines": {
     "node": ">=16.0.0"

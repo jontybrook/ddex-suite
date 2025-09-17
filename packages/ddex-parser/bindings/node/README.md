@@ -48,9 +48,9 @@ result.releases.forEach((release, index) => {
 ### Browser (ES Modules)
 
 ```typescript
-import { DDEXParser } from 'ddex-parser/browser';
+import { DdexParser } from 'ddex-parser/browser';
 
-const parser = new DDEXParser();
+const parser = new DdexParser();
 const result = await parser.parseString(xmlContent);
 
 // Process the parsed data

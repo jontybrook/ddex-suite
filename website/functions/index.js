@@ -116,7 +116,7 @@ try {
   ({ DdexBuilder } = require("ddex-builder"));
   logger.info('Successfully loaded DDEX native modules');
 } catch (nativeError) {
-  logger.warn('Native modules failed, will try WASM:', nativeError.message);
+  logger.error('Native modules failed:', nativeError.message);
 
   // Initialize WASM modules as fallback
   parserInitPromise = initWasmModules();
