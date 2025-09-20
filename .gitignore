@@ -12,6 +12,14 @@ dev-docs/
 # Archive directories
 archive/
 test-archive/
+test-suite/
+
+.cargo/
+.claude/
+.github/
+.dockerignore
+
+KNOWN_ISSUES.md
 
 # =========================
 # Rust / Cargo
