@@ -165,6 +165,13 @@ Parse → Modify → Build workflows maintain all your data, with beneficial nor
 
 ## 🚀 Features
 
+### ✅ Linux x64 Node.js Binaries Added (v0.4.2)
+- **Native**: Linux x64 GNU binaries for Node.js (Node 18+ compatible)
+- Cloud deployment support for Google Cloud, AWS, Azure
+- Server-side rendering and cloud function compatibility
+- Added `ddex-parser-node.linux-x64-gnu.node` binary
+- Added `ddex-builder-node.linux-x64-gnu.node` binary
+
 ### ✅ Streaming Parser with SIMD Optimization (v0.4.0)
 - **⚡ SIMD-Accelerated**: FastStreamingParser using memchr for 25-30 MB/s production throughput
 - **🎯 Peak Performance**: 500-700 MB/s for uniform XML, up to 1,265 MB/s in optimal conditions
