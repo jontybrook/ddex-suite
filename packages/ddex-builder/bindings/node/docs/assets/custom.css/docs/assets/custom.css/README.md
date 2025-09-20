@@ -16,19 +16,6 @@ npm install ddex-builder
 yarn add ddex-builder
 ```
 
-## Documentation
-
-📚 **API Documentation**: Complete TypeScript/JavaScript API documentation is available in the `/docs` directory. Open `docs/index.html` in your browser to browse the full API reference with examples, type definitions, and cross-references.
-
-**Key Documentation Features:**
-- Complete API reference for all classes and interfaces
-- TypeScript type definitions with IntelliSense support
-- Comprehensive examples and usage patterns
-- Search functionality across all documentation
-- Cross-references between related types and methods
-
-Full documentation will be published online with the v1.0.0 release.
-
 ## Quick Start
 
 ### TypeScript

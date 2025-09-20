@@ -1996,10 +1996,11 @@ interface DeterminismConfig {
 - [x] Documentation updates (API, migration guide, examples)
 - [x] Performance guarantees documented and achieved
 - [x] Final testing and verification
-- [ ] Publish v0.4.0 with production-ready streaming
+- [x] Publish v0.4.0 with production-ready streaming
+- [x] Publish v0.4.2 with Linux x64 GNU binaries for Node (cloud functions)
 
 #### Phase 4.5 Performance & Scale **IN PROGRESS**
-- [ ] TypeDoc API documentation for ddex-builder
+- [x] TypeDoc API documentation for ddex-builder
 - [ ] Playground testing with cloud bindings
 - [ ] Optimize for sub-3ms parsing (already at 3-5ms)
 - [ ] Implement zero-copy where possible

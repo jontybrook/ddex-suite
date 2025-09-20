@@ -36,7 +36,7 @@ Beyond the core implementation, this is a showcase of **software craftsmanship a
 ## 🚧 Development Status
 
 **Latest Release**: Suite v0.4.2 🎉  
-**Current Development Phase**: 4.4 - Streaming Parser  
+**Current Development Phase**: 4.5 - Performance & Scale  
 **Target Release**: Suite v1.0.0 in Q1 2026
 
 ### 📦 Available Packages
@@ -45,7 +45,7 @@ All packages published across npm, PyPI, and **crates.io**! ✅
 
 | Package | npm | PyPI | crates.io | Version |
 |---------|-----|------|-----------|---------|
-| **ddex-core** | - | - | ✅ [Published](https://crates.io/crates/ddex-core) | v0.4.2 |
+| **ddex-core** | - | - | ✅ [Published](https://crates.io/crates/ddex-core) | v0.4.1 |
 | **ddex-parser** | ✅ [Published](https://www.npmjs.com/package/ddex-parser) | ✅ [Published](https://pypi.org/project/ddex-parser/) | ✅ [Published](https://crates.io/crates/ddex-parser) | v0.4.2 |
 | **ddex-builder** | ✅ [Published](https://www.npmjs.com/package/ddex-builder) | ✅ [Published](https://pypi.org/project/ddex-builder/) | ✅ [Published](https://crates.io/crates/ddex-builder) | v0.4.2 |
 
