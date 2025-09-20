@@ -3,7 +3,6 @@ import clsx from 'clsx';
 import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
-import HomepageFeatures from '@site/src/components/HomepageFeatures';
 import CodeBlock from '@theme/CodeBlock';
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
@@ -333,7 +332,6 @@ function FeatureComparison() {
   );
 }
 
-
 function WhyDDEXSuite() {
   const comparisons = [
     {
@@ -402,7 +400,6 @@ function WhyDDEXSuite() {
   );
 }
 
-
 export default function Home() {
   return (
     <Layout
@@ -414,7 +411,6 @@ export default function Home() {
         <CodeExamples />
         <FeatureComparison />
         <WhyDDEXSuite />
-        <HomepageFeatures />
       </main>
     </Layout>
   );
