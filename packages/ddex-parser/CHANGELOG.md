@@ -1,5 +1,26 @@
 # Changelog - ddex-parser
 
+## [0.4.4] - 2025-01-21
+
+### Breaking Changes
+- Parser now fails on missing required fields instead of using placeholders
+- Removed all fallback values ("Unknown", "Untitled", "NO_ID")
+- Auto-generated IDs (REL_*, RES_*, PARTY_*) eliminated
+
+### Fixed
+- Release title extraction bug from v0.4.3 that returned "Test Release V4_3"
+- Streaming parser no longer generates fake references
+- Proper error propagation through Node.js bindings
+
+### Improved
+- Clear error messages with DDEX field paths (e.g., "Release/Title/TitleText")
+- Enhanced input validation with size limits
+- Better error categorization for JavaScript developers
+
+### Security
+- Added 100MB input size limit for parser
+- Improved error sanitization
+
 ## [0.4.3] - 2025-09-20
 
 ### 🚀 Performance Excellence & Production Validation

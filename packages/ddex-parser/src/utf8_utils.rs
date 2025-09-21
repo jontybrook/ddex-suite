@@ -7,8 +7,7 @@ use quick_xml::events::BytesText;
 #[allow(dead_code)]
 pub fn process_text_content(raw_bytes: &[u8]) -> Result<String, ParseError> {
     String::from_utf8(raw_bytes.to_vec()).map_err(|e| ParseError::InvalidUtf8 {
-        position: 0,
-        error: e.to_string(),
+        message: format!("UTF-8 decoding error at position 0: {}", e),
     })
 }
 
@@ -23,8 +22,7 @@ pub fn decode_utf8_at_position(bytes: &[u8], position: usize) -> Result<String, 
     std::str::from_utf8(bytes)
         .map(|s| s.to_string())
         .map_err(|e| ParseError::InvalidUtf8 {
-            position,
-            error: e.to_string(),
+            message: format!("UTF-8 decoding error at position {}: {}", position, e),
         })
 }
 
@@ -49,8 +47,7 @@ pub fn decode_attribute_name(bytes: &[u8], position: usize) -> Result<String, Pa
 pub fn decode_attribute_value(bytes: &[u8], position: usize) -> Result<String, ParseError> {
     // First decode UTF-8
     let utf8_str = std::str::from_utf8(bytes).map_err(|e| ParseError::InvalidUtf8 {
-        position,
-        error: e.to_string(),
+        message: format!("UTF-8 decoding error at position {}: {}", position, e),
     })?;
 
     // Then unescape XML entities
@@ -62,8 +59,7 @@ pub fn decode_attribute_value(bytes: &[u8], position: usize) -> Result<String, P
 /// Validate UTF-8 string without copying
 pub fn validate_utf8(bytes: &[u8]) -> Result<&str, ParseError> {
     std::str::from_utf8(bytes).map_err(|e| ParseError::InvalidUtf8 {
-        position: 0,
-        error: e.to_string(),
+        message: format!("UTF-8 validation error: {}", e),
     })
 }
 
@@ -75,8 +71,7 @@ pub fn validate_utf8_string(text: &str) -> Result<(), ParseError> {
         if ch == '\u{FFFD}' {
             // Replacement character indicates invalid UTF-8 was present
             return Err(ParseError::InvalidUtf8 {
-                position: pos,
-                error: "Found Unicode replacement character indicating invalid UTF-8".to_string(),
+                message: format!("Found Unicode replacement character at position {} indicating invalid UTF-8", pos),
             });
         }
 
@@ -84,8 +79,7 @@ pub fn validate_utf8_string(text: &str) -> Result<(), ParseError> {
         if ch.is_control() && ch != '\t' && ch != '\n' && ch != '\r' {
             // Allow common whitespace control characters but reject others
             return Err(ParseError::InvalidUtf8 {
-                position: pos,
-                error: format!("Found invalid control character: U+{:04X}", ch as u32),
+                message: format!("Found invalid control character at position {}: U+{:04X}", pos, ch as u32),
             });
         }
     }

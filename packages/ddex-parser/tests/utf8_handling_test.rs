@@ -233,7 +233,7 @@ fn test_invalid_utf8_handling() {
         Err(ParseError::InvalidUtf8 { .. }) => {
             // Success - we properly detected the invalid UTF-8
         }
-        Err(ParseError::XmlError { message, .. }) if message.contains("UTF-8") => {
+        Err(ParseError::XmlError(message)) if message.contains("UTF-8") => {
             // Also acceptable - quick-xml may catch it first
         }
         Err(ParseError::SimpleXmlError(message))

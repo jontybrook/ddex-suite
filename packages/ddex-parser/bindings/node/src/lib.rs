@@ -17,12 +17,165 @@ fn string_to_cursor(xml: String) -> Cursor<Vec<u8>> {
     Cursor::new(xml.into_bytes())
 }
 
-/// Convert ParseError to NAPI Error
+/// Convert ParseError to DetailedError structure
+fn parse_error_to_detailed(err: ParseError) -> DetailedError {
+    match err {
+        ParseError::MissingField(field) => DetailedError {
+            error_type: "MISSING_FIELD".to_string(),
+            message: format!("Missing required DDEX field: {}", field),
+            field: Some(field),
+            value: None,
+            context: Some("DDEX schema validation".to_string()),
+            suggestions: vec![
+                "Check the DDEX specification for required fields".to_string(),
+                "Ensure your XML includes all mandatory elements".to_string(),
+            ],
+        },
+        ParseError::InvalidValue { field, value } => DetailedError {
+            error_type: "INVALID_VALUE".to_string(),
+            message: format!("Invalid value '{}' for field '{}'", value, field),
+            field: Some(field),
+            value: Some(value),
+            context: Some("Data validation".to_string()),
+            suggestions: vec![
+                "Check the DDEX specification for valid values".to_string(),
+                "Verify the data type and format requirements".to_string(),
+            ],
+        },
+        ParseError::XmlError(msg) => DetailedError {
+            error_type: "XML_ERROR".to_string(),
+            message: format!("XML parsing failed: {}", msg),
+            field: None,
+            value: None,
+            context: Some("XML structure validation".to_string()),
+            suggestions: vec![
+                "Validate your XML syntax".to_string(),
+                "Check for malformed elements or attributes".to_string(),
+                "Ensure proper XML encoding (UTF-8)".to_string(),
+            ],
+        },
+        ParseError::StreamError(stream_err) => DetailedError {
+            error_type: "STREAM_ERROR".to_string(),
+            message: format!("Streaming error: {:?}", stream_err),
+            field: None,
+            value: None,
+            context: Some("Streaming parser".to_string()),
+            suggestions: vec![
+                "Check for corrupted or incomplete data".to_string(),
+                "Try parsing the full document instead of streaming".to_string(),
+            ],
+        },
+        _ => DetailedError {
+            error_type: "GENERAL_ERROR".to_string(),
+            message: format!("{}", err),
+            field: None,
+            value: None,
+            context: None,
+            suggestions: vec!["Please check the input and try again".to_string()],
+        },
+    }
+}
+
+/// Convert ParseError to NAPI Error with detailed categorization
 fn parse_error_to_napi(err: ParseError) -> napi::Error {
-    napi::Error::new(
-        napi::Status::GenericFailure,
-        format!("Parse error: {}", err),
-    )
+    match err {
+        ParseError::MissingField(field) => {
+            napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("Missing required DDEX field: {}. Please ensure the XML contains all mandatory elements for this message type.", field),
+            )
+        }
+        ParseError::InvalidValue { field, value } => {
+            napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("Invalid value '{}' for field '{}'. Please check the DDEX specification for valid values.", value, field),
+            )
+        }
+        ParseError::XmlError(msg) => {
+            napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("XML parsing failed: {}. Please ensure the input is valid XML and follows DDEX schema.", msg),
+            )
+        }
+        ParseError::StreamError(stream_err) => {
+            napi::Error::new(
+                napi::Status::GenericFailure,
+                format!("Streaming error: {:?}. This may indicate a corrupted or incomplete DDEX message.", stream_err),
+            )
+        }
+        ParseError::InvalidUtf8 { message } => {
+            napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("Invalid UTF-8 encoding: {}. Please ensure the XML file uses valid UTF-8 encoding.", message),
+            )
+        }
+        ParseError::SimpleXmlError(msg) => {
+            napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("XML structure error: {}. Please check for malformed XML elements.", msg),
+            )
+        }
+        ParseError::ConversionError { from, to, message } => {
+            napi::Error::new(
+                napi::Status::GenericFailure,
+                format!("Data conversion error from {} to {}: {}. This may indicate incompatible data types in the DDEX message.", from, to, message),
+            )
+        }
+        ParseError::IoError(msg) => {
+            napi::Error::new(
+                napi::Status::GenericFailure,
+                format!("IO error: {}. This may indicate a file access or network issue.", msg),
+            )
+        }
+        ParseError::Timeout { message } => {
+            napi::Error::new(
+                napi::Status::GenericFailure,
+                format!("Parsing timeout: {}. Consider using streaming mode for large files or increasing timeout limits.", message),
+            )
+        }
+        ParseError::DepthLimitExceeded { depth, limit } => {
+            napi::Error::new(
+                napi::Status::GenericFailure,
+                format!("XML depth limit exceeded: {} > {}. The DDEX message has too deeply nested elements. Consider simplifying the structure.", depth, limit),
+            )
+        }
+        ParseError::SecurityViolation { message } => {
+            napi::Error::new(
+                napi::Status::GenericFailure,
+                format!("Security violation: {}. The DDEX message contains potentially unsafe content that violates security policies.", message),
+            )
+        }
+        ParseError::MalformedXml { message, position } => {
+            napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("Malformed XML at position {}: {}. Please check the XML syntax and structure.", position, message),
+            )
+        }
+        ParseError::MismatchedTags { expected, found, position } => {
+            napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("Mismatched XML tags at position {}: expected '{}', found '{}'. Please ensure proper tag nesting.", position, expected, found),
+            )
+        }
+        ParseError::UnexpectedClosingTag { tag, position } => {
+            napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("Unexpected closing tag '{}' at position {}. Please check for unmatched opening tags.", tag, position),
+            )
+        }
+        ParseError::InvalidAttribute { message, position } => {
+            napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("Invalid XML attribute at position {}: {}. Please check the attribute syntax.", position, message),
+            )
+        }
+        ParseError::UnclosedTags { tags, position } => {
+            napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("Unclosed XML tags at position {}: {:?}. Please ensure all tags are properly closed.", position, tags),
+            )
+        }
+    }
 }
 
 /// Convert ERNVersion to string
@@ -272,41 +425,141 @@ impl DdexParser {
 
     #[napi]
     pub fn detect_version(&self, xml: String) -> Result<String> {
-        let cursor = string_to_cursor(xml);
+        // Validate input
+        if xml.is_empty() {
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                "XML input cannot be empty. Cannot detect version of empty content.",
+            ));
+        }
+
+        // Check if it looks like XML at all
+        if !xml.trim_start().starts_with("<?xml") && !xml.trim_start().starts_with('<') {
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                "Input does not appear to be XML. Version detection requires valid XML content.",
+            ));
+        }
+
+        let cursor = string_to_cursor(xml.clone());
         match self.inner.detect_version(cursor) {
             Ok(version) => Ok(version_to_string(version)),
-            Err(err) => Err(parse_error_to_napi(err)),
+            Err(err) => {
+                // Add context for version detection failures
+                let context_info = format!(
+                    " [Version detection failed on {} bytes of input starting with: '{}']",
+                    xml.len(),
+                    xml.chars().take(150).collect::<String>().replace('\n', " ")
+                );
+
+                let mut error = parse_error_to_napi(err);
+                error.reason = format!("{}{}", error.reason, context_info);
+                Err(error)
+            }
         }
     }
 
     #[napi]
     pub fn parse_sync(&mut self, xml: String, options: Option<ParseOptions>) -> Result<ParsedMessage> {
-        // Convert string to cursor
-        let cursor = string_to_cursor(xml);
+        // Validate input
+        if xml.is_empty() {
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                "XML input cannot be empty. Please provide a valid DDEX XML document.",
+            ));
+        }
 
-        // Call the real Rust parser
+        if xml.len() > 100_000_000 {  // 100MB limit
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                "XML input too large (>100MB). Consider using streaming mode for large files.",
+            ));
+        }
+
+        // Convert string to cursor
+        let cursor = string_to_cursor(xml.clone());
+
+        // Call the real Rust parser with enhanced error context
         match self.inner.parse(cursor) {
             Ok(parsed_message) => {
+                // Validate that we got meaningful data
+                if parsed_message.flat.releases.is_empty() &&
+                   parsed_message.flat.resources.is_empty() &&
+                   parsed_message.flat.deals.is_empty() {
+                    return Err(napi::Error::new(
+                        napi::Status::InvalidArg,
+                        "DDEX parsing succeeded but no releases, resources, or deals were found. Please check that the XML contains valid DDEX content.",
+                    ));
+                }
+
                 // Convert the Rust ParsedERNMessage to Node.js ParsedMessage
+                // All data is now real parsed data - no mock data possible at this point
                 let result = convert_parsed_message(parsed_message, options.as_ref());
                 Ok(result)
             }
             Err(parse_error) => {
-                // Convert ParseError to NAPI error
-                Err(parse_error_to_napi(parse_error))
+                // Add context about the input that failed
+                let context_info = format!(
+                    " [Input context: {} bytes, starts with: '{}']",
+                    xml.len(),
+                    xml.chars().take(100).collect::<String>().replace('\n', " ")
+                );
+
+                // Convert ParseError to NAPI error with additional context
+                let mut error = parse_error_to_napi(parse_error);
+                error.reason = format!("{}{}", error.reason, context_info);
+                Err(error)
             }
         }
     }
 
     #[napi]
     pub async unsafe fn parse(&mut self, xml: String, options: Option<ParseOptions>) -> Result<ParsedMessage> {
-        // For async, just call sync version for now
-        // TODO: Implement true async parsing using tokio::task::spawn_blocking
-        self.parse_sync(xml, options)
+        // For now, delegate to sync version with proper async handling
+        // TODO: Implement true async parsing using tokio::task::spawn_blocking for CPU-intensive work
+
+        // Validate input early to avoid unnecessary work
+        if xml.is_empty() {
+            return Err(napi::Error::new(
+                napi::Status::InvalidArg,
+                "XML input cannot be empty. Please provide a valid DDEX XML document.",
+            ));
+        }
+
+        // Use sync version but wrapped in proper async context
+        match self.parse_sync(xml, options) {
+            Ok(result) => Ok(result),
+            Err(err) => {
+                // Add async context to error message
+                let mut async_err = err;
+                async_err.reason = format!("{} [Note: This was called via async parse method]", async_err.reason);
+                Err(async_err)
+            }
+        }
     }
 
     #[napi]
     pub async fn sanity_check(&self, xml: String) -> Result<SanityCheckResult> {
+        // Validate input
+        if xml.is_empty() {
+            return Ok(SanityCheckResult {
+                is_valid: false,
+                version: "Unknown".to_string(),
+                errors: vec!["XML input cannot be empty for sanity check".to_string()],
+                warnings: Vec::new(),
+            });
+        }
+
+        // Basic XML structure check
+        if !xml.trim_start().starts_with("<?xml") && !xml.trim_start().starts_with('<') {
+            return Ok(SanityCheckResult {
+                is_valid: false,
+                version: "Unknown".to_string(),
+                errors: vec!["Input does not appear to be valid XML".to_string()],
+                warnings: Vec::new(),
+            });
+        }
+
         let cursor = string_to_cursor(xml.clone());
 
         // Use the real parser's sanity check
@@ -320,12 +573,25 @@ impl DdexParser {
                 })
             }
             Err(err) => {
-                // If sanity check fails, return the error as a failed sanity check
+                // If sanity check fails, return detailed error information
+                let detailed_error = match err {
+                    ParseError::MissingField(field) => {
+                        format!("Missing required DDEX field: {}", field)
+                    }
+                    ParseError::InvalidValue { field, value } => {
+                        format!("Invalid value '{}' for field '{}'", value, field)
+                    }
+                    ParseError::XmlError(msg) => {
+                        format!("XML parsing error: {}", msg)
+                    }
+                    _ => format!("Sanity check failed: {}", err),
+                };
+
                 Ok(SanityCheckResult {
                     is_valid: false,
                     version: "Unknown".to_string(),
-                    errors: vec![format!("Sanity check failed: {}", err)],
-                    warnings: Vec::new(),
+                    errors: vec![detailed_error],
+                    warnings: vec![format!("Input size: {} bytes", xml.len())],
                 })
             }
         }
@@ -334,6 +600,22 @@ impl DdexParser {
     #[napi]
     pub fn stream(&self, _xml: String, _options: Option<StreamOptions>) -> Result<ReleaseStream> {
         Ok(ReleaseStream::new())
+    }
+
+    /// Get detailed error information for debugging - useful for error handling in JavaScript
+    #[napi]
+    pub fn get_detailed_error(&mut self, xml: String) -> Result<DetailedError> {
+        let cursor = string_to_cursor(xml.clone());
+
+        match self.inner.parse(cursor) {
+            Ok(_) => Err(napi::Error::new(
+                napi::Status::GenericFailure,
+                "No error found - parsing succeeded",
+            )),
+            Err(parse_error) => {
+                Ok(parse_error_to_detailed(parse_error))
+            }
+        }
     }
 }
 
@@ -433,6 +715,16 @@ pub struct SanityCheckResult {
     pub version: String,
     pub errors: Vec<String>,
     pub warnings: Vec<String>,
+}
+
+#[napi(object)]
+pub struct DetailedError {
+    pub error_type: String,
+    pub message: String,
+    pub field: Option<String>,
+    pub value: Option<String>,
+    pub context: Option<String>,
+    pub suggestions: Vec<String>,
 }
 
 #[napi(object)]

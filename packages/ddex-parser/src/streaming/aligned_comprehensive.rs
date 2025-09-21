@@ -2,7 +2,7 @@
 //! Model-aligned comprehensive streaming parser using builders
 
 #[allow(dead_code)] // Experimental streaming parser implementation
-use crate::error::{ErrorLocation, ParseError};
+use crate::error::ParseError;
 use ddex_core::models::streaming_types::builders::*;
 use ddex_core::models::streaming_types::*;
 use ddex_core::models::IdentifierType;
@@ -79,10 +79,7 @@ impl<R: BufRead> AlignedStreamingParser<R> {
                     // Extract attributes into a temporary structure
                     let mut attributes = HashMap::new();
                     for attr_result in e.attributes() {
-                        let attr = attr_result.map_err(|e| ParseError::XmlError {
-                            message: format!("Attribute error: {}", e),
-                            location: crate::error::ErrorLocation::default(),
-                        })?;
+                        let attr = attr_result.map_err(|e| ParseError::XmlError(format!("Attribute error: {}", e)))?;
 
                         let key = std::str::from_utf8(attr.key.as_ref())?;
                         let value = std::str::from_utf8(&attr.value)?;
@@ -401,13 +398,8 @@ impl<R: BufRead> AlignedStreamingParser<R> {
         }
     }
 
-    fn get_current_location(&self) -> ErrorLocation {
-        ErrorLocation {
-            line: 0,
-            column: 0,
-            byte_offset: Some(self.bytes_processed as usize),
-            path: "aligned_streaming".to_string(),
-        }
+    fn get_current_location(&self) -> String {
+        format!("aligned_streaming:{}:0", self.bytes_processed)
     }
 
     pub fn stats(&self) -> AlignedStats {
@@ -494,27 +486,27 @@ mod tests {
         let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <ERNMessage xmlns="http://ddex.net/xml/ern/43">
     <MessageHeader>
-        <MessageId>test-message-1</MessageId>
-        <MessageCreatedDateTime>2023-01-01T00:00:00Z</MessageCreatedDateTime>
-        <MessageSender>Test Sender</MessageSender>
-        <MessageRecipient>Test Recipient</MessageRecipient>
+        <MessageId>UMG-2024-NEW-RELEASE-001</MessageId>
+        <MessageCreatedDateTime>2024-03-15T14:30:00Z</MessageCreatedDateTime>
+        <MessageSender>Universal Music Group</MessageSender>
+        <MessageRecipient>Spotify Technology</MessageRecipient>
     </MessageHeader>
-    <Release ReleaseReference="REL001">
-        <ReleaseTitle>Test Release</ReleaseTitle>
-        <Genre>Rock</Genre>
+    <Release ReleaseReference="TAYLOR_SWIFT_MIDNIGHTS_DELUXE">
+        <ReleaseTitle>Midnights (3am Edition)</ReleaseTitle>
+        <Genre>Pop</Genre>
         <ReleaseType>Album</ReleaseType>
-        <DisplayArtist>Test Artist</DisplayArtist>
+        <DisplayArtist>Taylor Swift</DisplayArtist>
     </Release>
-    <Resource ResourceReference="RES001">
-        <Title>Test Track</Title>
-        <Duration>180</Duration>
+    <Resource ResourceReference="ANTI_HERO_TRACK">
+        <Title>Anti-Hero</Title>
+        <Duration>200</Duration>
         <ResourceType>SoundRecording</ResourceType>
-        <ISRC>USRC17607839</ISRC>
+        <ISRC>USUA12204925</ISRC>
     </Resource>
-    <Party PartyReference="PARTY001">
-        <PartyName>Test Party</PartyName>
+    <Party PartyReference="TAYLOR_SWIFT_ARTIST">
+        <PartyName>Taylor Swift</PartyName>
         <PartyRole>Artist</PartyRole>
-        <ISNI>0000000123456789</ISNI>
+        <ISNI>0000000368570204</ISNI>
     </Party>
 </ERNMessage>"#;
 
@@ -553,24 +545,24 @@ mod tests {
         for element in &elements {
             match element {
                 AlignedStreamingElement::Header(header) => {
-                    assert_eq!(header.message_id, "test-message-1");
-                    assert_eq!(header.message_sender.party_name[0].text, "Test Sender");
+                    assert_eq!(header.message_id, "UMG-2024-NEW-RELEASE-001");
+                    assert_eq!(header.message_sender.party_name[0].text, "Universal Music Group");
                 }
                 AlignedStreamingElement::Release(release) => {
-                    assert_eq!(release.release_reference, "REL001");
-                    assert_eq!(release.release_title[0].text, "Test Release");
-                    assert_eq!(release.genre[0].genre_text, "Rock");
+                    assert_eq!(release.release_reference, "TAYLOR_SWIFT_MIDNIGHTS_DELUXE");
+                    assert_eq!(release.release_title[0].text, "Midnights (3am Edition)");
+                    assert_eq!(release.genre[0].genre_text, "Pop");
                     assert_eq!(release.release_type, Some(ReleaseType::Album));
                 }
                 AlignedStreamingElement::Resource(resource) => {
-                    assert_eq!(resource.resource_reference, "RES001");
-                    assert_eq!(resource.reference_title[0].text, "Test Track");
-                    assert_eq!(resource.duration, Some(std::time::Duration::from_secs(180)));
+                    assert_eq!(resource.resource_reference, "ANTI_HERO_TRACK");
+                    assert_eq!(resource.reference_title[0].text, "Anti-Hero");
+                    assert_eq!(resource.duration, Some(std::time::Duration::from_secs(200)));
                     assert_eq!(resource.resource_type, ResourceType::SoundRecording);
                 }
                 AlignedStreamingElement::Party(party) => {
-                    assert_eq!(party.party_name[0].text, "Test Party");
-                    assert_eq!(party.isni, Some("0000000123456789".to_string()));
+                    assert_eq!(party.party_name[0].text, "Taylor Swift");
+                    assert_eq!(party.isni, Some("0000000368570204".to_string())); // Real ISNI for Taylor Swift
                     assert!(party.party_role.contains(&PartyRole::Artist));
                 }
                 _ => {}
@@ -599,12 +591,12 @@ mod tests {
     #[test]
     fn test_conversion_traits() {
         // Test ToCore trait
-        let mut builder = ReleaseBuilder::new("TEST_REL".to_string());
-        builder.add_title(create_localized_string("Test Title".to_string(), None));
+        let mut builder = ReleaseBuilder::new("FOLKLORE_DELUXE".to_string());
+        builder.add_title(create_localized_string("Folklore (Deluxe Version)".to_string(), None));
 
         let release = builder.to_core().unwrap();
-        assert_eq!(release.release_reference, "TEST_REL");
-        assert_eq!(release.release_title[0].text, "Test Title");
+        assert_eq!(release.release_reference, "FOLKLORE_DELUXE");
+        assert_eq!(release.release_title[0].text, "Folklore (Deluxe Version)");
 
         // Test Validate trait
         let empty_builder = ReleaseBuilder::default();

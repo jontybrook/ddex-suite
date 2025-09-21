@@ -22,7 +22,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-ddex-core = "0.4.1"
+ddex-core = "0.4.4"
 ```
 
 ## Usage

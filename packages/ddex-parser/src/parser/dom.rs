@@ -56,13 +56,13 @@ pub fn parse_dom<R: BufRead + Seek>(
     let elapsed = start.elapsed();
     if elapsed.as_millis() > options.timeout_ms as u128 {
         return Err(ParseError::Timeout {
-            seconds: elapsed.as_secs(),
+            message: format!("Parsing timeout after {} seconds", elapsed.as_secs()),
         });
     }
 
     Ok(ParsedERNMessage {
         graph,
-        flat,
+        flat: flat?,
         extensions: None,
     })
 }

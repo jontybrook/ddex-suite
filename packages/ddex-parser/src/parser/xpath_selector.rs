@@ -236,15 +236,7 @@ impl XPathSelector {
                 }
                 Ok(Event::Eof) => break,
                 Err(e) => {
-                    return Err(ParseError::XmlError {
-                        message: format!("XML parsing error: {}", e),
-                        location: crate::error::ErrorLocation {
-                            line: 0,
-                            column: 0,
-                            byte_offset: Some(xml_reader.buffer_position() as usize),
-                            path: "xpath_selector".to_string(),
-                        },
-                    });
+                    return Err(ParseError::XmlError(format!("XML parsing error: {}", e)));
                 }
                 _ => {} // Skip other events
             }
@@ -333,15 +325,7 @@ impl XPathSelector {
                     // Index filter [1], [2], etc.
                     components.push(PathComponent::IndexFilter { element, index });
                 } else {
-                    return Err(ParseError::XmlError {
-                        message: format!("Invalid filter expression: [{}]", filter),
-                        location: crate::error::ErrorLocation {
-                            line: 0,
-                            column: 0,
-                            byte_offset: None,
-                            path: "xpath_parser".to_string(),
-                        },
-                    });
+                    return Err(ParseError::XmlError(format!("Invalid filter expression: [{}]", filter)));
                 }
             } else {
                 components.push(PathComponent::Element(part));
@@ -361,15 +345,7 @@ impl XPathSelector {
             }
         }
 
-        Err(ParseError::XmlError {
-            message: format!("Invalid filter syntax: {}", input),
-            location: crate::error::ErrorLocation {
-                line: 0,
-                column: 0,
-                byte_offset: None,
-                path: "xpath_parser".to_string(),
-            },
-        })
+        Err(ParseError::XmlError(format!("Invalid filter syntax: {}", input)))
     }
 
     /// Check if current path matches the selector
@@ -518,9 +494,9 @@ impl XPathSelector {
 
     /// Extract element name from QName bytes
     fn extract_element_name(&self, qname: &[u8]) -> Result<String, ParseError> {
-        let name_str = std::str::from_utf8(qname).map_err(|_| ParseError::Io {
-            message: "Invalid UTF-8 in element name".to_string(),
-        })?;
+        let name_str = std::str::from_utf8(qname).map_err(|_| ParseError::IoError(
+            "Invalid UTF-8 in element name".to_string(),
+        ))?;
 
         Ok(name_str.to_string())
     }
@@ -644,15 +620,7 @@ impl XPathSelector {
                 }
                 Ok(Event::Eof) => break,
                 Err(e) => {
-                    return Err(ParseError::XmlError {
-                        message: format!("XML parsing error: {}", e),
-                        location: crate::error::ErrorLocation {
-                            line: 0,
-                            column: 0,
-                            byte_offset: Some(xml_reader.buffer_position() as usize),
-                            path: "xpath_batch_selector".to_string(),
-                        },
-                    });
+                    return Err(ParseError::XmlError(format!("XML parsing error: {}", e)));
                 }
                 _ => {}
             }

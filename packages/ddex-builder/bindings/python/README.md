@@ -11,10 +11,14 @@ Generate deterministic, industry-compliant DDEX XML files from Python data struc
 
 ```bash
 pip install ddex-builder
+# or for specific version
+pip install ddex-builder==0.4.4
 ```
 
-## Security Notice
-**v0.4.0 includes PyO3 0.24 upgrade for enhanced security and compatibility.**
+## Version Notes
+**v0.4.4**: Enhanced compatibility with ddex-parser v0.4.4's strict validation. Improved round-trip workflows with better error handling.
+
+**v0.4.0**: PyO3 0.24 upgrade for enhanced security and compatibility.
 
 ## Quick Start
 

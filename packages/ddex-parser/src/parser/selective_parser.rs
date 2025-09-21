@@ -176,15 +176,7 @@ impl SelectiveParser {
                 }
                 Ok(Event::Eof) => break,
                 Err(e) => {
-                    return Err(ParseError::XmlError {
-                        message: format!("XML parsing error: {}", e),
-                        location: crate::error::ErrorLocation {
-                            line: 0,
-                            column: 0,
-                            byte_offset: Some(xml_reader.buffer_position() as usize),
-                            path: "selective_parser".to_string(),
-                        },
-                    });
+                    return Err(ParseError::XmlError(format!("XML parsing error: {}", e)));
                 }
                 _ => {} // Skip other events for maximum speed
             }
@@ -210,14 +202,11 @@ impl SelectiveParser {
         // Read entire content for fast scanning
         reader
             .read_to_end(&mut buffer)
-            .map_err(|e| ParseError::Io {
-                message: format!("Failed to read input: {}", e),
-            })?;
+            .map_err(|e| ParseError::IoError(format!("Failed to read input: {}", e)))?;
 
         // Convert to string for faster pattern matching
         let content = std::str::from_utf8(&buffer).map_err(|e| ParseError::InvalidUtf8 {
-            position: 0,
-            error: e.to_string(),
+            message: format!("UTF-8 decoding error at position 0: {}", e),
         })?;
 
         // Ultra-fast pattern matching for ISRC tags
@@ -357,9 +346,9 @@ impl SelectiveParser {
 
     /// Extract element name from QName (strips namespace prefix)
     fn extract_element_name(&self, qname: &[u8]) -> Result<String, ParseError> {
-        let name_str = std::str::from_utf8(qname).map_err(|_| ParseError::Io {
-            message: "Invalid UTF-8 in element name".to_string(),
-        })?;
+        let name_str = std::str::from_utf8(qname).map_err(|_| ParseError::IoError(
+            "Invalid UTF-8 in element name".to_string(),
+        ))?;
 
         // Strip namespace prefix if present
         let local_name = if let Some(colon_pos) = name_str.find(':') {

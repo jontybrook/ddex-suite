@@ -1,6 +1,6 @@
 // Integration test demonstrating fixed type conversions
 
-use ddex_core::error::ErrorLocation;
+// Removed invalid import - using std::string::String instead
 use ddex_core::models::graph::{Genre, MessageSender, ResourceType, TechnicalDetails};
 use ddex_core::models::{Identifier, IdentifierType, LocalizedString};
 
@@ -38,8 +38,8 @@ fn test_fixed_identifier_creation() {
 
 #[test]
 fn test_fixed_error_location_creation() {
-    // Demonstrate proper ErrorLocation field usage
-    let error_location = ErrorLocation {
+    // Demonstrate proper String field usage
+    let error_location = String {
         line: 10,
         column: 5,
         byte_offset: Some(150),
@@ -51,7 +51,7 @@ fn test_fixed_error_location_creation() {
     assert_eq!(error_location.byte_offset, Some(150));
     assert_eq!(error_location.path, "test.xml");
 
-    println!("✅ ErrorLocation created with correct fields including path");
+    println!("✅ String created with correct fields including path");
 }
 
 #[test]
@@ -191,7 +191,7 @@ fn demonstrate_comprehensive_parser_fixes() {
     println!("\n=== COMPREHENSIVE PARSER TYPE FIXES DEMONSTRATION ===");
     println!("✅ Fixed LocalizedString fields: text, language_code, script");
     println!("✅ Fixed Identifier fields: id_type, namespace, value");
-    println!("✅ Fixed ErrorLocation fields: line, column, byte_offset, path");
+    println!("✅ Fixed String fields: line, column, byte_offset, path");
     println!("✅ Fixed MessageSender structure with proper nested fields");
     println!("✅ Fixed Genre structure with genre_text field");
     println!("✅ Fixed TechnicalDetails structure matching actual model");

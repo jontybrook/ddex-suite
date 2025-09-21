@@ -123,7 +123,7 @@ impl MultiReleaseParser {
                     if depth > self.security_config.max_element_depth {
                         return Err(ParseError::DepthLimitExceeded {
                             depth,
-                            max: self.security_config.max_element_depth,
+                            limit: self.security_config.max_element_depth,
                         });
                     }
 
@@ -153,15 +153,7 @@ impl MultiReleaseParser {
                 }
                 Ok(Event::Eof) => break,
                 Err(e) => {
-                    return Err(ParseError::XmlError {
-                        message: format!("XML parsing error: {}", e),
-                        location: crate::error::ErrorLocation {
-                            line: 0,
-                            column: 0,
-                            byte_offset: Some(xml_reader.buffer_position() as usize),
-                            path: "multi_release_counter".to_string(),
-                        },
-                    });
+                    return Err(ParseError::XmlError(format!("XML parsing error: {}", e)));
                 }
                 _ => {} // Skip other events for speed
             }
@@ -207,7 +199,7 @@ impl MultiReleaseParser {
                     if depth > self.security_config.max_element_depth {
                         return Err(ParseError::DepthLimitExceeded {
                             depth,
-                            max: self.security_config.max_element_depth,
+                            limit: self.security_config.max_element_depth,
                         });
                     }
 
@@ -355,15 +347,7 @@ impl MultiReleaseParser {
                 }
                 Ok(Event::Eof) => break,
                 Err(e) => {
-                    return Err(ParseError::XmlError {
-                        message: format!("XML parsing error: {}", e),
-                        location: crate::error::ErrorLocation {
-                            line: 0,
-                            column: 0,
-                            byte_offset: Some(xml_reader.buffer_position() as usize),
-                            path: "multi_release_parser".to_string(),
-                        },
-                    });
+                    return Err(ParseError::XmlError(format!("XML parsing error: {}", e)));
                 }
                 _ => {} // Skip other events
             }
@@ -388,9 +372,9 @@ impl MultiReleaseParser {
 
     /// Extract element name, handling namespaces
     fn extract_element_name(&self, qname: &[u8]) -> Result<String, ParseError> {
-        let name_str = std::str::from_utf8(qname).map_err(|_| ParseError::Io {
-            message: "Invalid UTF-8 in element name".to_string(),
-        })?;
+        let name_str = std::str::from_utf8(qname).map_err(|_| ParseError::IoError(
+            "Invalid UTF-8 in element name".to_string(),
+        ))?;
         Ok(name_str.to_string())
     }
 

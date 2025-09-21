@@ -33,17 +33,9 @@ fn test_round_trip_preservation() {
 #[test]
 fn test_ffi_error_conversion() {
     use ddex_core::ffi::FFIError;
-    use ddex_parser::error::{ErrorLocation, ParseError};
+    use ddex_parser::error::{String, ParseError};
 
-    let error = ParseError::XmlError {
-        message: "Test error".to_string(),
-        location: ErrorLocation {
-            line: 10,
-            column: 20,
-            byte_offset: Some(100),
-            path: "/test".to_string(),
-        },
-    };
+    let error = ParseError::XmlError("Test error".to_string());
 
     let _ffi_error: FFIError = error.into();
     assert!(true, "FFI conversion successful");

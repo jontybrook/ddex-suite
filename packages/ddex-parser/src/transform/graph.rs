@@ -74,7 +74,7 @@ impl GraphBuilder {
                     if validator.get_depth() > 100 {
                         return Err(ParseError::DepthLimitExceeded {
                             depth: validator.get_depth(),
-                            max: 100,
+                            limit: 100,
                         });
                     }
 
@@ -127,15 +127,7 @@ impl GraphBuilder {
                     }
                 }
                 Err(e) => {
-                    return Err(ParseError::XmlError {
-                        message: format!("XML parsing error: {}", e),
-                        location: crate::error::ErrorLocation {
-                            line: 0,
-                            column: 0,
-                            byte_offset: Some(xml_reader.buffer_position() as usize),
-                            path: "parser".to_string(),
-                        },
-                    });
+                    return Err(ParseError::XmlError(format!("XML parsing error: {}", e)));
                 }
             }
             buf.clear();
@@ -277,15 +269,7 @@ impl GraphBuilder {
                 },
                 Ok(Event::Eof) => break,
                 Err(e) => {
-                    return Err(ParseError::XmlError {
-                        message: format!("XML parsing error in header: {}", e),
-                        location: crate::error::ErrorLocation {
-                            line: 0,
-                            column: 0,
-                            byte_offset: Some(reader.buffer_position() as usize),
-                            path: "header".to_string(),
-                        },
-                    });
+                    return Err(ParseError::XmlError(format!("XML parsing error in header: {}", e)));
                 }
                 _ => {}
             }
@@ -520,15 +504,7 @@ impl GraphBuilder {
                     }
                 }
                 Err(e) => {
-                    return Err(ParseError::XmlError {
-                        message: format!("XML parsing error in release: {}", e),
-                        location: crate::error::ErrorLocation {
-                            line: 0,
-                            column: 0,
-                            byte_offset: Some(reader.buffer_position() as usize),
-                            path: "parse_minimal_release".to_string(),
-                        },
-                    });
+                    return Err(ParseError::XmlError(format!("XML parsing error in release: {}", e)));
                 }
             }
             buf.clear();
@@ -693,15 +669,7 @@ impl GraphBuilder {
                     }
                 }
                 Err(e) => {
-                    return Err(ParseError::XmlError {
-                        message: format!("XML parsing error in sound recording: {}", e),
-                        location: crate::error::ErrorLocation {
-                            line: 0,
-                            column: 0,
-                            byte_offset: Some(reader.buffer_position() as usize),
-                            path: "parse_sound_recording".to_string(),
-                        },
-                    });
+                    return Err(ParseError::XmlError(format!("XML parsing error in sound recording: {}", e)));
                 }
             }
             buf.clear();
@@ -872,15 +840,7 @@ impl GraphBuilder {
                     }
                 }
                 Err(e) => {
-                    return Err(ParseError::XmlError {
-                        message: format!("XML parsing error in release deal: {}", e),
-                        location: crate::error::ErrorLocation {
-                            line: 0,
-                            column: 0,
-                            byte_offset: Some(reader.buffer_position() as usize),
-                            path: "parse_release_deal".to_string(),
-                        },
-                    });
+                    return Err(ParseError::XmlError(format!("XML parsing error in release deal: {}", e)));
                 }
             }
             buf.clear();

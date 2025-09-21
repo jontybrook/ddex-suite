@@ -15,9 +15,9 @@ fn test_depth_limit_enforcement() {
     let result = parser.parse(cursor);
 
     match result {
-        Err(ParseError::DepthLimitExceeded { depth, max }) => {
-            assert!(depth > max);
-            assert_eq!(max, 100); // Default strict limit
+        Err(ParseError::DepthLimitExceeded { depth, limit }) => {
+            assert!(depth > limit);
+            assert_eq!(limit, 100); // Default strict limit
         }
         other => panic!("Expected DepthLimitExceeded error, got: {:?}", other),
     }
@@ -55,9 +55,9 @@ fn test_custom_depth_limit() {
     let result = parser.parse(cursor);
 
     match result {
-        Err(ParseError::DepthLimitExceeded { depth, max }) => {
+        Err(ParseError::DepthLimitExceeded { depth, limit }) => {
             assert!(depth > 10);
-            assert_eq!(max, 10);
+            assert_eq!(limit, 10);
         }
         other => panic!("Expected DepthLimitExceeded error, got: {:?}", other),
     }

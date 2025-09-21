@@ -7,7 +7,7 @@ use super::state::{
     PartialResource,
 };
 use super::{ParsedElement, StreamingConfig, StreamingProgress};
-use crate::error::{ErrorLocation, ParseError};
+use crate::error::ParseError;
 use ddex_core::models::{graph::*, versions::ERNVersion};
 use ddex_core::models::{Identifier, IdentifierType, LocalizedString};
 use quick_xml::{events::Event, Reader};
@@ -539,13 +539,8 @@ impl<R: BufRead> StreamingDDEXParser<R> {
     }
 
     /// Get current location for error reporting
-    fn get_current_location(&self) -> ErrorLocation {
-        ErrorLocation {
-            line: 0,   // TODO: Track line numbers
-            column: 0, // TODO: Track column numbers
-            byte_offset: Some(self.bytes_processed as usize),
-            path: "streaming".to_string(),
-        }
+    fn get_current_location(&self) -> String {
+        format!("streaming at byte offset {}", self.bytes_processed)
     }
 }
 

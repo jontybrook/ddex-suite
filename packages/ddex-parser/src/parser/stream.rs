@@ -1,7 +1,7 @@
 // core/src/parser/stream.rs
 //! Streaming parser for large DDEX files
 
-use crate::error::{ErrorLocation, ParseError};
+use crate::error::ParseError;
 use crate::parser::ParseOptions;
 use crate::transform::flatten::Flattener;
 use crate::utf8_utils;
@@ -126,7 +126,7 @@ impl<R: BufRead> StreamingParser<R> {
                     if self.current_depth > self.max_depth {
                         return Err(ParseError::DepthLimitExceeded {
                             depth: self.current_depth,
-                            max: self.max_depth,
+                            limit: self.max_depth,
                         });
                     }
 
@@ -140,21 +140,10 @@ impl<R: BufRead> StreamingParser<R> {
                     self.current_depth = self.current_depth.saturating_sub(1);
                 }
                 Ok(Event::Eof) => {
-                    return Err(ParseError::XmlError {
-                        message: "No MessageHeader found".to_string(),
-                        location: ErrorLocation {
-                            line: 0,
-                            column: 0,
-                            byte_offset: Some(self.reader.buffer_position() as usize),
-                            path: "/".to_string(),
-                        },
-                    });
+                    return Err(ParseError::XmlError("No MessageHeader found".to_string()));
                 }
                 Err(e) => {
-                    return Err(ParseError::XmlError {
-                        message: e.to_string(),
-                        location: self.get_current_location(),
-                    });
+                    return Err(ParseError::XmlError(e.to_string()));
                 }
                 _ => {}
             }
@@ -212,16 +201,11 @@ impl<R: BufRead> StreamingParser<R> {
                     break;
                 }
                 Ok(Event::Eof) => {
-                    return Err(ParseError::XmlError {
-                        message: "Unexpected EOF in MessageHeader".to_string(),
-                        location: self.get_current_location(),
-                    });
+                    return Err(ParseError::XmlError("Unexpected EOF in MessageHeader".to_string()));
                 }
                 Err(e) => {
-                    return Err(ParseError::XmlError {
-                        message: e.to_string(),
-                        location: self.get_current_location(),
-                    });
+                    return Err(ParseError::XmlError(format!("XML error at {}: {}",
+                        self.get_current_location(), e)));
                 }
                 _ => {}
             }
@@ -371,17 +355,11 @@ impl<R: BufRead> StreamingParser<R> {
                 }
                 Ok(Event::Eof) => {
                     let location = self.get_current_location();
-                    return Err(ParseError::XmlError {
-                        message: "Unexpected EOF".to_string(),
-                        location,
-                    });
+                    return Err(ParseError::XmlError("Unexpected EOF".to_string()));
                 }
                 Err(e) => {
                     let location = self.get_current_location();
-                    return Err(ParseError::XmlError {
-                        message: e.to_string(),
-                        location,
-                    });
+                    return Err(ParseError::XmlError(format!("XML error at {}: {}", location, e)));
                 }
                 _ => {}
             }
@@ -406,7 +384,7 @@ impl<R: BufRead> StreamingParser<R> {
                     if self.current_depth > self.max_depth {
                         return Err(ParseError::DepthLimitExceeded {
                             depth: self.current_depth,
-                            max: self.max_depth,
+                            limit: self.max_depth,
                         });
                     }
                 }
@@ -416,10 +394,7 @@ impl<R: BufRead> StreamingParser<R> {
                 }
                 Ok(Event::Eof) => break,
                 Err(e) => {
-                    return Err(ParseError::XmlError {
-                        message: e.to_string(),
-                        location: self.get_current_location(),
-                    });
+                    return Err(ParseError::XmlError( e.to_string()));
                 }
                 _ => {}
             }
@@ -429,13 +404,8 @@ impl<R: BufRead> StreamingParser<R> {
         Ok(())
     }
 
-    fn get_current_location(&self) -> ErrorLocation {
-        ErrorLocation {
-            line: 0, // Would need line tracking
-            column: 0,
-            byte_offset: Some(self.reader.buffer_position() as usize),
-            path: "/NewReleaseMessage".to_string(),
-        }
+    fn get_current_location(&self) -> String {
+        format!("byte offset {} in /NewReleaseMessage", self.reader.buffer_position())
     }
 }
 
@@ -482,10 +452,7 @@ impl<'a, R: BufRead> ReleaseIterator<'a, R> {
                     return Ok(None);
                 }
                 Err(e) => {
-                    return Err(ParseError::XmlError {
-                        message: e.to_string(),
-                        location: self.parser.get_current_location(),
-                    });
+                    return Err(ParseError::XmlError( e.to_string()));
                 }
                 _ => {}
             }
@@ -711,7 +678,7 @@ pub fn parse_streaming<R: BufRead>(
 
     Ok(ParsedERNMessage {
         graph,
-        flat,
+        flat: flat?,
         extensions: None,
     })
 }

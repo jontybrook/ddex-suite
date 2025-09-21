@@ -11,10 +11,14 @@ High-performance DDEX XML parser for Python with built-in security features and 
 
 ```bash
 pip install ddex-parser
+# or for specific version
+pip install ddex-parser==0.4.4
 ```
 
-## Security Notice
-**v0.4.1 includes enhanced data structure implementation with complete data access.**
+## Version Notes
+**v0.4.4**: Enhanced validation - Parser now properly fails on missing required fields instead of using placeholder values. Ensure your error handling can catch ValidationError exceptions for incomplete DDEX files.
+
+**v0.4.1**: Enhanced data structure implementation with complete data access.
 Built on v0.4.0's security fixes (RUSTSEC-2025-0020) with PyO3 0.24 compatibility.
 
 ## Quick Start

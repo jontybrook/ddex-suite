@@ -1,6 +1,9 @@
 // core/src/transform/flatten.rs
 //! Graph to flat model transformation
 
+use crate::error::ParseError;
+
+type Result<T> = std::result::Result<T, ParseError>;
 use ddex_core::models::common::{Identifier, LocalizedString};
 use ddex_core::models::flat::{
     ArtistInfo, DealValidity, DistributionComplexity, FlattenedMessage, MessageStats, Organization,
@@ -16,11 +19,11 @@ use std::collections::HashMap;
 pub struct Flattener;
 
 impl Flattener {
-    pub fn flatten(graph: ERNMessage) -> FlattenedMessage {
-        let releases = Self::flatten_releases(&graph.releases, &graph.resources);
-        let resources = Self::flatten_resources(&graph.resources);
-        let deals = Self::flatten_deals(&graph.deals);
-        let parties = Self::flatten_parties(&graph.parties);
+    pub fn flatten(graph: ERNMessage) -> Result<FlattenedMessage> {
+        let releases = Self::flatten_releases(&graph.releases, &graph.resources)?;
+        let resources = Self::flatten_resources(&graph.resources)?;
+        let deals = Self::flatten_deals(&graph.deals)?;
+        let parties = Self::flatten_parties(&graph.parties)?;
 
         let stats = MessageStats {
             release_count: graph.releases.len(),
@@ -29,18 +32,18 @@ impl Flattener {
             total_duration: 0, // Set to 0 if no duration
         };
 
-        FlattenedMessage {
+        Ok(FlattenedMessage {
             message_id: graph.message_header.message_id.clone(),
             message_type: format!("{:?}", graph.message_header.message_type),
             message_date: graph.message_header.message_created_date_time,
             sender: Organization {
-                name: Self::get_primary_name(&graph.message_header.message_sender.party_name),
-                id: Self::get_primary_id(&graph.message_header.message_sender.party_id),
+                name: Self::get_primary_name(&graph.message_header.message_sender.party_name, "MessageSender/PartyName")?,
+                id: Self::get_primary_id(&graph.message_header.message_sender.party_id, "MessageSender/PartyId")?,
                 extensions: None,
             },
             recipient: Organization {
-                name: Self::get_primary_name(&graph.message_header.message_recipient.party_name),
-                id: Self::get_primary_id(&graph.message_header.message_recipient.party_id),
+                name: Self::get_primary_name(&graph.message_header.message_recipient.party_name, "MessageRecipient/PartyName")?,
+                id: Self::get_primary_id(&graph.message_header.message_recipient.party_id, "MessageRecipient/PartyId")?,
                 extensions: None,
             },
             releases,
@@ -51,32 +54,33 @@ impl Flattener {
             profile: graph.profile.map(|p| format!("{:?}", p)),
             stats,
             extensions: None,
-        }
+        })
     }
 
-    fn flatten_releases(releases: &[Release], resources: &[Resource]) -> Vec<ParsedRelease> {
+    fn flatten_releases(releases: &[Release], resources: &[Resource]) -> Result<Vec<ParsedRelease>> {
         releases
             .iter()
-            .map(|release| ParsedRelease {
+            .map(|release| Ok(ParsedRelease {
                 release_id: release.release_reference.clone(),
                 identifiers: Self::extract_identifiers(&release.release_id),
                 title: release.release_title.clone(),
-                default_title: Self::get_primary_title(&release.release_title),
+                default_title: Self::get_primary_title(&release.release_title, "Release/Title/TitleText")?,
                 subtitle: release.release_subtitle.clone(),
                 default_subtitle: release
                     .release_subtitle
                     .as_ref()
-                    .map(|s| Self::get_primary_title(s)),
-                display_artist: Self::format_display_artist(&release.display_artist),
-                artists: Self::extract_artists(&release.display_artist),
+                    .map(|s| Self::get_primary_title_optional(s))
+                    .flatten(),
+                display_artist: Self::format_display_artist(&release.display_artist)?,
+                artists: Self::extract_artists(&release.display_artist)?,
                 release_type: release
                     .release_type
                     .as_ref()
                     .map(|t| format!("{:?}", t))
-                    .unwrap_or_else(|| "Unknown".to_string()),
+                    .ok_or_else(|| ParseError::MissingField("Release/ReleaseType".to_string()))?,
                 genre: release.genre.first().map(|g| g.genre_text.clone()),
                 sub_genre: release.genre.first().and_then(|g| g.sub_genre.clone()),
-                tracks: Self::build_tracks(&release.release_resource_reference_list, resources),
+                tracks: Self::build_tracks(&release.release_resource_reference_list, resources)?,
                 track_count: release.release_resource_reference_list.len(),
                 disc_count: Self::count_discs(&release.release_resource_reference_list),
                 videos: Vec::new(),
@@ -93,18 +97,18 @@ impl Flattener {
                 parent_release: None,
                 child_releases: Vec::new(),
                 extensions: None,
-            })
+            }))
             .collect()
     }
 
-    fn flatten_resources(resources: &[Resource]) -> IndexMap<String, ParsedResource> {
+    fn flatten_resources(resources: &[Resource]) -> Result<IndexMap<String, ParsedResource>> {
         resources
             .iter()
             .map(|resource| {
                 let parsed = ParsedResource {
                     resource_id: resource.resource_reference.clone(),
                     resource_type: format!("{:?}", resource.resource_type),
-                    title: Self::get_primary_title(&resource.reference_title),
+                    title: Self::get_primary_title(&resource.reference_title, "Resource/ReferenceTitle/TitleText")?,
                     duration: resource.duration,
                     technical_details: TechnicalInfo {
                         file_format: resource
@@ -119,19 +123,19 @@ impl Flattener {
                         file_size: resource.technical_details.first().and_then(|t| t.file_size),
                     },
                 };
-                (resource.resource_reference.clone(), parsed)
+                Ok((resource.resource_reference.clone(), parsed))
             })
             .collect()
     }
 
-    fn flatten_deals(deals: &[Deal]) -> Vec<ParsedDeal> {
+    fn flatten_deals(deals: &[Deal]) -> Result<Vec<ParsedDeal>> {
         deals
             .iter()
-            .map(|deal| ParsedDeal {
+            .map(|deal| Ok(ParsedDeal {
                 deal_id: deal
                     .deal_reference
                     .clone()
-                    .unwrap_or_else(|| format!("deal_{}", uuid::Uuid::new_v4())),
+                    .ok_or_else(|| ParseError::MissingField("Deal/DealReference".to_string()))?,
                 releases: deal.deal_release_reference.clone(),
                 validity: DealValidity {
                     start: deal.deal_terms.start_date,
@@ -163,39 +167,52 @@ impl Flattener {
                     .map(|u| format!("{:?}", u))
                     .collect(),
                 restrictions: Vec::new(),
-            })
+            }))
             .collect()
     }
 
-    fn flatten_parties(parties: &[Party]) -> IndexMap<String, Party> {
+    fn flatten_parties(parties: &[Party]) -> Result<IndexMap<String, Party>> {
         parties
             .iter()
             .map(|party| {
-                let id = Self::get_primary_id(&party.party_id);
-                (id, party.clone())
+                let id = Self::get_primary_id(&party.party_id, "Party/PartyId")?;
+                Ok((id, party.clone()))
             })
             .collect()
     }
 
     // Helper methods
-    fn get_primary_name(names: &[LocalizedString]) -> String {
+    fn get_primary_name(names: &[LocalizedString], field_path: &str) -> Result<String> {
         names
             .first()
             .map(|n| n.text.clone())
-            .unwrap_or_else(|| "Unknown".to_string())
+            .ok_or_else(|| ParseError::MissingField(field_path.to_string()))
     }
 
-    fn get_primary_title(titles: &[LocalizedString]) -> String {
+    fn get_primary_title(titles: &[LocalizedString], field_path: &str) -> Result<String> {
         titles
             .first()
             .map(|t| t.text.clone())
-            .unwrap_or_else(|| "Untitled".to_string())
+            .ok_or_else(|| ParseError::MissingField(field_path.to_string()))
     }
 
-    fn get_primary_id(ids: &[Identifier]) -> String {
+    fn get_primary_id(ids: &[Identifier], field_path: &str) -> Result<String> {
         ids.first()
             .map(|id| id.value.clone())
-            .unwrap_or_else(|| "NO_ID".to_string())
+            .ok_or_else(|| ParseError::MissingField(field_path.to_string()))
+    }
+
+    // Optional variants that return Option<T> instead of failing
+    fn get_primary_name_optional(names: &[LocalizedString]) -> Option<String> {
+        names.first().map(|n| n.text.clone())
+    }
+
+    fn get_primary_title_optional(titles: &[LocalizedString]) -> Option<String> {
+        titles.first().map(|t| t.text.clone())
+    }
+
+    fn get_primary_id_optional(ids: &[Identifier]) -> Option<String> {
+        ids.first().map(|id| id.value.clone())
     }
 
     #[allow(dead_code)]
@@ -247,30 +264,30 @@ impl Flattener {
         identifiers
     }
 
-    fn format_display_artist(artists: &[Artist]) -> String {
-        artists
+    fn format_display_artist(artists: &[Artist]) -> Result<String> {
+        let names: Result<Vec<String>> = artists
             .iter()
-            .map(|a| Self::get_primary_name(&a.display_artist_name))
-            .collect::<Vec<_>>()
-            .join(", ")
+            .map(|a| Self::get_primary_name(&a.display_artist_name, "Artist/DisplayArtistName"))
+            .collect();
+        Ok(names?.join(", "))
     }
 
-    fn extract_artists(artists: &[Artist]) -> Vec<ArtistInfo> {
+    fn extract_artists(artists: &[Artist]) -> Result<Vec<ArtistInfo>> {
         artists
             .iter()
-            .map(|artist| ArtistInfo {
-                name: Self::get_primary_name(&artist.display_artist_name),
+            .map(|artist| Ok(ArtistInfo {
+                name: Self::get_primary_name(&artist.display_artist_name, "Artist/DisplayArtistName")?,
                 role: artist
                     .artist_role
                     .first()
                     .cloned()
-                    .unwrap_or_else(|| "Artist".to_string()),
+                    .ok_or_else(|| ParseError::MissingField("Artist/ArtistRole".to_string()))?,
                 party_id: artist.party_reference.clone(),
-            })
+            }))
             .collect()
     }
 
-    fn build_tracks(refs: &[ReleaseResourceReference], resources: &[Resource]) -> Vec<ParsedTrack> {
+    fn build_tracks(refs: &[ReleaseResourceReference], resources: &[Resource]) -> Result<Vec<ParsedTrack>> {
         refs.iter()
             .enumerate()
             .map(|(idx, rref)| {
@@ -278,7 +295,13 @@ impl Flattener {
                     .iter()
                     .find(|r| r.resource_reference == rref.resource_reference);
 
-                ParsedTrack {
+                // For tracks, title is optional - if resource is missing, we can't proceed
+                let title = match resource {
+                    Some(r) => Self::get_primary_title_optional(&r.reference_title),
+                    None => None,
+                };
+
+                Ok(ParsedTrack {
                     track_id: rref.resource_reference.clone(),
                     isrc: resource.and_then(|r| {
                         r.resource_id
@@ -296,19 +319,17 @@ impl Flattener {
                     track_number: rref.track_number,
                     disc_number: rref.disc_number,
                     side: rref.side.clone(),
-                    title: resource
-                        .map(|r| Self::get_primary_title(&r.reference_title))
-                        .unwrap_or_else(|| "Unknown Track".to_string()),
+                    title: title.ok_or_else(|| ParseError::MissingField("Resource/ReferenceTitle/TitleText".to_string()))?,
                     subtitle: None,
                     display_artist: String::new(),
                     artists: Vec::new(),
                     duration: resource
                         .and_then(|r| r.duration)
-                        .unwrap_or_else(|| std::time::Duration::from_secs(0)),
+                        .ok_or_else(|| ParseError::MissingField("Resource/Duration".to_string()))?,
                     duration_formatted: resource
                         .and_then(|r| r.duration)
                         .map(ParsedTrack::format_duration)
-                        .unwrap_or_else(|| "0:00".to_string()),
+                        .ok_or_else(|| ParseError::MissingField("Resource/Duration".to_string()))?,
                     file_format: None,
                     bitrate: None,
                     sample_rate: None,
@@ -316,7 +337,7 @@ impl Flattener {
                     is_bonus: rref.is_bonus,
                     is_explicit: false,
                     is_instrumental: false,
-                }
+                })
             })
             .collect()
     }

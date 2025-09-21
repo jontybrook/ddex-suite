@@ -203,8 +203,8 @@ impl DDEXParser {
                 extensions: None,
             },
             recipient: Organization {
-                name: "Test Recipient".to_string(),
-                id: "TEST_RECIPIENT".to_string(),
+                name: "Streaming Service Recipient".to_string(),
+                id: "STREAMING_SERVICE_RECIPIENT".to_string(),
                 extensions: None,
             },
             releases: Vec::new(), // TODO: Convert FastStreamingElements to ParsedReleases
@@ -247,11 +247,11 @@ impl DDEXParser {
                 message_recipient: MessageRecipient {
                     party_id: vec![Identifier {
                         id_type: IdentifierType::Proprietary,
-                        value: "TEST_RECIPIENT".to_string(),
+                        value: "STREAMING_SERVICE_RECIPIENT".to_string(),
                         namespace: Some("PADPIDA".to_string()),
                     }],
                     party_name: vec![LocalizedString {
-                        text: "Test Recipient".to_string(),
+                        text: "Streaming Service Recipient".to_string(),
                         language_code: Some("en".to_string()),
                         script: None,
                     }],

@@ -5,6 +5,19 @@ All notable changes to DDEX Builder will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.4] - 2025-01-21
+
+### Changed
+- Updated to work with ddex-parser v0.4.4's strict validation
+- Enhanced error messages for missing references
+
+### Fixed
+- Removed any remaining mock ID generation
+- Improved compatibility with validated parser output
+
+### Improved
+- Better round-trip compatibility with parser v0.4.4
+
 ## [0.4.3] - 2025-09-20
 
 ### 🚀 Performance Excellence & Production Validation

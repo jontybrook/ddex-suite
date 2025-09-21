@@ -1,7 +1,7 @@
 // src/streaming/minimal.rs
 //! Minimal working streaming parser implementation
 
-use crate::error::{ErrorLocation, ParseError};
+use crate::error::ParseError;
 use ddex_core::models::versions::ERNVersion;
 use quick_xml::{events::Event, Reader};
 use std::io::BufRead;
@@ -126,13 +126,8 @@ impl<R: BufRead> MinimalStreamingParser<R> {
         }
     }
 
-    fn get_location(&self) -> ErrorLocation {
-        ErrorLocation {
-            line: 0,
-            column: 0,
-            byte_offset: Some(self.bytes_processed as usize),
-            path: "streaming".to_string(),
-        }
+    fn get_location(&self) -> String {
+        format!("streaming at byte offset {}", self.bytes_processed)
     }
 
     pub fn stats(&self) -> MinimalStats {

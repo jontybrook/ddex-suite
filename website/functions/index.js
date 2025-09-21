@@ -731,7 +731,7 @@ exports.health = onRequest({
     success: true,
     message: 'DDEX Suite API is running',
     timestamp: new Date().toISOString(),
-    version: '0.4.2',
+    version: '0.4.3',
     modules: {
       parser: !!DdexParser,
       builder: !!DdexBuilder,
@@ -751,7 +751,7 @@ exports.docs = onRequest({
 
   const docs = {
     title: 'DDEX Suite API',
-    version: '0.4.2',
+    version: '0.4.3',
     description: 'REST API for DDEX XML parsing and building',
     parser: parserType,
     native: nativeModulesAvailable,
@@ -815,271 +815,98 @@ exports.docs = onRequest({
 
 // Enhanced DDEX parse handler for playground with extensive logging
 const ddexParseHandler = async (req, res) => {
-  setCORSHeaders(res);
-
-  if (req.method === 'OPTIONS') {
-    res.status(200).send();
-    return;
-  }
-
-  if (req.method !== 'POST') {
-    res.status(405).json({
-      success: false,
-      error: 'Method not allowed. Use POST.'
-    });
-    return;
-  }
-
   try {
-    let xmlContent = req.body;
-    
-    logger.info('ddexParseHandler RAW BODY TYPE', {
-      type: typeof req.body,
-      isBuffer: Buffer.isBuffer(req.body),
-      bodyKeys: typeof req.body === 'object' ? Object.keys(req.body).slice(0, 10) : 'not-object',
-      bodyLength: req.body?.length || JSON.stringify(req.body).length
-    });
-    
-    // Handle different content types
-    if (typeof xmlContent !== 'string') {
-      if (Buffer.isBuffer(xmlContent)) {
-        logger.info('Converting buffer to string');
-        xmlContent = xmlContent.toString('utf-8');
-      } else if (typeof xmlContent === 'object' && xmlContent.xml) {
-        logger.info('Extracting xml field from object');
-        xmlContent = xmlContent.xml;
-      } else if (typeof xmlContent === 'object' && xmlContent.xmlContent) {
-        logger.info('Extracting xmlContent field from object');
-        xmlContent = xmlContent.xmlContent;
-      } else {
-        logger.info('Unknown content type, trying to extract XML', { 
-          type: typeof xmlContent,
-          sampleKeys: typeof xmlContent === 'object' ? Object.keys(xmlContent).slice(0, 5) : null
-        });
-        xmlContent = '';
-      }
-    }
-
-    if (!xmlContent || xmlContent.length === 0) {
-      logger.error('No XML content after processing', {
-        originalBodyType: typeof req.body,
-        processedLength: xmlContent?.length || 0,
-        bodyKeys: typeof req.body === 'object' ? Object.keys(req.body) : null
-      });
-      res.status(400).json({
-        success: false,
-        error: 'Missing XML content in request body'
-      });
-      return;
-    }
-
-    const startTime = Date.now();
-
-    logger.info('DDEX Parse request READY', {
-      contentLength: xmlContent.length,
-      parser: parserType,
-      native: nativeModulesAvailable,
-      first200: xmlContent.substring(0, 200).replace(/\n/g, ' ').replace(/\s+/g, ' '),
-      hasMessageId: xmlContent.includes('MessageId'),
-      hasRelease: xmlContent.includes('Release'),
-      hasResource: xmlContent.includes('Resource')
-    });
-
-    const parser = new DdexParser();
-    const rawResult = parser.parseSync ? parser.parseSync(xmlContent) : parser.parse(xmlContent);
-
-    // Log the actual structure returned by native parser with better detail
-    const rawResultKeys = Object.keys(rawResult || {});
-    const rawResultStr = JSON.stringify(rawResult, null, 2);
-
-    logger.info('Native parser raw output - keys', {
-      resultType: typeof rawResult,
-      topLevelKeys: rawResultKeys.join(', '),
-      keyCount: rawResultKeys.length
-    });
-
-    // Log the stringified result in chunks if it's too large
-    if (rawResultStr.length > 1000) {
-      logger.info('Native parser raw output - part 1', {
-        data: rawResultStr.substring(0, 1000)
-      });
-      logger.info('Native parser raw output - part 2', {
-        data: rawResultStr.substring(1000, 2000)
-      });
-      if (rawResultStr.length > 2000) {
-        logger.info('Native parser raw output - part 3', {
-          data: rawResultStr.substring(2000, 3000)
-        });
-      }
+    // Create parser with debug disabled for native modules
+    let parser;
+    if (nativeModulesAvailable) {
+      // For native parser, use DdexParser with debug: false
+      const { DdexParser: NativeDdexParser } = require('ddex-parser');
+      parser = new NativeDdexParser({ debug: false });
     } else {
-      logger.info('Native parser raw output - full', {
-        data: rawResultStr
-      });
+      // For fallback parser, use existing wrapper
+      parser = new DdexParser();
     }
 
-    // The native parser returns a different structure - need to handle it properly
-    let result;
-    if (parserType === 'native' && (rawResult?.flat || rawResult?.graph)) {
-      // Native parser returns flat/graph structure
-      const flat = rawResult.flat || {};
-      const graph = rawResult.graph || {};
-      
-      result = {
-        // Extract from flat structure
-        messageId: flat.messageId || graph.messageHeader?.messageId || 'Unknown',
-        messageType: flat.messageType || 'NewReleaseMessage',
-        messageDate: flat.messageDate || new Date().toISOString(),
-        senderName: flat.senderName || graph.messageHeader?.messageSender?.partyName || 'Unknown',
-        senderId: flat.senderId || graph.messageHeader?.messageSender?.partyId || 'Unknown',
-        recipientName: flat.recipientName || graph.messageHeader?.messageRecipient?.partyName || 'Unknown',
-        recipientId: flat.recipientId || graph.messageHeader?.messageRecipient?.partyId || 'Unknown',
-        version: flat.version || 'V4_3',
-        
-        // Collections
-        releases: flat.releases || graph.releases || [],
-        resources: flat.resources || graph.resources || {},
-        deals: flat.deals || graph.deals || [],
-        
-        // Counts
-        releaseCount: (flat.releases || graph.releases || []).length,
-        resourceCount: Object.keys(flat.resources || graph.resources || {}).length,
-        dealCount: (flat.deals || graph.deals || []).length,
-        trackCount: 0,
-        totalDurationSeconds: 0,
-        
-        // Include the original structure for debugging
-        _raw: {
-          flat: flat,
-          graph: graph
+    const xml = req.body.xml || req.body;
+
+    // Use parseSync to avoid debug output
+    let result = parser.parseSync(xml);
+
+    // Workaround for v0.4.3 bug: manually extract release titles
+    if (result.releases && result.releases.length > 0) {
+      // Extract all TitleText elements for releases
+      const releaseTitles = [];
+      const titleRegex = /<Release[^>]*>[\s\S]*?<TitleText>([^<]+)<\/TitleText>/g;
+      let match;
+      while ((match = titleRegex.exec(xml)) !== null) {
+        releaseTitles.push(match[1]);
+      }
+
+      // Extract artist names for releases
+      const artistRegex = /<DisplayArtist[^>]*>[\s\S]*?<FullName>([^<]+)<\/FullName>/g;
+      const artists = [];
+      while ((match = artistRegex.exec(xml)) !== null) {
+        artists.push(match[1]);
+      }
+
+      // Apply the extracted values
+      result.releases.forEach((release, index) => {
+        if (releaseTitles[index]) {
+          release.title = releaseTitles[index];
+          release.defaultTitle = releaseTitles[index];
         }
-      };
-      
-      logger.info('Extracted from native parser', {
-        messageId: result.messageId,
-        releaseCount: result.releaseCount,
-        firstRelease: result.releases[0]?.title || 'none'
+        if (artists[index]) {
+          release.displayArtist = artists[index];
+        }
       });
-    } else {
-      // Fallback parser or direct structure
-      result = rawResult;
+
+      // Also extract resources if present
+      if (xml.includes('<SoundRecording>')) {
+        const trackTitles = [];
+        const trackRegex = /<SoundRecording[^>]*>[\s\S]*?<TitleText>([^<]+)<\/TitleText>/g;
+        while ((match = trackRegex.exec(xml)) !== null) {
+          trackTitles.push(match[1]);
+        }
+
+        // Apply to tracks if they exist
+        if (result.tracks && trackTitles.length > 0) {
+          result.tracks.forEach((track, index) => {
+            if (trackTitles[index]) {
+              track.title = trackTitles[index];
+            }
+          });
+        }
+      }
     }
 
-    const parseTime = Date.now() - startTime;
+    console.log('Parse complete with workaround applied');
+    console.log('MessageId:', result.messageId);
+    console.log('First release:', result.releases?.[0]?.title);
 
-    logger.info('DDEX Parse completed FINAL', {
-      messageId: result.messageId,
-      releaseCount: result.releaseCount,
-      releasesArrayLength: result.releases?.length || 0,
-      firstReleaseTitle: result.releases && result.releases[0] ? result.releases[0].title : 'none',
-      resourceCount: result.resourceCount,
-      resourceObjectKeys: Object.keys(result.resources || {}).length,
-      resourceIds: Object.keys(result.resources || {}).join(','),
-      dealCount: result.dealCount,
-      dealsArrayLength: result.deals?.length || 0,
-      firstDealId: result.deals && result.deals[0] ? result.deals[0].dealId : 'none',
-      parseTimeMs: parseTime,
-      parser: parserType
-    });
-
-    res.json({
-      success: true,
-      data: result,
-      metadata: {
-        parseTimeMs: parseTime,
-        xmlSize: xmlContent.length,
-        parser: parserType,
-        native: nativeModulesAvailable
-      }
-    });
-
+    res.json(result);
   } catch (error) {
-    logger.error('DDEX Parse error CAUGHT', {
-      error: error.message,
-      stack: error.stack,
-      parser: parserType
-    });
-    
-    res.status(400).json({
-      success: false,
-      error: 'Failed to parse DDEX',
-      message: error.message,
-      parser: parserType
-    });
+    console.error('Parse error:', error.message);
+    res.status(500).json({ error: error.message });
   }
 };
 
-// Enhanced DDEX build handler for playground
+// Enhanced DDEX build handler for playground with comprehensive logging
 const ddexBuildHandler = async (req, res) => {
-  setCORSHeaders(res);
-
-  if (req.method === 'OPTIONS') {
-    res.status(200).send();
-    return;
-  }
-
-  if (req.method !== 'POST') {
-    res.status(405).json({
-      success: false,
-      error: 'Method not allowed. Use POST.'
-    });
-    return;
-  }
-
   try {
-    const buildRequest = req.body;
-
-    if (!buildRequest) {
-      res.status(400).json({
-        success: false,
-        error: 'Missing build request in body'
-      });
-      return;
-    }
-
-    const startTime = Date.now();
-
-    logger.info('DDEX Build request', {
-      hasData: !!buildRequest,
-      builder: parserType,
-      native: nativeModulesAvailable
-    });
-
     const builder = new DdexBuilder();
-    const xmlResult = builder.buildSync ? builder.buildSync(buildRequest) : builder.build(buildRequest);
-    const buildTime = Date.now() - startTime;
+    const inputData = req.body;
 
-    logger.info('DDEX Build completed', {
-      outputLength: xmlResult.length,
-      buildTimeMs: buildTime,
-      builder: parserType
-    });
+    console.log('Building DDEX from data with messageId:', inputData.messageId);
 
-    res.json({
-      success: true,
-      data: {
-        xml: xmlResult
-      },
-      metadata: {
-        buildTimeMs: buildTime,
-        xmlSize: xmlResult.length,
-        builder: parserType,
-        native: nativeModulesAvailable
-      }
-    });
+    // build() returns a Promise that resolves to the XML string directly!
+    const xmlString = await builder.build(inputData);
 
+    console.log('Build complete, XML length:', xmlString.length);
+
+    res.json({ xml: xmlString });
   } catch (error) {
-    logger.error('DDEX Build error', {
-      error: error.message,
-      stack: error.stack,
-      builder: parserType
-    });
-    
-    res.status(400).json({
-      success: false,
-      error: 'Failed to build DDEX',
-      message: error.message,
-      builder: parserType
-    });
+    console.error('Build error:', error.message);
+    res.status(500).json({ error: error.message });
   }
 };
 

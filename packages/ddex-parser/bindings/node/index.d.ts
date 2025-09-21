@@ -125,6 +125,14 @@ export interface SanityCheckResult {
   errors: Array<string>
   warnings: Array<string>
 }
+export interface DetailedError {
+  errorType: string
+  message: string
+  field?: string
+  value?: string
+  context?: string
+  suggestions: Array<string>
+}
 export interface StreamedRelease {
   releaseReference: string
   title: string
@@ -143,6 +151,8 @@ export declare class DdexParser {
   parse(xml: string, options?: ParseOptions | undefined | null): Promise<ParsedMessage>
   sanityCheck(xml: string): Promise<SanityCheckResult>
   stream(xml: string, options?: StreamOptions | undefined | null): ReleaseStream
+  /** Get detailed error information for debugging - useful for error handling in JavaScript */
+  getDetailedError(xml: string): DetailedError
 }
 export declare class ReleaseStream {
   next(): Promise<StreamedRelease | null>

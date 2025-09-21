@@ -12,9 +12,14 @@ Generate deterministic, industry-compliant DDEX XML files from JavaScript/TypeSc
 
 ```bash
 npm install ddex-builder
+# or for specific version
+npm install ddex-builder@0.4.4
 # or
 yarn add ddex-builder
 ```
+
+> **✅ v0.4.4 Compatibility**
+> Enhanced round-trip compatibility with ddex-parser v0.4.4's strict validation. Improved error handling for better workflow integration.
 
 ## Documentation
 

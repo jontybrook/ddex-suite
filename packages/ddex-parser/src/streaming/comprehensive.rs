@@ -2,7 +2,7 @@
 //! Comprehensive streaming DDEX parser using model-aligned types
 
 #[allow(dead_code)] // Experimental streaming parser implementation
-use crate::error::{ErrorLocation, ParseError};
+use crate::error::ParseError;
 use ddex_core::models::streaming_types::*;
 use ddex_core::models::LocalizedString;
 use ddex_core::models::{graph::*, versions::ERNVersion};
@@ -128,12 +128,7 @@ impl<R: BufRead> ComprehensiveStreamingParser<R> {
                     let text_content = self.text_buffer.clone();
                     let bytes_processed = self.bytes_processed;
 
-                    let location = ErrorLocation {
-                        line: 0,
-                        column: 0,
-                        byte_offset: Some(bytes_processed as usize),
-                        path: "streaming".to_string(),
-                    };
+                    let location = format!("streaming at byte offset {}", bytes_processed);
 
                     let result = match &mut self.state {
                         ParserState::InHeader(header) => {
@@ -150,8 +145,9 @@ impl<R: BufRead> ComprehensiveStreamingParser<R> {
                                     // Complete header - convert using ToCore trait
                                     let core_header = header.clone().to_core().map_err(|e| {
                                         ParseError::ConversionError {
-                                            message: format!("Failed to convert header: {:?}", e),
-                                            location: location.clone(),
+                                            from: "StreamingHeader".to_string(),
+                                            to: "MessageHeader".to_string(),
+                                            message: format!("Failed to convert header at {}: {:?}", location, e),
                                         }
                                     })?;
                                     self.state = ParserState::Initial;
@@ -185,8 +181,9 @@ impl<R: BufRead> ComprehensiveStreamingParser<R> {
                                     // Complete release - convert using ToCore trait
                                     let core_release = release.clone().to_core().map_err(|e| {
                                         ParseError::ConversionError {
-                                            message: format!("Failed to convert release: {:?}", e),
-                                            location: location.clone(),
+                                            from: "StreamingRelease".to_string(),
+                                            to: "Release".to_string(),
+                                            message: format!("Failed to convert release at {}: {:?}", location, e),
                                         }
                                     })?;
                                     self.state = ParserState::Initial;
@@ -214,11 +211,12 @@ impl<R: BufRead> ComprehensiveStreamingParser<R> {
                                     let core_resource =
                                         resource.clone().to_core().map_err(|e| {
                                             ParseError::ConversionError {
+                                                from: "StreamingResource".to_string(),
+                                                to: "Resource".to_string(),
                                                 message: format!(
-                                                    "Failed to convert resource: {:?}",
-                                                    e
+                                                    "Failed to convert resource at {}: {:?}",
+                                                    location, e
                                                 ),
-                                                location: location.clone(),
                                             }
                                         })?;
                                     self.state = ParserState::Initial;
@@ -241,8 +239,9 @@ impl<R: BufRead> ComprehensiveStreamingParser<R> {
                                     // Complete party - convert using ToCore trait
                                     let core_party = party.clone().to_core().map_err(|e| {
                                         ParseError::ConversionError {
-                                            message: format!("Failed to convert party: {:?}", e),
-                                            location: location.clone(),
+                                            from: "StreamingParty".to_string(),
+                                            to: "Party".to_string(),
+                                            message: format!("Failed to convert party at {}: {:?}", location, e),
                                         }
                                     })?;
                                     self.state = ParserState::Initial;
@@ -274,10 +273,7 @@ impl<R: BufRead> ComprehensiveStreamingParser<R> {
                     // Skip other events
                 }
                 Err(e) => {
-                    return Err(ParseError::XmlError {
-                        message: format!("XML parsing error: {}", e),
-                        location: self.get_current_location(),
-                    });
+                    return Err(ParseError::XmlError(format!("XML parsing error: {}", e)));
                 }
             }
 
@@ -294,13 +290,8 @@ impl<R: BufRead> ComprehensiveStreamingParser<R> {
 
     // Helper methods for error handling
 
-    fn get_current_location(&self) -> ErrorLocation {
-        ErrorLocation {
-            line: 0,
-            column: 0,
-            byte_offset: Some(self.bytes_processed as usize),
-            path: "streaming".to_string(),
-        }
+    fn get_current_location(&self) -> String {
+        format!("streaming at byte offset {}", self.bytes_processed)
     }
 
     pub fn stats(&self) -> ComprehensiveStats {

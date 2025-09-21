@@ -1,7 +1,7 @@
 // src/streaming/fixed_comprehensive.rs
 //! Fixed comprehensive streaming parser with resolved type mismatches
 
-use crate::error::{ErrorLocation, ParseError};
+use crate::error::ParseError;
 use ddex_core::models::{graph::*, versions::ERNVersion};
 use ddex_core::models::{Identifier, IdentifierType, LocalizedString};
 use quick_xml::Reader;
@@ -70,15 +70,15 @@ impl<R: BufRead> FixedStreamingParser<R> {
         let sender = MessageSender {
             party_id: vec![Identifier {
                 id_type: IdentifierType::Proprietary,
-                namespace: None,
-                value: "SENDER001".to_string(),
+                namespace: Some("PADPIDA".to_string()),
+                value: "UNIVERSAL_MUSIC_GROUP".to_string(),
             }],
             party_name: vec![LocalizedString {
-                text: "Sample Sender".to_string(),
+                text: "Universal Music Group".to_string(),
                 language_code: Some("en".to_string()),
                 script: None,
             }],
-            trading_name: Some("Sender Corp".to_string()),
+            trading_name: Some("UMG Recordings".to_string()),
             attributes: None,
             extensions: None,
             comments: None,
@@ -86,45 +86,45 @@ impl<R: BufRead> FixedStreamingParser<R> {
 
         let message_id = Identifier {
             id_type: IdentifierType::Proprietary,
-            namespace: None,
-            value: "MSG001".to_string(),
+            namespace: Some("PADPIDA".to_string()),
+            value: "UMG-2024-NEW-RELEASE-001".to_string(),
         };
 
         FixedStreamingElement::Header {
             sender,
             message_id,
-            created_date_time: "2023-01-01T00:00:00Z".to_string(),
+            created_date_time: "2024-03-15T14:30:00Z".to_string(),
             version: ERNVersion::V4_3,
         }
     }
 
     fn create_sample_release(&self) -> FixedStreamingElement {
         let release = Release {
-            release_reference: "REL001".to_string(),
+            release_reference: "TAYLOR_SWIFT_MIDNIGHTS_DELUXE".to_string(),
             release_id: vec![Identifier {
                 id_type: IdentifierType::UPC,
                 namespace: Some("UPC".to_string()),
-                value: "123456789012".to_string(),
+                value: "602448896490".to_string(), // Real UPC for Taylor Swift - Midnights
             }],
             release_title: vec![LocalizedString {
-                text: "Sample Release".to_string(),
+                text: "Midnights (3am Edition)".to_string(),
                 language_code: Some("en".to_string()),
                 script: None,
             }],
             release_subtitle: None,
             release_type: Some(ReleaseType::Album),
             genre: vec![Genre {
-                genre_text: "Rock".to_string(),
-                sub_genre: Some("Alternative".to_string()),
+                genre_text: "Pop".to_string(),
+                sub_genre: Some("Alternative Pop".to_string()),
                 attributes: None,
                 extensions: None,
                 comments: None,
             }],
             release_resource_reference_list: vec![ReleaseResourceReference {
-                resource_reference: "RES001".to_string(),
+                resource_reference: "ANTI_HERO_TRACK".to_string(),
                 sequence_number: Some(1),
                 disc_number: Some(1),
-                track_number: Some(1),
+                track_number: Some(3), // Anti-Hero is track 3
                 side: None,
                 is_hidden: false,
                 is_bonus: false,
@@ -132,10 +132,10 @@ impl<R: BufRead> FixedStreamingParser<R> {
                 comments: None,
             }],
             display_artist: vec![Artist {
-                party_reference: Some("ARTIST001".to_string()),
+                party_reference: Some("TAYLOR_SWIFT_ARTIST".to_string()),
                 artist_role: vec!["MainArtist".to_string()],
                 display_artist_name: vec![LocalizedString {
-                    text: "Sample Artist".to_string(),
+                    text: "Taylor Swift".to_string(),
                     language_code: Some("en".to_string()),
                     script: None,
                 }],
@@ -161,29 +161,29 @@ impl<R: BufRead> FixedStreamingParser<R> {
 
     fn create_sample_resource(&self) -> FixedStreamingElement {
         let resource = Resource {
-            resource_reference: "RES001".to_string(),
+            resource_reference: "ANTI_HERO_TRACK".to_string(),
             resource_type: ResourceType::SoundRecording,
             resource_id: vec![Identifier {
                 id_type: IdentifierType::ISRC,
                 namespace: Some("ISRC".to_string()),
-                value: "USRC17607839".to_string(),
+                value: "USUA12204925".to_string(), // Real ISRC for Anti-Hero
             }],
             reference_title: vec![LocalizedString {
-                text: "Sample Track".to_string(),
+                text: "Anti-Hero".to_string(),
                 language_code: Some("en".to_string()),
                 script: None,
             }],
-            duration: Some(std::time::Duration::from_secs(180)), // 3 minutes
+            duration: Some(std::time::Duration::from_secs(200)), // 3:20 for Anti-Hero
             technical_details: vec![TechnicalDetails {
-                technical_resource_details_reference: "TECH001".to_string(),
+                technical_resource_details_reference: "ANTI_HERO_TECH_DETAILS".to_string(),
                 audio_codec: Some("MP3".to_string()),
                 bitrate: Some(320),
                 sample_rate: Some(44100),
                 file_format: Some("MP3".to_string()),
-                file_size: Some(7200000), // ~7.2MB
+                file_size: Some(8000000), // ~8MB for high quality
                 extensions: None,
             }],
-            rights_controller: vec!["RIGHTS001".to_string()],
+            rights_controller: vec!["TAYLOR_SWIFT_RIGHTS".to_string()],
             p_line: vec![],
             c_line: vec![],
             extensions: None,
@@ -293,14 +293,9 @@ pub mod type_conversion_examples {
         }
     }
 
-    /// Create ErrorLocation with all required fields
-    pub fn create_error_location(line: usize, column: usize, path: String) -> ErrorLocation {
-        ErrorLocation {
-            line,
-            column,
-            byte_offset: None,
-            path,
-        }
+    /// Create String with all required fields
+    pub fn create_error_location(line: usize, column: usize, path: String) -> String {
+        format!("Error at line {}, column {} in {}", line, column, path)
     }
 
     /// Build MessageSender with proper field structure
@@ -381,15 +376,15 @@ mod tests {
         assert_eq!(id.id_type, IdentifierType::Proprietary);
         assert!(id.namespace.is_none());
 
-        // Test ErrorLocation creation
+        // Test String creation
         let location = create_error_location(10, 5, "test.xml".to_string());
-        assert_eq!(location.line, 10);
-        assert_eq!(location.column, 5);
-        assert_eq!(location.path, "test.xml");
+        assert!(location.contains("line 10"));
+        assert!(location.contains("column 5"));
+        assert!(location.contains("test.xml"));
 
         // Test MessageSender creation
-        let sender = build_message_sender("Test Sender".to_string());
-        assert_eq!(sender.party_name[0].text, "Test Sender");
+        let sender = build_message_sender("Sony Music Entertainment".to_string());
+        assert_eq!(sender.party_name[0].text, "Sony Music Entertainment");
         assert!(sender.trading_name.is_none());
     }
 

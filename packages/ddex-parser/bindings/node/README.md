@@ -12,9 +12,14 @@ Fully functional DDEX XML parser for JavaScript and TypeScript with complete dat
 
 ```bash
 npm install ddex-parser
+# or for specific version
+npm install ddex-parser@0.4.4
 # or
 yarn add ddex-parser
 ```
+
+> **⚠️ v0.4.4 Breaking Changes**
+> Enhanced validation now properly fails on missing required fields instead of using placeholder values. Ensure your error handling can catch validation errors for incomplete DDEX files.
 
 ## Quick Start
 
@@ -43,6 +48,28 @@ result.releases.forEach((release, index) => {
     trackCount: release.tracks.length
   });
 });
+```
+
+### Error Handling (v0.4.4+)
+
+```javascript
+const { DdexParser } = require('ddex-parser');
+
+const parser = new DdexParser();
+
+try {
+  const result = parser.parseSync(xmlContent);
+  console.log('Parse successful:', result.messageId);
+} catch (error) {
+  console.error('Parse failed:', error.message);
+
+  // v0.4.4+ provides detailed field-specific errors
+  if (error.message.includes('missing required field')) {
+    console.log('Incomplete DDEX file - missing required fields');
+  } else if (error.message.includes('XML parsing failed')) {
+    console.log('Malformed XML structure');
+  }
+}
 ```
 
 ### Browser (ES Modules)

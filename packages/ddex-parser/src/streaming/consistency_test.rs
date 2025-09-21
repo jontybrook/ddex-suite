@@ -1,6 +1,6 @@
 //! Test to ensure parsing consistency between different parsers
 
-use crate::error::{ErrorLocation, ParseError};
+use crate::error::ParseError;
 use crate::streaming::{ParallelStreamingIterator, WorkingStreamIterator};
 use ddex_core::models::versions::ERNVersion;
 use std::io::Cursor;
@@ -76,8 +76,9 @@ pub fn test_parser_consistency() -> Result<(), ParseError> {
         }
 
         return Err(ParseError::ConversionError {
+            from: "parser1".to_string(),
+            to: "parser2".to_string(),
             message: "Element count mismatch between parsers".to_string(),
-            location: ErrorLocation::default(),
         });
     }
 

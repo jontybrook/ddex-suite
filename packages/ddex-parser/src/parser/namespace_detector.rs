@@ -104,7 +104,7 @@ impl NamespaceDetector {
                     if depth > security_config.max_element_depth {
                         return Err(ParseError::DepthLimitExceeded {
                             depth,
-                            max: security_config.max_element_depth,
+                            limit: security_config.max_element_depth,
                         });
                     }
 
@@ -117,7 +117,7 @@ impl NamespaceDetector {
                     if depth > security_config.max_element_depth {
                         return Err(ParseError::DepthLimitExceeded {
                             depth,
-                            max: security_config.max_element_depth,
+                            limit: security_config.max_element_depth,
                         });
                     }
 
@@ -157,10 +157,7 @@ impl NamespaceDetector {
                 Ok(Event::Eof) => break,
                 Ok(_) => {} // Ignore other events for namespace detection
                 Err(e) => {
-                    return Err(ParseError::XmlError {
-                        message: format!("XML parsing error: {}", e),
-                        location: crate::error::ErrorLocation::default(),
-                    })
+                    return Err(ParseError::XmlError(format!("XML parsing error: {}", e)));
                 }
             }
             buf.clear();
@@ -184,10 +181,7 @@ impl NamespaceDetector {
             self.default_namespace_stack.last().cloned().unwrap_or(None);
 
         for attr_result in element.attributes() {
-            let attr = attr_result.map_err(|e| ParseError::XmlError {
-                message: format!("Attribute error: {}", e),
-                location: crate::error::ErrorLocation::default(),
-            })?;
+            let attr = attr_result.map_err(|e| ParseError::XmlError(format!("Attribute error: {}", e)))?;
             // Use proper UTF-8 decoding for attribute key and value
             let key = utf8_utils::decode_attribute_name(attr.key.as_ref(), 0)?;
             let value = utf8_utils::decode_attribute_value(&attr.value, 0)?;
