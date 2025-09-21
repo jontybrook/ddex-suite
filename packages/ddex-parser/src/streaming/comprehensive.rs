@@ -6,6 +6,7 @@ use crate::error::ParseError;
 use ddex_core::models::streaming_types::*;
 use ddex_core::models::LocalizedString;
 use ddex_core::models::{graph::*, versions::ERNVersion};
+use log::error;
 use quick_xml::{events::Event, Reader};
 use std::collections::HashMap;
 use std::io::BufRead;
@@ -396,7 +397,7 @@ mod tests {
 
         let elements: Result<Vec<_>, _> = iterator.collect();
         if let Err(ref e) = elements {
-            eprintln!("Iterator error: {:?}", e);
+            error!("Iterator failed to collect elements: {:?}", e);
         }
         assert!(elements.is_ok(), "Iterator failed with error: {:?}", elements.as_ref().err());
 

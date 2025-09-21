@@ -7,6 +7,7 @@ use ddex_core::models::streaming_types::builders::*;
 use ddex_core::models::streaming_types::*;
 use ddex_core::models::IdentifierType;
 use ddex_core::models::{graph::*, versions::ERNVersion};
+use log::warn;
 use quick_xml::{events::{Event, BytesStart}, Reader};
 use std::collections::HashMap;
 use std::io::BufRead;
@@ -208,7 +209,7 @@ impl<R: BufRead> AlignedStreamingParser<R> {
                                     Some(AlignedStreamingElement::Header(Box::new(header)))
                                 }
                                 Err(e) => {
-                                    eprintln!("Warning: Header validation failed: {}", e);
+                                    warn!("Header validation failed, using fallback: {}", e);
                                     // Create a minimal valid header
                                     let header = self.create_fallback_header();
                                     Some(AlignedStreamingElement::Header(Box::new(header)))
@@ -259,7 +260,7 @@ impl<R: BufRead> AlignedStreamingParser<R> {
                             match release_builder.to_core() {
                                 Ok(release) => Some(AlignedStreamingElement::Release(release)),
                                 Err(e) => {
-                                    eprintln!("Warning: Release validation failed: {}", e);
+                                    warn!("Release validation failed, skipping release: {}", e);
                                     None
                                 }
                             }
@@ -313,7 +314,7 @@ impl<R: BufRead> AlignedStreamingParser<R> {
                             match resource_builder.to_core() {
                                 Ok(resource) => Some(AlignedStreamingElement::Resource(resource)),
                                 Err(e) => {
-                                    eprintln!("Warning: Resource validation failed: {}", e);
+                                    warn!("Resource validation failed, skipping resource: {}", e);
                                     None
                                 }
                             }
@@ -362,7 +363,7 @@ impl<R: BufRead> AlignedStreamingParser<R> {
                             match party_builder.to_core() {
                                 Ok(party) => Some(AlignedStreamingElement::Party(party)),
                                 Err(e) => {
-                                    eprintln!("Warning: Party validation failed: {}", e);
+                                    warn!("Party validation failed, skipping party: {}", e);
                                     None
                                 }
                             }

@@ -405,8 +405,8 @@ mod tests {
         assert!(stats.total_elements > 0);
         assert!(stats.total_bytes > 0);
 
-        println!("SIMD Fast streaming stats: {:#?}", stats);
-        println!("Throughput: {:.2} MB/s", stats.throughput_mbps);
+#[cfg(feature = "performance-debug")]         println!("SIMD Fast streaming stats: {:#?}", stats);
+#[cfg(feature = "performance-debug")]         println!("Throughput: {:.2} MB/s", stats.throughput_mbps);
     }
 
     #[test]
@@ -479,26 +479,34 @@ mod tests {
         let iterator = result.unwrap();
         let stats = iterator.stats();
 
-        println!("SIMD Performance test results:");
+#[cfg(feature = "performance-debug")]         println!("SIMD Performance test results:");
+        #[cfg(feature = "performance-debug")]
         println!(
             "  Total bytes: {:.2} MB",
             stats.total_bytes as f64 / (1024.0 * 1024.0)
         );
+        #[cfg(feature = "performance-debug")]
         println!("  Total elements: {}", stats.total_elements);
+        #[cfg(feature = "performance-debug")]
         println!("  Elapsed: {:?}", elapsed);
+        #[cfg(feature = "performance-debug")]
         println!("  Throughput: {:.2} MB/s", stats.throughput_mbps);
-        println!("  Elements/sec: {:.2}", stats.elements_per_second);
+#[cfg(feature = "performance-debug")]         println!("  Elements/sec: {:.2}", stats.elements_per_second);
+        #[cfg(feature = "performance-debug")]
         println!("  Peak memory: {:.2} MB", stats.peak_memory_mb);
+        #[cfg(feature = "performance-debug")]
         println!("  Avg element size: {:.2} bytes", stats.avg_element_size);
 
         // Performance targets
         let target_throughput = 50.0; // MB/s - conservative target for CI
         if stats.throughput_mbps >= target_throughput {
+            #[cfg(feature = "performance-debug")]
             println!(
                 "✅ Performance target met: {:.2} MB/s >= {:.2} MB/s",
                 stats.throughput_mbps, target_throughput
             );
         } else {
+            #[cfg(feature = "performance-debug")]
             println!(
                 "⚠️  Performance below target: {:.2} MB/s < {:.2} MB/s",
                 stats.throughput_mbps, target_throughput
@@ -560,11 +568,16 @@ mod tests {
             .filter(|e| e.element_type == FastElementType::Deal)
             .count();
 
-        println!("Element type counts:");
+#[cfg(feature = "performance-debug")]         println!("Element type counts:");
+        #[cfg(feature = "performance-debug")]
         println!("  Headers: {}", header_count);
+        #[cfg(feature = "performance-debug")]
         println!("  Releases: {}", release_count);
+        #[cfg(feature = "performance-debug")]
         println!("  Resources: {}", resource_count);
+        #[cfg(feature = "performance-debug")]
         println!("  Parties: {}", party_count);
+        #[cfg(feature = "performance-debug")]
         println!("  Deals: {}", deal_count);
 
         assert!(header_count >= 1, "Should find message header");

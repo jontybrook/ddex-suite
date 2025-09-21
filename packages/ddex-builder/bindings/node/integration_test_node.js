@@ -104,7 +104,7 @@ async function runTests() {
 
         // Save output for comparison (only if xml is valid)
         if (xml && typeof xml === 'string') {
-            const outputFile = '/Users/kevinmoo/Desktop/localrepo/ddex-suite/test_output_nodejs.xml';
+            const outputFile = '/Users/kevinmoo/Desktop/localrepo/ddex-suite/test-assets/test_output_nodejs.xml';
             fs.writeFileSync(outputFile, xml);
             console.log(`✓ XML saved to: ${outputFile}`);
 

@@ -9,6 +9,7 @@ use ddex_core::models::{
     extensions::utils, Comment, CommentPosition, Extensions, ProcessingInstruction, XmlFragment,
 };
 use indexmap::IndexMap;
+use log::warn;
 use quick_xml::{
     events::{BytesEnd, BytesStart, BytesText, Event},
     Reader,
@@ -401,7 +402,7 @@ impl ExtensionAwareParser {
                 Ok(Event::Eof) => break,
                 Err(e) => {
                     // Log the error but continue parsing to capture as much as possible
-                    eprintln!("Warning: XML parsing error during extension capture: {}", e);
+                    warn!("XML parsing error during extension capture: {}", e);
                 }
                 _ => {}
             }

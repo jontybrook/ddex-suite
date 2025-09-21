@@ -13,6 +13,7 @@ dev-docs/
 archive/
 test-archive/
 test-suite/
+test-assets/
 
 .cargo/
 .claude/

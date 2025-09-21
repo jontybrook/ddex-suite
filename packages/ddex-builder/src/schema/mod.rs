@@ -687,7 +687,7 @@ impl SchemaCommand {
                 field: "output".to_string(),
                 message: format!("Failed to write schema: {}", e),
             })?;
-            println!("Schema written to: {}", output_path);
+            // Schema file written successfully
         } else {
             println!("{}", schema_json);
         }
@@ -705,7 +705,7 @@ impl SchemaCommand {
                 field: "typescript".to_string(),
                 message: format!("Failed to write TypeScript types: {}", e),
             })?;
-            println!("TypeScript types written to: {}", ts_path);
+            // TypeScript types written successfully
         }
 
         // Generate Python types if requested
@@ -721,32 +721,12 @@ impl SchemaCommand {
                 field: "python".to_string(),
                 message: format!("Failed to write Python types: {}", e),
             })?;
-            println!("Python types written to: {}", py_path);
+            // Python types written successfully
         }
 
-        // Print metadata
-        println!("\nSchema Generation Complete:");
-        println!("  DDEX Version: ERN {}", generator.version_string());
-        println!("  Profile: {}", generator.profile_string());
-        println!("  Properties: {}", result.metadata.property_count);
-        println!("  Required Fields: {}", result.metadata.required_count);
-        println!(
-            "  Complexity Score: {:.1}",
-            result.metadata.complexity_score
-        );
+        // Schema generation completed successfully
 
-        if !result.warnings.is_empty() {
-            println!("\nWarnings:");
-            for warning in &result.warnings {
-                println!("  {}: {}", warning.code, warning.message);
-                if let Some(ref path) = warning.field_path {
-                    println!("    Field: {}", path);
-                }
-                if let Some(ref suggestion) = warning.suggestion {
-                    println!("    Suggestion: {}", suggestion);
-                }
-            }
-        }
+        // Warnings are captured in result.warnings for caller to handle
 
         Ok(())
     }

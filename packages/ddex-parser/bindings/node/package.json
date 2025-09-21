@@ -1,6 +1,6 @@
 {
   "name": "ddex-parser",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "description": "DDEX XML parser with native and WASM bindings",
   "main": "index.js",
   "types": "index.d.ts",

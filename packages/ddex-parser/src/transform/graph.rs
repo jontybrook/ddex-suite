@@ -182,6 +182,8 @@ impl GraphBuilder {
         let mut message_created_date_time = Utc::now();
         let mut sender_party_names = Vec::new();
         let mut recipient_party_names = Vec::new();
+        let mut sender_party_ids = Vec::new();
+        let mut recipient_party_ids = Vec::new();
 
         let mut buf = Vec::new();
         let mut in_message_header = false;
@@ -202,6 +204,12 @@ impl GraphBuilder {
                         b"MessageCreatedDateTime" if in_message_header => current_text.clear(),
                         b"MessageSender" if in_message_header => in_message_sender = true,
                         b"MessageRecipient" if in_message_header => in_message_recipient = true,
+                        b"PartyId" if in_message_sender => {
+                            current_text.clear();
+                        },
+                        b"PartyId" if in_message_recipient => {
+                            current_text.clear();
+                        },
                         b"PartyName" if in_message_sender => {
                             in_sender_party_name = true;
                             current_text.clear();
@@ -246,10 +254,44 @@ impl GraphBuilder {
                         },
                         b"MessageSender" => in_message_sender = false,
                         b"MessageRecipient" => in_message_recipient = false,
+                        b"PartyId" if in_message_sender => {
+                            // Handle PartyId text content
+                            if !current_text.trim().is_empty() {
+                                use ddex_core::models::common::{Identifier, IdentifierType};
+                                sender_party_ids.push(Identifier {
+                                    id_type: IdentifierType::Proprietary,
+                                    namespace: None,
+                                    value: current_text.trim().to_string(),
+                                });
+                            }
+                            current_text.clear();
+                        },
+                        b"PartyId" if in_message_recipient => {
+                            // Handle PartyId text content
+                            if !current_text.trim().is_empty() {
+                                use ddex_core::models::common::{Identifier, IdentifierType};
+                                recipient_party_ids.push(Identifier {
+                                    id_type: IdentifierType::Proprietary,
+                                    namespace: None,
+                                    value: current_text.trim().to_string(),
+                                });
+                            }
+                            current_text.clear();
+                        },
                         b"PartyName" if in_message_sender => {
+                            // Handle direct text content in PartyName (fallback for simplified format)
+                            if !current_text.trim().is_empty() {
+                                sender_party_names.push(LocalizedString::new(current_text.trim().to_string()));
+                            }
+                            current_text.clear();
                             in_sender_party_name = false;
                         },
                         b"PartyName" if in_message_recipient => {
+                            // Handle direct text content in PartyName (fallback for simplified format)
+                            if !current_text.trim().is_empty() {
+                                recipient_party_names.push(LocalizedString::new(current_text.trim().to_string()));
+                            }
+                            current_text.clear();
                             in_recipient_party_name = false;
                         },
                         b"FullName" if in_sender_party_name => {
@@ -281,7 +323,7 @@ impl GraphBuilder {
             message_type: MessageType::NewReleaseMessage,
             message_created_date_time,
             message_sender: MessageSender {
-                party_id: Vec::new(),
+                party_id: sender_party_ids,
                 party_name: sender_party_names,
                 trading_name: None,
                 extensions: None,
@@ -289,7 +331,7 @@ impl GraphBuilder {
                 comments: None,
             },
             message_recipient: MessageRecipient {
-                party_id: Vec::new(),
+                party_id: recipient_party_ids,
                 party_name: recipient_party_names,
                 trading_name: None,
                 extensions: None,

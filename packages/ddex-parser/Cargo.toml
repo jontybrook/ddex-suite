@@ -75,6 +75,7 @@ wasm = []  # WebAssembly support
 simd = []
 bench = []
 zero-copy = []  # High-performance zero-copy streaming parser
+performance-debug = []  # Enable performance logging and metrics output
 
 # Binaries
 [[bin]]

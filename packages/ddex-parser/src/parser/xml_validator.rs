@@ -140,15 +140,7 @@ impl XmlValidator {
         // Update current depth to this element's depth
         self.current_depth = element_depth;
 
-        // Debug: print what we're pushing (only for first few elements)
-        if self.element_stack.len() <= 5 {
-            eprintln!(
-                "PUSH DEBUG: '{}' depth {} (stack size now: {})",
-                element_name,
-                self.current_depth,
-                self.element_stack.len()
-            );
-        }
+        // Debug logging disabled for production use
 
         Ok(())
     }
@@ -166,12 +158,7 @@ impl XmlValidator {
             if let Some((expected, depth)) = self.element_stack.pop() {
                 if expected != element_name {
                     // Debug: print stack state when mismatch occurs
-                    eprintln!("TAG MISMATCH DEBUG:");
-                    eprintln!("  Expected: '{}' at depth {}", expected, depth);
-                    eprintln!("  Found: '{}'", element_name);
-                    eprintln!("  Stack size: {}", self.element_stack.len() + 1); // +1 because we just popped
-                    eprintln!("  Stack contents: {:?}", self.element_stack);
-                    eprintln!("  Position: {}", self.current_position);
+                    // Debug logging disabled for production use
 
                     return Err(ParseError::MismatchedTags {
                         expected,

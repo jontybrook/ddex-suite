@@ -10,216 +10,113 @@ import 'allotment/dist/style.css';
 // Sample DDEX XML files for testing
 const SAMPLE_FILES = {
   'ERN 4.3 Simple': `<?xml version="1.0" encoding="UTF-8"?>
-<NewReleaseMessage xmlns="http://ddex.net/xml/ern/43" MessageSchemaVersionId="ern/43" BusinessProfileVersionId="CommonReleaseProfile/14" ReleaseProfileVersionId="CommonReleaseProfile/14">
+<ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43" MessageSchemaVersionId="ern/43" LanguageAndScriptCode="en">
   <MessageHeader>
-    <MessageThreadId>MSG001</MessageThreadId>
-    <MessageId>MSG001_001</MessageId>
+    <MessageThreadId>PLAYGROUND_MSG_001</MessageThreadId>
+    <MessageId>MSG_PLAYGROUND_2024</MessageId>
+    <MessageSender>
+      <PartyId>PLAYGROUND_LABEL</PartyId>
+      <PartyName><FullName>Playground Record Label</FullName></PartyName>
+    </MessageSender>
+    <MessageRecipient>
+      <PartyId>PLAYGROUND_DSP</PartyId>
+      <PartyName><FullName>Playground Streaming Platform</FullName></PartyName>
+    </MessageRecipient>
     <MessageCreatedDateTime>2024-01-15T10:00:00Z</MessageCreatedDateTime>
-    <MessageSender>
-      <PartyId Namespace="UserDefined">LABEL001</PartyId>
-      <PartyName>
-        <FullName>Sample Record Label</FullName>
-      </PartyName>
-    </MessageSender>
-    <MessageRecipient>
-      <PartyId Namespace="UserDefined">DSP001</PartyId>
-      <PartyName>
-        <FullName>Sample DSP</FullName>
-      </PartyName>
-    </MessageRecipient>
   </MessageHeader>
-  <PartyList>
-    <Party>
-      <PartyReference>P1</PartyReference>
-      <PartyId Namespace="UserDefined">LABEL001</PartyId>
-      <PartyName>
-        <FullName>Sample Record Label</FullName>
-      </PartyName>
-    </Party>
-    <Party>
-      <PartyReference>P2</PartyReference>
-      <PartyId Namespace="UserDefined">ARTIST001</PartyId>
-      <PartyName>
-        <FullName>Sample Artist</FullName>
-      </PartyName>
-    </Party>
-  </PartyList>
-  <ResourceList>
-    <SoundRecording>
-      <ResourceReference>A1</ResourceReference>
-      <Type>MusicalWorkSoundRecording</Type>
-      <Title>
-        <TitleText>Sample Track</TitleText>
-      </Title>
-      <DisplayArtist>
-        <PartyName>
-          <FullName>Sample Artist</FullName>
-        </PartyName>
-        <PartyReference>P2</PartyReference>
-      </DisplayArtist>
-      <SoundRecordingId>
-        <ISRC>US-S1Z-99-00001</ISRC>
-      </SoundRecordingId>
-      <Duration>PT3M45S</Duration>
-    </SoundRecording>
-  </ResourceList>
-  <ReleaseList>
-    <Release>
-      <ReleaseReference>R1</ReleaseReference>
-      <ReleaseType>Album</ReleaseType>
-      <Title>
-        <TitleText>Sample Album</TitleText>
-      </Title>
-      <DisplayArtist>
-        <PartyName>
-          <FullName>Sample Artist</FullName>
-        </PartyName>
-        <PartyReference>P2</PartyReference>
-      </DisplayArtist>
-      <ReleaseId>
-        <ICPN>1234567890123</ICPN>
-      </ReleaseId>
-      <ReleaseResourceReferenceList>
-        <ReleaseResourceReference>A1</ReleaseResourceReference>
-      </ReleaseResourceReferenceList>
-    </Release>
-  </ReleaseList>
-  <DealList>
-    <ReleaseDeal>
-      <DealReference>D1</DealReference>
-      <DealTerms>
-        <CommercialModelType>SubscriptionAndPurchase</CommercialModelType>
-        <UseType>Stream</UseType>
-        <UseType>PermanentDownload</UseType>
-        <TerritoryCode>Worldwide</TerritoryCode>
-        <ValidityPeriod>
-          <StartDate>2024-01-15</StartDate>
-        </ValidityPeriod>
-      </DealTerms>
-      <DealReleaseReference>R1</DealReleaseReference>
-    </ReleaseDeal>
-  </DealList>
-</NewReleaseMessage>`,
-  
-  'ERN 4.2 Example': `<?xml version="1.0" encoding="UTF-8"?>
-<NewReleaseMessage xmlns="http://ddex.net/xml/ern/42" MessageSchemaVersionId="ern/42" BusinessProfileVersionId="CommonReleaseProfile/13" ReleaseProfileVersionId="CommonReleaseProfile/13">
-  <MessageHeader>
-    <MessageThreadId>MSG002</MessageThreadId>
-    <MessageId>MSG002_001</MessageId>
-    <MessageCreatedDateTime>2024-01-15T11:00:00Z</MessageCreatedDateTime>
-    <MessageSender>
-      <PartyId Namespace="UserDefined">INDIE_LABEL</PartyId>
-      <PartyName>
-        <FullName>Indie Music Label</FullName>
-      </PartyName>
-    </MessageSender>
-    <MessageRecipient>
-      <PartyId Namespace="UserDefined">STREAMING_SERVICE</PartyId>
-      <PartyName>
-        <FullName>Streaming Platform</FullName>
-      </PartyName>
-    </MessageRecipient>
-  </MessageHeader>
-  <PartyList>
-    <Party>
-      <PartyReference>P1</PartyReference>
-      <PartyId Namespace="UserDefined">INDIE_LABEL</PartyId>
-      <PartyName>
-        <FullName>Indie Music Label</FullName>
-      </PartyName>
-    </Party>
-    <Party>
-      <PartyReference>P2</PartyReference>
-      <PartyId Namespace="UserDefined">INDIE_ARTIST</PartyId>
-      <PartyName>
-        <FullName>The Indie Band</FullName>
-      </PartyName>
-    </Party>
-  </PartyList>
-  <ResourceList>
-    <SoundRecording>
-      <ResourceReference>A1</ResourceReference>
-      <Type>MusicalWorkSoundRecording</Type>
-      <Title>
-        <TitleText>Indie Rock Anthem</TitleText>
-      </Title>
-      <DisplayArtist>
-        <PartyName>
-          <FullName>The Indie Band</FullName>
-        </PartyName>
-        <PartyReference>P2</PartyReference>
-      </DisplayArtist>
-      <SoundRecordingId>
-        <ISRC>US-IND-24-00001</ISRC>
-      </SoundRecordingId>
-      <Duration>PT4M12S</Duration>
-      <Genre>
-        <GenreText>Indie Rock</GenreText>
-      </Genre>
-    </SoundRecording>
-    <SoundRecording>
-      <ResourceReference>A2</ResourceReference>
-      <Type>MusicalWorkSoundRecording</Type>
-      <Title>
-        <TitleText>Alternative Dreams</TitleText>
-      </Title>
-      <DisplayArtist>
-        <PartyName>
-          <FullName>The Indie Band</FullName>
-        </PartyName>
-        <PartyReference>P2</PartyReference>
-      </DisplayArtist>
-      <SoundRecordingId>
-        <ISRC>US-IND-24-00002</ISRC>
-      </SoundRecordingId>
-      <Duration>PT3M58S</Duration>
-      <Genre>
-        <GenreText>Alternative</GenreText>
-      </Genre>
-    </SoundRecording>
-  </ResourceList>
   <ReleaseList>
     <Release>
       <ReleaseReference>R1</ReleaseReference>
       <ReleaseType>Single</ReleaseType>
-      <Title>
-        <TitleText>Indie Rock Single</TitleText>
-      </Title>
-      <DisplayArtist>
-        <PartyName>
-          <FullName>The Indie Band</FullName>
-        </PartyName>
-        <PartyReference>P2</PartyReference>
-      </DisplayArtist>
       <ReleaseId>
-        <ICPN>1234567890124</ICPN>
+        <GRid>A1-PLAYGROUND-GRID-001</GRid>
       </ReleaseId>
-      <ReleaseResourceReferenceList>
-        <ReleaseResourceReference>A1</ReleaseResourceReference>
-        <ReleaseResourceReference>A2</ReleaseResourceReference>
-      </ReleaseResourceReferenceList>
-      <Genre>
-        <GenreText>Indie Rock</GenreText>
-      </Genre>
+      <ReferenceTitle>
+        <TitleText>Sample Track Release</TitleText>
+      </ReferenceTitle>
     </Release>
   </ReleaseList>
+  <ResourceList>
+    <SoundRecording>
+      <ResourceReference>A1</ResourceReference>
+      <SoundRecordingId>
+        <ISRC>USPLAYG240001</ISRC>
+      </SoundRecordingId>
+      <ReferenceTitle>
+        <TitleText>Sample Track</TitleText>
+      </ReferenceTitle>
+    </SoundRecording>
+  </ResourceList>
   <DealList>
     <ReleaseDeal>
-      <DealReference>D1</DealReference>
-      <DealTerms>
-        <CommercialModelType>Subscription</CommercialModelType>
-        <UseType>Stream</UseType>
-        <TerritoryCode>US</TerritoryCode>
-        <TerritoryCode>CA</TerritoryCode>
-        <TerritoryCode>GB</TerritoryCode>
-        <ValidityPeriod>
-          <StartDate>2024-02-01</StartDate>
-        </ValidityPeriod>
-      </DealTerms>
       <DealReleaseReference>R1</DealReleaseReference>
+      <Deal>
+        <DealReference>D1</DealReference>
+        <TerritoryCode>Worldwide</TerritoryCode>
+        <StartDate>2024-01-15</StartDate>
+      </Deal>
     </ReleaseDeal>
   </DealList>
-</NewReleaseMessage>`,
+</ern:NewReleaseMessage>`,
+  
+  'ERN 4.2 Example': `<?xml version="1.0" encoding="UTF-8"?>
+<ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/42" MessageSchemaVersionId="ern/42" LanguageAndScriptCode="en">
+  <MessageHeader>
+    <MessageThreadId>PLAYGROUND_MSG_42</MessageThreadId>
+    <MessageId>MSG_PLAYGROUND_42_2024</MessageId>
+    <MessageSender>
+      <PartyId>INDIE_LABEL_42</PartyId>
+      <PartyName><FullName>Indie Music Label 4.2</FullName></PartyName>
+    </MessageSender>
+    <MessageRecipient>
+      <PartyId>STREAMING_SERVICE_42</PartyId>
+      <PartyName><FullName>Streaming Platform 4.2</FullName></PartyName>
+    </MessageRecipient>
+    <MessageCreatedDateTime>2024-01-15T11:00:00Z</MessageCreatedDateTime>
+  </MessageHeader>
+  <ReleaseList>
+    <Release>
+      <ReleaseReference>R1</ReleaseReference>
+      <ReleaseType>Album</ReleaseType>
+      <ReleaseId>
+        <GRid>A1-INDIE-GRID-001</GRid>
+      </ReleaseId>
+      <ReferenceTitle>
+        <TitleText>Indie Rock Album</TitleText>
+      </ReferenceTitle>
+    </Release>
+  </ReleaseList>
+  <ResourceList>
+    <SoundRecording>
+      <ResourceReference>A1</ResourceReference>
+      <SoundRecordingId>
+        <ISRC>USIND240001</ISRC>
+      </SoundRecordingId>
+      <ReferenceTitle>
+        <TitleText>Indie Rock Anthem</TitleText>
+      </ReferenceTitle>
+    </SoundRecording>
+    <SoundRecording>
+      <ResourceReference>A2</ResourceReference>
+      <SoundRecordingId>
+        <ISRC>USIND240002</ISRC>
+      </SoundRecordingId>
+      <ReferenceTitle>
+        <TitleText>Alternative Dreams</TitleText>
+      </ReferenceTitle>
+    </SoundRecording>
+  </ResourceList>
+  <DealList>
+    <ReleaseDeal>
+      <DealReleaseReference>R1</DealReleaseReference>
+      <Deal>
+        <DealReference>D1</DealReference>
+        <TerritoryCode>US</TerritoryCode>
+        <StartDate>2024-02-01</StartDate>
+      </Deal>
+    </ReleaseDeal>
+  </DealList>
+</ern:NewReleaseMessage>`,
 
   'Builder Template': JSON.stringify({
     messageHeader: {
