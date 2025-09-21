@@ -4,8 +4,60 @@ expression: result.xml
 ---
 <?xml version="1.0" encoding="UTF-8"?>
 <ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" MessageSchemaVersionId="ern/4.3">
-  <MessageThreadId/>
-  <MessageId/>
-  <MessageCreatedDateTime/>
-  <MessageSender>Test Sender</MessageSender>
+  <MessageHeader>
+    <MessageId>B3:384b9efb8b851a20399cb9d929cc204e56cac0b2e26cc8aa3dd96b89c1772cb7</MessageId>
+    <MessageCreatedDateTime>2025-01-01T00:00:00Z</MessageCreatedDateTime>
+    <MessageSender>
+      <PartyName>Test Sender</PartyName>
+    </MessageSender>
+    <MessageRecipient>
+      <PartyName>Test Recipient</PartyName>
+    </MessageRecipient>
+    <MessageThreadId>B3:384b9efb8b851a20399cb9d929cc204e56cac0b2e26cc8aa3dd96b89c1772cb7</MessageThreadId>
+  </MessageHeader>
+  <ResourceList>
+    <SoundRecording>
+      <ReferenceTitle>
+        <TitleText>Track One</TitleText>
+      </ReferenceTitle>
+      <Duration>PT3M45S</Duration>
+      <ResourceId>
+        <ISRC>USRC12345678</ISRC>
+      </ResourceId>
+      <ResourceReference>A1</ResourceReference>
+    </SoundRecording>
+    <SoundRecording>
+      <ReferenceTitle>
+        <TitleText>Track Two</TitleText>
+      </ReferenceTitle>
+      <Duration>PT4M20S</Duration>
+      <ResourceId>
+        <ISRC>USRC12345679</ISRC>
+      </ResourceId>
+      <ResourceReference>A2</ResourceReference>
+    </SoundRecording>
+  </ResourceList>
+  <ReleaseList>
+    <Release>
+      <ReleaseReference>R1</ReleaseReference>
+      <ReleaseId>
+        <GRid>REL001</GRid>
+      </ReleaseId>
+      <ReleaseId>
+        <ICPN>123456789014</ICPN>
+      </ReleaseId>
+      <ReferenceTitle>
+        <TitleText LanguageAndScriptCode="en">Test Album</TitleText>
+      </ReferenceTitle>
+      <DisplayArtistName>
+        <FullName>Test Artist</FullName>
+      </DisplayArtistName>
+      <LabelName>
+        <LabelName>Test Label</LabelName>
+      </LabelName>
+      <ReleaseDate>2024-01-01</ReleaseDate>
+      <ReleaseResourceReference>A1</ReleaseResourceReference>
+      <ReleaseResourceReference>A2</ReleaseResourceReference>
+    </Release>
+  </ReleaseList>
 </ern:NewReleaseMessage>

@@ -40,4 +40,6 @@ documentation = "https://github.com/daddykev/ddex-suite/tree/main/packages/ddex-
 
 [tool.maturin]
 features = ["pyo3/extension-module"]
+python-source = "python"
+module-name = "ddex_builder._internal"
 strip = true

@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <MessageHeader>
+        <MessageId>DETERMINISM_TEST_001</MessageId>
+        <MessageCreatedDateTime>2024-01-15T10:30:00Z</MessageCreatedDateTime>
+        <MessageSender>
+            <PartyId namespace="PADPIDA">SENDER001</PartyId>
+            <PartyName>Test Record Label</PartyName>
+        </MessageSender>
+        <MessageRecipient>
+            <PartyId namespace="PADPIDA">RECIP001</PartyId>
+            <PartyName>Test Digital Service Provider</PartyName>
+        </MessageRecipient>
+    </MessageHeader>
+    <ReleaseList>
+        <Release>
+            <ReleaseId>
+                <GRid>A1-B2C3D4E5F6-G7H8I9J0-K</GRid>
+            </ReleaseId>
+            <ReleaseReference>REL_DETERMINISM_001</ReleaseReference>
+            <ReleaseType>Album</ReleaseType>
+            <ReferenceTitle>
+                <TitleText>Determinism Test Album</TitleText>
+            </ReferenceTitle>
+            <ReleaseDetailsByTerritory>
+                <TerritoryCode>Worldwide</TerritoryCode>
+                <DisplayArtist>
+                    <PartyName>Test Artist</PartyName>
+                </DisplayArtist>
+                <LabelName>Test Label</LabelName>
+                <ReleaseDate>2024-01-15</ReleaseDate>
+                <OriginalReleaseDate>2023-12-01</OriginalReleaseDate>
+                <ReleaseResourceReferenceList>
+                    <ReleaseResourceReference>RES_001</ReleaseResourceReference>
+                    <ReleaseResourceReference>RES_002</ReleaseResourceReference>
+                    <ReleaseResourceReference>RES_003</ReleaseResourceReference>
+                </ReleaseResourceReferenceList>
+            </ReleaseDetailsByTerritory>
+        </Release>
+        <Release>
+            <ReleaseId>
+                <GRid>B1-C2D3E4F5G6-H7I8J9K0-L</GRid>
+            </ReleaseId>
+            <ReleaseReference>REL_DETERMINISM_002</ReleaseReference>
+            <ReleaseType>Single</ReleaseType>
+            <ReferenceTitle>
+                <TitleText>Determinism Test Single</TitleText>
+            </ReferenceTitle>
+            <ReleaseDetailsByTerritory>
+                <TerritoryCode>Worldwide</TerritoryCode>
+                <DisplayArtist>
+                    <PartyName>Test Artist</PartyName>
+                </DisplayArtist>
+                <LabelName>Test Label</LabelName>
+                <ReleaseDate>2024-02-01</ReleaseDate>
+                <ReleaseResourceReferenceList>
+                    <ReleaseResourceReference>RES_004</ReleaseResourceReference>
+                </ReleaseResourceReferenceList>
+            </ReleaseDetailsByTerritory>
+        </Release>
+    </ReleaseList>
+    <ResourceList>
+        <SoundRecording>
+            <ResourceReference>RES_001</ResourceReference>
+            <ResourceId>
+                <ISRC>USTEST2024001</ISRC>
+            </ResourceId>
+            <ReferenceTitle>
+                <TitleText>Track One</TitleText>
+            </ReferenceTitle>
+            <Duration>PT3M45S</Duration>
+            <SoundRecordingDetailsByTerritory>
+                <TerritoryCode>Worldwide</TerritoryCode>
+                <DisplayArtist>
+                    <PartyName>Test Artist</PartyName>
+                </DisplayArtist>
+                <ResourceContributor>
+                    <SequenceNumber>1</SequenceNumber>
+                    <ContributorRole>MainArtist</ContributorRole>
+                    <ArtistName>Test Artist</ArtistName>
+                </ResourceContributor>
+            </SoundRecordingDetailsByTerritory>
+        </SoundRecording>
+        <SoundRecording>
+            <ResourceReference>RES_002</ResourceReference>
+            <ResourceId>
+                <ISRC>USTEST2024002</ISRC>
+            </ResourceId>
+            <ReferenceTitle>
+                <TitleText>Track Two</TitleText>
+            </ReferenceTitle>
+            <Duration>PT4M12S</Duration>
+            <SoundRecordingDetailsByTerritory>
+                <TerritoryCode>Worldwide</TerritoryCode>
+                <DisplayArtist>
+                    <PartyName>Test Artist</PartyName>
+                </DisplayArtist>
+                <ResourceContributor>
+                    <SequenceNumber>1</SequenceNumber>
+                    <ContributorRole>MainArtist</ContributorRole>
+                    <ArtistName>Test Artist</ArtistName>
+                </ResourceContributor>
+            </SoundRecordingDetailsByTerritory>
+        </SoundRecording>
+        <SoundRecording>
+            <ResourceReference>RES_003</ResourceReference>
+            <ResourceId>
+                <ISRC>USTEST2024003</ISRC>
+            </ResourceId>
+            <ReferenceTitle>
+                <TitleText>Track Three</TitleText>
+            </ReferenceTitle>
+            <Duration>PT5M30S</Duration>
+            <SoundRecordingDetailsByTerritory>
+                <TerritoryCode>Worldwide</TerritoryCode>
+                <DisplayArtist>
+                    <PartyName>Test Artist</PartyName>
+                </DisplayArtist>
+            </SoundRecordingDetailsByTerritory>
+        </SoundRecording>
+        <SoundRecording>
+            <ResourceReference>RES_004</ResourceReference>
+            <ResourceId>
+                <ISRC>USTEST2024004</ISRC>
+            </ResourceId>
+            <ReferenceTitle>
+                <TitleText>Single Track</TitleText>
+            </ReferenceTitle>
+            <Duration>PT3M20S</Duration>
+            <SoundRecordingDetailsByTerritory>
+                <TerritoryCode>Worldwide</TerritoryCode>
+                <DisplayArtist>
+                    <PartyName>Test Artist</PartyName>
+                </DisplayArtist>
+                <ResourceContributor>
+                    <SequenceNumber>1</SequenceNumber>
+                    <ContributorRole>MainArtist</ContributorRole>
+                    <ArtistName>Test Artist</ArtistName>
+                </ResourceContributor>
+            </SoundRecordingDetailsByTerritory>
+        </SoundRecording>
+    </ResourceList>
+    <DealList>
+        <ReleaseDeal>
+            <DealReference>DEAL_001</DealReference>
+            <DealTerms>
+                <CommercialModelType>Streaming</CommercialModelType>
+                <Usage>Stream</Usage>
+                <TerritoryCode>Worldwide</TerritoryCode>
+                <ValidityPeriod>
+                    <StartDate>2024-01-15</StartDate>
+                </ValidityPeriod>
+            </DealTerms>
+            <DealReleaseReference>REL_DETERMINISM_001</DealReleaseReference>
+        </ReleaseDeal>
+        <ReleaseDeal>
+            <DealReference>DEAL_002</DealReference>
+            <DealTerms>
+                <CommercialModelType>Download</CommercialModelType>
+                <Usage>PermanentDownload</Usage>
+                <TerritoryCode>Worldwide</TerritoryCode>
+                <ValidityPeriod>
+                    <StartDate>2024-02-01</StartDate>
+                </ValidityPeriod>
+            </DealTerms>
+            <DealReleaseReference>REL_DETERMINISM_002</DealReleaseReference>
+        </ReleaseDeal>
+        <ReleaseDeal>
+            <DealReference>DEAL_003</DealReference>
+            <DealTerms>
+                <CommercialModelType>Streaming</CommercialModelType>
+                <Usage>Stream</Usage>
+                <TerritoryCode>Worldwide</TerritoryCode>
+                <ValidityPeriod>
+                    <StartDate>2024-02-01</StartDate>
+                </ValidityPeriod>
+            </DealTerms>
+            <DealReleaseReference>REL_DETERMINISM_002</DealReleaseReference>
+        </ReleaseDeal>
+    </DealList>
+</ern:NewReleaseMessage>
