@@ -1,6 +1,6 @@
 {
   "name": "ddex-builder",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "description": "DDEX XML builder with deterministic output and smart normalization",
   "keywords": [
     "ddex",
@@ -66,14 +66,14 @@
     "typedoc": "^0.26.0"
   },
   "optionalDependencies": {
-    "ddex-builder-win32-x64-msvc": "0.4.4",
-    "ddex-builder-darwin-x64": "0.4.4",
-    "ddex-builder-linux-x64-gnu": "0.4.4",
-    "ddex-builder-linux-x64-musl": "0.4.4",
-    "ddex-builder-linux-arm64-gnu": "0.4.4",
-    "ddex-builder-darwin-arm64": "0.4.4",
-    "ddex-builder-android-arm64": "0.4.4",
-    "ddex-builder-android-arm-eabi": "0.4.4",
-    "ddex-builder-linux-arm-gnueabihf": "0.4.4"
+    "ddex-builder-win32-x64-msvc": "0.4.5",
+    "ddex-builder-darwin-x64": "0.4.5",
+    "ddex-builder-linux-x64-gnu": "0.4.5",
+    "ddex-builder-linux-x64-musl": "0.4.5",
+    "ddex-builder-linux-arm64-gnu": "0.4.5",
+    "ddex-builder-darwin-arm64": "0.4.5",
+    "ddex-builder-android-arm64": "0.4.5",
+    "ddex-builder-android-arm-eabi": "0.4.5",
+    "ddex-builder-linux-arm-gnueabihf": "0.4.5"
   }
 }

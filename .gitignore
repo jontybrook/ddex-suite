@@ -21,6 +21,7 @@ test-assets/
 .dockerignore
 
 KNOWN_ISSUES.md
+PUBLISH.md
 
 # =========================
 # Rust / Cargo

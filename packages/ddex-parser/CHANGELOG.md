@@ -1,5 +1,23 @@
 # Changelog - ddex-parser
 
+## [0.4.5] - 2025-01-22
+
+### Fixed
+- Critical bug fixes for production stability
+- Enhanced error handling across all bindings
+- Memory leak fixes in streaming parser
+- Improved cross-platform binary compatibility
+
+### Improved
+- Better error messages with context
+- Enhanced validation for DDEX compliance
+- Optimized memory usage for large files
+- More robust binary loading on Linux
+
+### Security
+- Input sanitization improvements
+- Buffer overflow protections enhanced
+
 ## [0.4.4] - 2025-01-21
 
 ### Breaking Changes

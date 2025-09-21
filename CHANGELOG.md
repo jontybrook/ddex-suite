@@ -5,6 +5,24 @@ All notable changes to the DDEX Suite project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.5] - 2025-01-22
+
+### Fixed
+- Critical bug fixes for production stability
+- Enhanced error handling across all bindings
+- Memory leak fixes in streaming parser
+- Improved cross-platform binary compatibility
+
+### Improved
+- Better error messages with context
+- Enhanced validation for DDEX compliance
+- Optimized memory usage for large files
+- More robust binary loading on Linux
+
+### Security
+- Input sanitization improvements
+- Buffer overflow protections enhanced
+
 ## [0.4.3] - 2025-09-20
 
 ### 🚀 Performance Excellence & Production Validation
