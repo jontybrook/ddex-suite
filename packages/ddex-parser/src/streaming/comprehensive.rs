@@ -404,7 +404,10 @@ mod tests {
         let iterator = ComprehensiveStreamIterator::new(cursor, ERNVersion::V4_3);
 
         let elements: Result<Vec<_>, _> = iterator.collect();
-        assert!(elements.is_ok());
+        if let Err(ref e) = elements {
+            eprintln!("Iterator error: {:?}", e);
+        }
+        assert!(elements.is_ok(), "Iterator failed with error: {:?}", elements.as_ref().err());
 
         let elements = elements.unwrap();
         assert!(elements.len() >= 3); // Header, Release, Resource, EndOfStream

@@ -1998,6 +1998,7 @@ interface DeterminismConfig {
 - [x] Final testing and verification
 - [x] Publish v0.4.0 with production-ready streaming
 - [x] Publish v0.4.2 with Linux x64 GNU binaries for Node (cloud functions)
+- [ ] Publish v0.4.3 with parser enhancements, rebuilt binaries
 
 #### Phase 4.5 Performance & Scale **IN PROGRESS**
 - [x] TypeDoc API documentation for ddex-builder

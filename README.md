@@ -35,7 +35,7 @@ Beyond the core implementation, this is a showcase of **software craftsmanship a
 
 ## 🚧 Development Status
 
-**Latest Release**: Suite v0.4.2 🎉  
+**Latest Release**: Suite v0.4.3 🎉  
 **Current Development Phase**: 4.5 - Performance & Scale  
 **Target Release**: Suite v1.0.0 in Q1 2026
 
@@ -46,8 +46,8 @@ All packages published across npm, PyPI, and **crates.io**! ✅
 | Package | npm | PyPI | crates.io | Version |
 |---------|-----|------|-----------|---------|
 | **ddex-core** | - | - | ✅ [Published](https://crates.io/crates/ddex-core) | v0.4.1 |
-| **ddex-parser** | ✅ [Published](https://www.npmjs.com/package/ddex-parser) | ✅ [Published](https://pypi.org/project/ddex-parser/) | ✅ [Published](https://crates.io/crates/ddex-parser) | v0.4.2 |
-| **ddex-builder** | ✅ [Published](https://www.npmjs.com/package/ddex-builder) | ✅ [Published](https://pypi.org/project/ddex-builder/) | ✅ [Published](https://crates.io/crates/ddex-builder) | v0.4.2 |
+| **ddex-parser** | ✅ [Published](https://www.npmjs.com/package/ddex-parser) | ✅ [Published](https://pypi.org/project/ddex-parser/) | ✅ [Published](https://crates.io/crates/ddex-parser) | v0.4.3 |
+| **ddex-builder** | ✅ [Published](https://www.npmjs.com/package/ddex-builder) | ✅ [Published](https://pypi.org/project/ddex-builder/) | ✅ [Published](https://crates.io/crates/ddex-builder) | v0.4.3 |
 
 ### Progress Overview
 
@@ -157,13 +157,18 @@ All business-critical data (ISRCs, titles, artists, deals) is preserved with 100
 Building the same data always produces identical output - perfect for testing and validation.
 
 #### **Guarantee 3: Extension Support**
-Partner extensions (Spotify, Apple, YouTube) are preserved and properly namespaced.
+Partner extensions (YouTube, generic) are preserved and properly namespaced.
 
 #### **Guarantee 4: Round-Trip Data Integrity**
 Parse → Modify → Build workflows maintain all your data, with beneficial normalization applied.
 
-
 ## 🚀 Features
+
+### ✅ Enhanced Parser Performance (v0.4.3)
+- **ENHANCED**: Improved parser graph structure optimization
+- **IMPROVED**: Enhanced memory management for large DDEX files
+- **OPTIMIZED**: Better resource allocation patterns for streaming
+- **UPDATED**: Refined error handling and validation routines
 
 ### ✅ Linux x64 Node.js Binaries Added (v0.4.2)
 - **Native**: Linux x64 GNU binaries for Node.js (Node 18+ compatible)
@@ -214,17 +219,17 @@ Parse → Modify → Build workflows maintain all your data, with beneficial nor
 
 ```bash
 # JavaScript/TypeScript
-npm install ddex-parser  # ✅ Latest: v0.4.0
-npm install ddex-builder # ✅ Latest: v0.4.0
+npm install ddex-parser  # ✅ Latest: v0.4.3
+npm install ddex-builder # ✅ Latest: v0.4.3
 
 # Python
-pip install ddex-parser  # ✅ Latest: v0.4.0
-pip install ddex-builder # ✅ Latest: v0.4.0
+pip install ddex-parser  # ✅ Latest: v0.4.3
+pip install ddex-builder # ✅ Latest: v0.4.3
 
 # Rust
-cargo add ddex-core      # ✅ Latest: v0.4.0
-cargo add ddex-parser    # ✅ Latest: v0.4.0
-cargo add ddex-builder   # ✅ Latest: v0.4.0
+cargo add ddex-core      # ✅ Latest: v0.4.3
+cargo add ddex-parser    # ✅ Latest: v0.4.3
+cargo add ddex-builder   # ✅ Latest: v0.4.3
 ```
 
 ### Browser/WASM
@@ -436,7 +441,7 @@ DDEX Suite is designed to complement [DDEX Workbench](https://ddex-workbench.org
 
 **Repository**: https://github.com/daddykev/ddex-suite  
 **Status**: Phase 4.4 - Additional Bindings  
-**Parser**: v0.4.2 on [npm](https://www.npmjs.com/package/ddex-parser) and [PyPI](https://pypi.org/project/ddex-parser/)  
-**Builder**: v0.4.2 on [npm](https://www.npmjs.com/package/ddex-builder) and [PyPI](https://pypi.org/project/ddex-builder/)  
+**Parser**: v0.4.3 on [npm](https://www.npmjs.com/package/ddex-parser) and [PyPI](https://pypi.org/project/ddex-parser/)
+**Builder**: v0.4.3 on [npm](https://www.npmjs.com/package/ddex-builder) and [PyPI](https://pypi.org/project/ddex-builder/)  
 **Suite Target**: v1.0.0 in Q1 2026  
-**Last Updated**: September 15, 2025
+**Last Updated**: September 20, 2025

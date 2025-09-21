@@ -97,7 +97,20 @@ impl NamespaceDetector {
 
         loop {
             match xml_reader.read_event_into(&mut buf) {
-                Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => {
+                Ok(Event::Start(ref e)) => {
+                    depth += 1;
+
+                    // Check maximum nesting depth
+                    if depth > security_config.max_element_depth {
+                        return Err(ParseError::DepthLimitExceeded {
+                            depth,
+                            max: security_config.max_element_depth,
+                        });
+                    }
+
+                    self.process_start_element(e)?;
+                }
+                Ok(Event::Empty(ref e)) => {
                     depth += 1;
 
                     // Check maximum nesting depth
@@ -110,10 +123,9 @@ impl NamespaceDetector {
 
                     self.process_start_element(e)?;
 
-                    // For empty elements, immediately decrement depth
-                    if matches!(xml_reader.read_event_into(&mut buf), Ok(Event::Empty(_))) {
-                        depth -= 1;
-                    }
+                    // For empty elements, immediately pop scope and decrement depth
+                    self.pop_namespace_scope();
+                    depth -= 1;
                 }
                 Ok(Event::End(_)) => {
                     self.pop_namespace_scope();

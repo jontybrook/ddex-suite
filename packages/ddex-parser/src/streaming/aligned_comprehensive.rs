@@ -7,7 +7,7 @@ use ddex_core::models::streaming_types::builders::*;
 use ddex_core::models::streaming_types::*;
 use ddex_core::models::IdentifierType;
 use ddex_core::models::{graph::*, versions::ERNVersion};
-use quick_xml::{events::Event, Reader};
+use quick_xml::{events::{Event, BytesStart}, Reader};
 use std::collections::HashMap;
 use std::io::BufRead;
 use std::time::Instant;
@@ -75,6 +75,24 @@ impl<R: BufRead> AlignedStreamingParser<R> {
                 Event::Start(e) => {
                     let name_bytes = e.name();
                     let name = std::str::from_utf8(name_bytes.as_ref())?.to_string();
+
+                    // Extract attributes into a temporary structure
+                    let mut attributes = HashMap::new();
+                    for attr_result in e.attributes() {
+                        let attr = attr_result.map_err(|e| ParseError::XmlError {
+                            message: format!("Attribute error: {}", e),
+                            location: crate::error::ErrorLocation::default(),
+                        })?;
+
+                        let key = std::str::from_utf8(attr.key.as_ref())?;
+                        let value = std::str::from_utf8(&attr.value)?;
+
+                        attributes.insert(key.to_string(), value.to_string());
+                    }
+
+                    // Store the attributes
+                    self.attributes = attributes;
+
                     self.handle_start_element_by_name(&name)?;
                 }
                 Event::End(e) => {
@@ -110,12 +128,10 @@ impl<R: BufRead> AlignedStreamingParser<R> {
         }
     }
 
+
     fn handle_start_element_by_name(&mut self, name: &str) -> Result<(), ParseError> {
         self.current_path.push(name.to_string());
         self.current_depth += 1;
-
-        // Clear attributes (simplified for now)
-        self.attributes.clear();
 
         self.text_buffer.clear();
 
