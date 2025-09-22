@@ -157,12 +157,20 @@ const config: Config = {
             },
             {
               label: 'npm',
-              href: 'https://www.npmjs.com/~daddykev',
+              href: 'https://www.npmjs.com/package/ddex-builder',
+            },
+            {
+              label: 'PyPI',
+              href: 'https://pypi.org/project/ddex-builder/',
+            },
+            {
+              label: 'Cargo',
+              href: 'https://crates.io/crates/ddex-core',
             },
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Kevin Marques Moo. Open-source under MIT License.`,
+      copyright: `Copyright © ${new Date().getFullYear()} DDEX Suite. Open-source under MIT License.`,
     },
     prism: {
       theme: prismThemes.github,
