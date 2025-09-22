@@ -164,38 +164,10 @@ const SAMPLE_FILES = {
     }]
   }, null, 2),
 
-  'Batch Build Template': JSON.stringify([
-    {
-      messageHeader: {
-        messageId: "MSG_BATCH_001",
-        messageSenderName: "Batch Label",
-        messageRecipientName: "DSP Platform"
-      },
-      releases: [{
-        releaseId: "BATCH_REL_001",
-        title: "First Album",
-        artist: "Artist One",
-        releaseType: "Album"
-      }]
-    },
-    {
-      messageHeader: {
-        messageId: "MSG_BATCH_002",
-        messageSenderName: "Batch Label",
-        messageRecipientName: "DSP Platform"
-      },
-      releases: [{
-        releaseId: "BATCH_REL_002",
-        title: "Second Album",
-        artist: "Artist Two",
-        releaseType: "Single"
-      }]
-    }
-  ], null, 2)
 };
 
 interface PlaygroundState {
-  mode: 'parser' | 'builder' | 'batch';
+  mode: 'parser' | 'builder';
   input: string;
   output: string;
   loading: boolean;
@@ -288,62 +260,6 @@ function PlaygroundComponent() {
     }
   }, [state.selectedPreset]);
 
-  const batchBuildXML = useCallback(async (json: string): Promise<string> => {
-    const trimmedInput = json.trim();
-    if (trimmedInput.startsWith('<?xml') || trimmedInput.startsWith('<')) {
-      throw new Error('Batch mode requires JSON array input.');
-    }
-
-    try {
-      const items = JSON.parse(json);
-      if (!Array.isArray(items)) {
-        throw new Error('Batch mode requires an array of build requests');
-      }
-
-      const response = await fetch('/api/batch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          operation: 'build',
-          documents: items.map((item, index) => ({
-            id: `batch_${index}`,
-            data: {
-              messageHeader: item.messageHeader || {
-                messageId: 'MSG_' + Date.now() + '_' + index,
-                messageSenderName: 'DDEX Playground Batch',
-                messageRecipientName: 'DSP Platform',
-                messageCreatedDateTime: new Date().toISOString()
-              },
-              releases: item.releases || [],
-              resources: item.resources || [],
-              deals: item.deals || []
-            }
-          })),
-          globalOptions: {
-            preset: state.selectedPreset
-          }
-        })
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Batch processing failed' }));
-        throw new Error(error.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || 'Batch processing failed');
-      }
-
-      // Format batch results
-      return JSON.stringify(result.results, null, 2);
-    } catch (error) {
-      if (error instanceof SyntaxError) {
-        throw new Error('Invalid JSON input. Please check your JSON syntax.');
-      }
-      throw error;
-    }
-  }, [state.selectedPreset]);
 
   const handleProcess = useCallback(async () => {
     if (!state.input.trim()) {
@@ -359,8 +275,6 @@ function PlaygroundComponent() {
       if (state.mode === 'parser') {
         const parsed = await parseXML(state.input);
         result = JSON.stringify(parsed, null, 2);
-      } else if (state.mode === 'batch') {
-        result = await batchBuildXML(state.input);
       } else {
         result = await buildXML(state.input);
       }
@@ -375,17 +289,15 @@ function PlaygroundComponent() {
         output: `Error: ${errorMessage}`
       }));
     }
-  }, [state.input, state.mode, parseXML, buildXML, batchBuildXML]);
+  }, [state.input, state.mode, parseXML, buildXML]);
 
-  const handleModeChange = useCallback((newMode: 'parser' | 'builder' | 'batch') => {
+  const handleModeChange = useCallback((newMode: 'parser' | 'builder') => {
     // Reset input to appropriate default when switching modes
     let defaultInput = SAMPLE_FILES['ERN 4.3 Simple'];
     if (newMode === 'builder') {
       defaultInput = SAMPLE_FILES['Builder Template'];
-    } else if (newMode === 'batch') {
-      defaultInput = SAMPLE_FILES['Batch Build Template'];
     }
-    
+
     setState(prev => ({
       ...prev,
       mode: newMode,
@@ -399,14 +311,13 @@ function PlaygroundComponent() {
     const sampleContent = SAMPLE_FILES[sampleName];
     const isXmlSample = sampleName.startsWith('ERN');
     const isJsonSample = sampleName === 'Builder Template';
-    const isBatchSample = sampleName === 'Batch Build Template';
-    
+
     // Warn if loading incompatible sample type
     let warning = '';
-    if ((state.mode === 'builder' || state.mode === 'batch') && isXmlSample) {
+    if (state.mode === 'builder' && isXmlSample) {
       warning = 'XML samples are for Parser mode. Switch to Parser mode or choose a JSON template.';
-    } else if (state.mode === 'parser' && (isJsonSample || isBatchSample)) {
-      warning = 'JSON templates are for Builder/Batch mode. Switch modes or choose an ERN sample.';
+    } else if (state.mode === 'parser' && isJsonSample) {
+      warning = 'JSON templates are for Builder mode. Switch modes or choose an ERN sample.';
     }
     
     setState(prev => ({
@@ -420,8 +331,7 @@ function PlaygroundComponent() {
   const exportOutput = useCallback(() => {
     if (!state.output) return;
     
-    const isBatchOutput = state.mode === 'batch';
-    const isJsonOutput = state.mode === 'parser' || isBatchOutput;
+    const isJsonOutput = state.mode === 'parser';
     
     const blob = new Blob([state.output], { 
       type: isJsonOutput ? 'application/json' : 'application/xml' 
@@ -429,12 +339,10 @@ function PlaygroundComponent() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    
+
     let filename = 'output';
     if (state.mode === 'parser') {
       filename = 'parsed-data.json';
-    } else if (state.mode === 'batch') {
-      filename = 'batch-results.json';
     } else {
       filename = 'generated.xml';
     }
@@ -469,12 +377,6 @@ function PlaygroundComponent() {
             >
               Builder Mode
             </button>
-            <button
-              className={`button ${state.mode === 'batch' ? 'button--primary' : 'button--secondary'}`}
-              onClick={() => handleModeChange('batch')}
-            >
-              Batch Mode
-            </button>
 
             <div style={{ marginLeft: 'auto', fontSize: '0.9rem', fontWeight: '500' }}>
               {state.apiStatus === 'online' && (
@@ -501,13 +403,11 @@ function PlaygroundComponent() {
               {Object.keys(SAMPLE_FILES).map(name => {
                 const isXmlSample = name.startsWith('ERN');
                 const isJsonSample = name === 'Builder Template';
-                const isBatchSample = name === 'Batch Build Template';
-                const isCompatible = (state.mode === 'parser' && isXmlSample) || 
-                                   (state.mode === 'builder' && isJsonSample) ||
-                                   (state.mode === 'batch' && isBatchSample);
+                const isCompatible = (state.mode === 'parser' && isXmlSample) ||
+                                   (state.mode === 'builder' && isJsonSample);
                 return (
                   <option key={name} value={name} disabled={!isCompatible}>
-                    {name} {!isCompatible ? `(for ${isXmlSample ? 'Parser' : isBatchSample ? 'Batch' : 'Builder'} mode)` : ''}
+                    {name} {!isCompatible ? `(for ${isXmlSample ? 'Parser' : 'Builder'} mode)` : ''}
                   </option>
                 );
               })}
@@ -537,7 +437,7 @@ function PlaygroundComponent() {
              state.apiStatus === 'checking' ? 'Checking API...' :
              state.apiStatus === 'offline' ? 'API Offline' :
              state.mode === 'parser' ? 'Parse XML' :
-             state.mode === 'batch' ? 'Batch Build' : 'Build XML'}
+ 'Build XML'}
           </button>
           
           {state.output && (
@@ -545,7 +445,7 @@ function PlaygroundComponent() {
               className="button button--secondary"
               onClick={exportOutput}
             >
-              Export {state.mode === 'parser' ? 'JSON' : state.mode === 'batch' ? 'Results' : 'XML'}
+              Export {state.mode === 'parser' ? 'JSON' : 'XML'}
             </button>
           )}
         </div>
@@ -606,11 +506,11 @@ function PlaygroundComponent() {
                 fontSize: '0.9rem',
                 fontWeight: 'bold'
               }}>
-                Output ({state.mode === 'parser' ? 'JSON' : state.mode === 'batch' ? 'JSON Results' : 'XML'})
+                Output ({state.mode === 'parser' ? 'JSON' : 'XML'})
               </div>
               <div style={{ flex: 1 }}>
                 <Editor
-                  language={state.mode === 'parser' || state.mode === 'batch' ? 'json' : 'xml'}
+                  language={state.mode === 'parser' ? 'json' : 'xml'}
                   value={state.output}
                   options={{
                     readOnly: true,
@@ -639,7 +539,7 @@ function PlaygroundComponent() {
       }}>
         <strong>DDEX Suite v0.4.5</strong> - Using Firebase Functions API with ddex-parser and ddex-builder v0.4.5
         <br/>
-        <strong>Features:</strong> Real-time parsing • Deterministic XML building • Batch processing •
+        <strong>Features:</strong> Real-time parsing • Deterministic XML building •
         Preset configurations • Round-trip compatibility • Google Cloud Linux binaries • Cloud-powered performance
       </div>
     </div>
