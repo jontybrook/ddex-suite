@@ -35,8 +35,8 @@ Beyond the core implementation, this is a showcase of **software craftsmanship a
 
 ## 🚧 Development Status
 
-**Latest Release**: Suite v0.4.4 🎉  
-**Current Development Phase**: 4.5 - Performance & Scale  
+**Latest Release**: Suite v0.4.5 🎉  
+**Current Development Phase**: 5.1 - Performance & Scale  
 **Target Release**: Suite v1.0.0 in Q1 2026
 
 ### 📦 Available Packages
@@ -45,9 +45,9 @@ All packages published across npm, PyPI, and **crates.io**! ✅
 
 | Package | npm | PyPI | crates.io | Version |
 |---------|-----|------|-----------|---------|
-| **ddex-core** | - | - | ✅ [Published](https://crates.io/crates/ddex-core) | v0.4.4 |
-| **ddex-parser** | ✅ [Published](https://www.npmjs.com/package/ddex-parser) | ✅ [Published](https://pypi.org/project/ddex-parser/) | ✅ [Published](https://crates.io/crates/ddex-parser) | v0.4.4 |
-| **ddex-builder** | ✅ [Published](https://www.npmjs.com/package/ddex-builder) | ✅ [Published](https://pypi.org/project/ddex-builder/) | ✅ [Published](https://crates.io/crates/ddex-builder) | v0.4.4 |
+| **ddex-core** | - | - | ✅ [Published](https://crates.io/crates/ddex-core) | v0.4.5 |
+| **ddex-parser** | ✅ [Published](https://www.npmjs.com/package/ddex-parser) | ✅ [Published](https://pypi.org/project/ddex-parser/) | ✅ [Published](https://crates.io/crates/ddex-parser) | v0.4.5 |
+| **ddex-builder** | ✅ [Published](https://www.npmjs.com/package/ddex-builder) | ✅ [Published](https://pypi.org/project/ddex-builder/) | ✅ [Published](https://crates.io/crates/ddex-builder) | v0.4.5 |
 
 ### Progress Overview
 
@@ -163,6 +163,12 @@ Partner extensions (YouTube, generic) are preserved and properly namespaced.
 Parse → Modify → Build workflows maintain all your data, with beneficial normalization applied.
 
 ## 🚀 Features
+
+### ✅ Error Refactoring (v0.4.5)
+- Enhanced error handling across all bindings
+- Critical bug fixes for production stability
+- Memory leak fixes in streaming parser
+- Improved cross-platform binary compatibility
 
 ### ✅ Stability Improvements (v0.4.4)
 - Enhanced error handling for missing required fields
@@ -446,8 +452,8 @@ DDEX Suite is designed to complement [DDEX Workbench](https://ddex-workbench.org
 ---
 
 **Repository**: https://github.com/daddykev/ddex-suite  
-**Status**: Phase 4.4 - Additional Bindings  
-**Parser**: v0.4.4 on [npm](https://www.npmjs.com/package/ddex-parser) and [PyPI](https://pypi.org/project/ddex-parser/)
-**Builder**: v0.4.4 on [npm](https://www.npmjs.com/package/ddex-builder) and [PyPI](https://pypi.org/project/ddex-builder/)  
+**Status**: Phase 5.1 - Performance & Scale  
+**Parser**: v0.4.5 on [npm](https://www.npmjs.com/package/ddex-parser) and [PyPI](https://pypi.org/project/ddex-parser/)
+**Builder**: v0.4.5 on [npm](https://www.npmjs.com/package/ddex-builder) and [PyPI](https://pypi.org/project/ddex-builder/)  
 **Suite Target**: v1.0.0 in Q1 2026  
 **Last Updated**: September 21, 2025

@@ -1999,7 +1999,7 @@ interface DeterminismConfig {
 - [x] Publish v0.4.0 with production-ready streaming
 - [x] Publish v0.4.2 with Linux x64 GNU binaries for Node (cloud functions)
 - [x] Publish v0.4.3 with parser enhancements, rebuilt binaries
-- [ ] Publish v0.4.5 bug fixes
+- [x] Publish v0.4.5 with error refactoring, bug fixes
 
 ### Phase 5: Production-Readiness 🎯
 

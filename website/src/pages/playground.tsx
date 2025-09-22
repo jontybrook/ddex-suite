@@ -455,7 +455,7 @@ function PlaygroundComponent() {
         backgroundColor: 'var(--ifm-background-color)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-          <h1 style={{ margin: 0, fontSize: '1.5rem' }}>Playground v0.4.3</h1>
+          <h1 style={{ margin: 0, fontSize: '1.5rem' }}>Playground v0.4.5</h1>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <button
               className={`button ${state.mode === 'parser' ? 'button--primary' : 'button--secondary'}`}
@@ -637,7 +637,7 @@ function PlaygroundComponent() {
         fontSize: '0.8rem',
         color: 'var(--ifm-color-emphasis-600)'
       }}>
-        <strong>DDEX Suite v0.4.3</strong> - Using Firebase Functions API with ddex-parser and ddex-builder v0.4.3
+        <strong>DDEX Suite v0.4.5</strong> - Using Firebase Functions API with ddex-parser and ddex-builder v0.4.5
         <br/>
         <strong>Features:</strong> Real-time parsing • Deterministic XML building • Batch processing •
         Preset configurations • Round-trip compatibility • Google Cloud Linux binaries • Cloud-powered performance
@@ -648,7 +648,7 @@ function PlaygroundComponent() {
 
 export default function Playground() {
   return (
-    <Layout title="Playground v0.4.3" description="Interactive DDEX Suite playground with v0.4.3 features and enhanced performance optimizations">
+    <Layout title="Playground v0.4.5" description="Interactive DDEX Suite playground with v0.4.5 features and enhanced performance optimizations">
       <BrowserOnly fallback={<div>Loading playground...</div>}>
         {() => <PlaygroundComponent />}
       </BrowserOnly>
